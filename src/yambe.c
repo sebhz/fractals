@@ -233,7 +233,6 @@ void display_screen(SDL_Surface *s, int *res)
 			DrawPixel(s, x, y, colormap[n]);
 	}
 	SDL_Flip(s);
-	SDL_Delay(2000);
 }
 
 void create_colormap(SDL_Surface *screen) {
@@ -251,9 +250,10 @@ void create_colormap(SDL_Surface *screen) {
 
 int main(int argc, char **argv)
 {
-	int *res;
+	int *res, prog_running = 1;
 	point_t p;
 	SDL_Surface *screen;
+    SDL_Event event;
 	
     srand (time (NULL));
 	default_settings();
@@ -268,7 +268,38 @@ int main(int argc, char **argv)
 	create_colormap(screen);
 	p.x = -0.5; p.y = 0;
 	mandelbrot(&p, 3.5, res);
-	display_screen(screen, res);
+	while (prog_running) {
+		display_screen(screen, res);
+		if (SDL_PollEvent (&event)) {
+             switch (event.type) {
+                case SDL_VIDEORESIZE:
+         			settings.nx = event.resize.w;
+					settings.ny = event.resize.h;
+		if ((res = (int *)realloc(res, settings.nx*settings.ny*sizeof(int))) == NULL ) {
+		fprintf(stderr, "Unable to allocate memory for screen buffer\n");
+		exit(EXIT_FAILURE);
+	}
+
+		       screen =
+                        SDL_SetVideoMode (event.resize.w,
+                                          event.resize.h, 0,
+                                          SDL_HWSURFACE |
+                                          SDL_DOUBLEBUF | SDL_RESIZABLE);
+                    if (screen == NULL) {
+                        return -1;
+                    }
+					mandelbrot(&p, 3.5, res);
+                    break;
+
+                case SDL_QUIT:
+					prog_running = 0;
+                    break;
+				default:
+					break;
+ 
+	}
+	}
+	}
 	SDL_Quit();
 	return EXIT_SUCCESS;
 }	
