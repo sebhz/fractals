@@ -271,16 +271,15 @@ int main(int argc, char **argv)
 	while (prog_running) {
 		display_screen(screen, res);
 		if (SDL_PollEvent (&event)) {
-             switch (event.type) {
-                case SDL_VIDEORESIZE:
+			switch (event.type) {
+            	case SDL_VIDEORESIZE:
          			settings.nx = event.resize.w;
 					settings.ny = event.resize.h;
-		if ((res = (int *)realloc(res, settings.nx*settings.ny*sizeof(int))) == NULL ) {
-		fprintf(stderr, "Unable to allocate memory for screen buffer\n");
-		exit(EXIT_FAILURE);
-	}
-
-		       screen =
+					if ((res = (int *)realloc(res, settings.nx*settings.ny*sizeof(int))) == NULL ) {
+						fprintf(stderr, "Unable to allocate memory for screen buffer\n");
+						exit(EXIT_FAILURE);
+					}
+					screen =
                         SDL_SetVideoMode (event.resize.w,
                                           event.resize.h, 0,
                                           SDL_HWSURFACE |
@@ -294,12 +293,14 @@ int main(int argc, char **argv)
                 case SDL_QUIT:
 					prog_running = 0;
                     break;
+
 				default:
 					break;
  
-	}
-	}
+			}
+		}
 	}
 	SDL_Quit();
 	return EXIT_SUCCESS;
 }	
+
