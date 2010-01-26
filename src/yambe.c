@@ -140,16 +140,6 @@ void parse_options (int argc, char **argv)
 	}
 }
 
-void
-apply_surface (int x, int y, SDL_Surface * source, SDL_Surface * destination)
-{
-    SDL_Rect offset;
-    offset.x = x;
-    offset.y = y;
-    SDL_BlitSurface (source, NULL, destination, &offset);
-}
-
-
 void mandelbrot(point_t *center, double width, int *res)
 {
 	double a, b, x, y, x1, xmin, ymax, step;
@@ -246,6 +236,20 @@ void display_screen(SDL_Surface *s, int *res)
 	SDL_Delay(2000);
 }
 
+void create_colormap(void) {
+
+	int i;
+
+	if ((colormap = (int *)malloc((settings.nmax+1)*sizeof(int))) == NULL ) {
+		fprintf(stderr, "Unable to allocate memory for colormap\n");
+		exit(EXIT_FAILURE);
+	}
+	for (i=0; i<settings.nmax; i++) {
+		colormap[i] = rand()%(256*256*256); 
+	}
+	colormap[settings.nmax] = 0;
+}
+
 int main(int argc, char **argv)
 {
 	int *res, i;
@@ -255,21 +259,12 @@ int main(int argc, char **argv)
     srand (time (NULL));
 	default_settings();
 	parse_options(argc, argv);
-
+	
 	if ((res = (int *)malloc(settings.nx*settings.ny*sizeof(int))) == NULL ) {
 		fprintf(stderr, "Unable to allocate memory for screen buffer\n");
 		exit(EXIT_FAILURE);
 	}
-	
-	if ((colormap = (int *)malloc((settings.nmax+1)*sizeof(int))) == NULL ) {
-		fprintf(stderr, "Unable to allocate memory for colormap\n");
-		exit(EXIT_FAILURE);
-	}
-	for (i=0; i<settings.nmax; i++) {
-		colormap[i] = rand()%(256*256*256); 
-	}
-	colormap[settings.nmax] = 0;
-
+	create_colormap();
 	screen = init_SDL();
 	p.x = -0.5; p.y = 0;
 	mandelbrot(&p, 3.5, res);
