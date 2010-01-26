@@ -22,7 +22,7 @@ typedef struct {
 static settings_t settings;
 
 const char *WINDOW_TITLE = "Mandelbrot";
-static int *colormap;
+static Uint32 *colormap;
 
 void usage(char *prog_name, FILE *stream) {
 	fprintf(stream, "%s (version %s):\n", prog_name, VERSION_STRING);
@@ -159,7 +159,7 @@ void mandelbrot(point_t *center, double width, int *res)
 				y  = 2*x*y+b;
 				x  = x1;
 				n++;
-			} while (((x*x+y*y) < 4) && (n <= settings.nmax));
+			} while (((x*x+y*y) < 4) && (n < settings.nmax));
 			res[j*settings.nx + i] = n;
 		}
 	}
@@ -178,9 +178,9 @@ SDL_Surface *init_SDL(void)
 	return s;
 }
 
-void DrawPixel(SDL_Surface *screen, int x, int y, Uint8 R, Uint8 G, Uint8 B)
+void DrawPixel(SDL_Surface *screen, int x, int y, Uint32 color)
 {
-  Uint32 color = SDL_MapRGB(screen->format, R, G, B);
+
   switch (screen->format->BytesPerPixel)
   {
     case 1: // 8-bpp
@@ -230,29 +230,28 @@ void display_screen(SDL_Surface *s, int *res)
 	for (x=0; x< settings.nx; x++)
 		for (y=0; y<settings.ny; y++) {
 			n = res[y*settings.nx+x];
-			DrawPixel(s, x, y, colormap[n] >> 16, (colormap[n] >> 8)& 0x0000FF, (colormap[n] >> 16)& 0x0000FF);
+			DrawPixel(s, x, y, colormap[n]);
 	}
 	SDL_Flip(s);
 	SDL_Delay(2000);
 }
 
-void create_colormap(void) {
+void create_colormap(SDL_Surface *screen) {
 
 	int i;
-
-	if ((colormap = (int *)malloc((settings.nmax+1)*sizeof(int))) == NULL ) {
+	if ((colormap = (Uint32 *)malloc((settings.nmax+1)*sizeof(Uint32))) == NULL ) {
 		fprintf(stderr, "Unable to allocate memory for colormap\n");
 		exit(EXIT_FAILURE);
 	}
 	for (i=0; i<settings.nmax; i++) {
-		colormap[i] = rand()%(256*256*256); 
+		colormap[i] = SDL_MapRGB(screen->format, rand()%256, rand()%256, rand()%256);
 	}
-	colormap[settings.nmax] = 0;
+	colormap[settings.nmax] = SDL_MapRGB(screen->format, 0, 0, 0);
 }
 
 int main(int argc, char **argv)
 {
-	int *res, i;
+	int *res;
 	point_t p;
 	SDL_Surface *screen;
 	
@@ -264,8 +263,9 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Unable to allocate memory for screen buffer\n");
 		exit(EXIT_FAILURE);
 	}
-	create_colormap();
+
 	screen = init_SDL();
+	create_colormap(screen);
 	p.x = -0.5; p.y = 0;
 	mandelbrot(&p, 3.5, res);
 	display_screen(screen, res);
