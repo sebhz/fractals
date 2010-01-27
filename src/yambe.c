@@ -224,16 +224,60 @@ void DrawPixel(SDL_Surface *screen, int x, int y, Uint32 color)
   }
 } 
 
-void display_screen(SDL_Surface *s, int *res)
+void display_screen(SDL_Surface *screen, int *res)
 {
-	int x, y, n;
+	int i, imax = settings.nx*settings.ny;
 
-	for (x=0; x< settings.nx; x++)
-		for (y=0; y<settings.ny; y++) {
-			n = res[y*settings.nx+x];
-			DrawPixel(s, x, y, colormap[n]);
-	}
-}
+  switch (screen->format->BytesPerPixel)
+  {
+    case 1: // 8-bpp
+      {
+        Uint8 *bufp;
+		for (i=0; i < imax; i++) {
+        	bufp = (Uint8 *)screen->pixels + i;
+        	*bufp = colormap[res[i]];
+      	}
+		}
+      	break;
+    case 2: // 15-bpp or 16-bpp
+      {
+        Uint16 *bufp;
+ 		for (i=0; i < imax; i++) {
+        	bufp = (Uint16 *)screen->pixels + i;
+        	*bufp = colormap[res[i]];
+      	}
+      }
+      break;
+    case 3: // 24-bpp mode, usually not used
+      {
+ 
+        Uint8 *bufp;
+		for (i=0; i < imax; i++) {
+        	bufp = (Uint8 *)screen->pixels + i*3;
+        if(SDL_BYTEORDER == SDL_LIL_ENDIAN)
+        {
+          bufp[0] = colormap[res[i]];
+          bufp[1] = colormap[res[i]] >> 8;
+          bufp[2] = colormap[res[i]] >> 16;
+        } else {
+          bufp[2] = colormap[res[i]];
+          bufp[1] = colormap[res[i]] >> 8;
+          bufp[0] = colormap[res[i]] >> 16;
+        }
+      }
+		}
+      break;
+    case 4: // 32-bpp
+      {
+        Uint32 *bufp;
+  		for (i=0; i < imax; i++) {
+        	bufp = (Uint32 *)screen->pixels + i;
+        	*bufp = colormap[res[i]];
+      	}
+      }
+      break;
+  }
+} 
 
 void create_colormap(SDL_Surface *screen) {
 
