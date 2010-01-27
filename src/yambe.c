@@ -252,6 +252,7 @@ int main(int argc, char **argv)
 {
 	int *res, prog_running = 1, zooming = 0;
 	point_t p;
+	double width, r;
 	SDL_Surface *screen;
     SDL_Event event;
 	
@@ -266,8 +267,8 @@ int main(int argc, char **argv)
 
 	screen = init_SDL();
 	create_colormap(screen);
-	p.x = -0.5; p.y = 0;
-	mandelbrot(&p, 3.5, res);
+	p.x = -0.5; p.y = 0; width = 3.5;
+	mandelbrot(&p, width, res);
 	while (prog_running) {
 		display_screen(screen, res);
 		if (zooming) 
@@ -291,7 +292,7 @@ int main(int argc, char **argv)
                     if (screen == NULL) {
                         return -1;
                     }
-					mandelbrot(&p, 3.5, res);
+					mandelbrot(&p, width, res);
                     break;
 
                 case SDL_KEYDOWN:
@@ -318,7 +319,13 @@ int main(int argc, char **argv)
 					if (zooming) {
 						zooming = 0;
 						/* Compute new boundaries */
+						r = width/settings.nx;
+						p.x = p.x - r*settings.nx/2 + (zoom.x+zoom.w)/2*r;
+						p.y = p.y + r*settings.ny/2 - (zoom.y+zoom.h)/2*r;
+						
+						width = r*abs(zoom.w-zoom.x);
 						/* Relaunch a new mandelbrot */
+						mandelbrot(&p, width, res);
 					}
 					else {
 						zooming = 1;
