@@ -349,12 +349,19 @@ int main(int argc, char **argv)
                             break;
 					 
 						case SDLK_PLUS:
+						case SDLK_0:
 							settings.nmax*=2;	
+							if ((colormap = (Uint32 *)realloc(colormap, (settings.nmax+1)*sizeof(Uint32))) == NULL) {
+								fprintf(stderr, "Unable to reallocate memory for new colormap\n");
+								exit(EXIT_FAILURE);
+							}
+							create_colormap(screen);
 							mandelbrot(&p, width, res);
 							break;	
 
                        	case SDLK_MINUS:
 							settings.nmax/=2;	
+							colormap[settings.nmax] = SDL_MapRGB(screen->format, 0, 0, 0);
 							mandelbrot(&p, width, res);
 							break;	
                        
