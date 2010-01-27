@@ -347,9 +347,20 @@ int main(int argc, char **argv)
 							else
 								prog_running = 0;
                             break;
-                        default:
+					 
+						case SDLK_PLUS:
+							settings.nmax*=2;	
+							mandelbrot(&p, width, res);
+							break;	
+
+                       	case SDLK_MINUS:
+							settings.nmax/=2;	
+							mandelbrot(&p, width, res);
+							break;	
+                       
+						default:
                             break;
-                        }
+					}
 					break;
 
                  case SDL_MOUSEMOTION:
