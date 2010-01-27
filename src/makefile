@@ -3,7 +3,7 @@ TAR=tar
 INDENT=indent 
 CFLAGS=-Wall -O3
 CPPFLAGS=-I/usr/include/SDL 
-LDFLAGS=-lSDL -lSDL_image -lSDL_ttf -lSDL_gfx 
+LDFLAGS=-lSDL -lSDL_gfx 
 OBJS=yambe.o
 
 TARGET=yambe

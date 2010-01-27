@@ -3,7 +3,6 @@
 #include <time.h>
 #include <getopt.h>
 #include "SDL/SDL.h"
-#include "SDL/SDL_image.h"
 #include "SDL/SDL_gfxPrimitives.h"
 
 #define VERSION_STRING "1.0"
@@ -22,8 +21,8 @@ typedef struct {
 static settings_t settings;
 static SDL_Rect zoom;
 
-const char *WINDOW_TITLE = "Mandelbrot";
-static Uint32 *colormap;
+const char *WINDOW_TITLE = "Mandelbrot explorer";
+static Uint32 *colormap = NULL;
 
 void usage(char *prog_name, FILE *stream) {
 	fprintf(stream, "%s (version %s):\n", prog_name, VERSION_STRING);
@@ -179,51 +178,6 @@ SDL_Surface *init_SDL(void)
 	return s;
 }
 
-void DrawPixel(SDL_Surface *screen, int x, int y, Uint32 color)
-{
-
-  switch (screen->format->BytesPerPixel)
-  {
-    case 1: // 8-bpp
-      {
-        Uint8 *bufp;
-        bufp = (Uint8 *)screen->pixels + y*screen->pitch + x;
-        *bufp = color;
-      }
-      break;
-    case 2: // 15-bpp or 16-bpp
-      {
-        Uint16 *bufp;
-        bufp = (Uint16 *)screen->pixels + y*screen->pitch/2 + x;
-        *bufp = color;
-      }
-      break;
-    case 3: // 24-bpp mode, usually not used
-      {
-        Uint8 *bufp;
-        bufp = (Uint8 *)screen->pixels + y*screen->pitch + x * 3;
-        if(SDL_BYTEORDER == SDL_LIL_ENDIAN)
-        {
-          bufp[0] = color;
-          bufp[1] = color >> 8;
-          bufp[2] = color >> 16;
-        } else {
-          bufp[2] = color;
-          bufp[1] = color >> 8;
-          bufp[0] = color >> 16;
-        }
-      }
-      break;
-    case 4: // 32-bpp
-      {
-        Uint32 *bufp;
-        bufp = (Uint32 *)screen->pixels + y*screen->pitch/4 + x;
-        *bufp = color;
-      }
-      break;
-  }
-} 
-
 void display_screen(SDL_Surface *screen, int *res)
 {
 	int i, imax = settings.nx*settings.ny;
@@ -282,6 +236,8 @@ void display_screen(SDL_Surface *screen, int *res)
 void create_colormap(SDL_Surface *screen) {
 
 	int i;
+
+	if (colormap != NULL) free(colormap);
 	if ((colormap = (Uint32 *)malloc((settings.nmax+1)*sizeof(Uint32))) == NULL ) {
 		fprintf(stderr, "Unable to allocate memory for colormap\n");
 		exit(EXIT_FAILURE);
@@ -351,10 +307,6 @@ int main(int argc, char **argv)
 						case SDLK_PLUS:
 						case SDLK_0:
 							settings.nmax*=2;	
-							if ((colormap = (Uint32 *)realloc(colormap, (settings.nmax+1)*sizeof(Uint32))) == NULL) {
-								fprintf(stderr, "Unable to reallocate memory for new colormap\n");
-								exit(EXIT_FAILURE);
-							}
 							create_colormap(screen);
 							mandelbrot(&p, width, res);
 							break;	
