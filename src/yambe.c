@@ -20,6 +20,7 @@ typedef struct {
 } settings_t;
 
 static settings_t settings;
+static SDL_Rect zoom;
 
 const char *WINDOW_TITLE = "Mandelbrot";
 static Uint32 *colormap;
@@ -232,7 +233,6 @@ void display_screen(SDL_Surface *s, int *res)
 			n = res[y*settings.nx+x];
 			DrawPixel(s, x, y, colormap[n]);
 	}
-	SDL_Flip(s);
 }
 
 void create_colormap(SDL_Surface *screen) {
@@ -250,7 +250,7 @@ void create_colormap(SDL_Surface *screen) {
 
 int main(int argc, char **argv)
 {
-	int *res, prog_running = 1;
+	int *res, prog_running = 1, zooming = 0;
 	point_t p;
 	SDL_Surface *screen;
     SDL_Event event;
@@ -270,6 +270,10 @@ int main(int argc, char **argv)
 	mandelbrot(&p, 3.5, res);
 	while (prog_running) {
 		display_screen(screen, res);
+		if (zooming) 
+			rectangleColor(screen, zoom.x, zoom.y, zoom.w, zoom.h, 0xFFFFFFFF);
+
+		SDL_Flip(screen);
 		if (SDL_PollEvent (&event)) {
 			switch (event.type) {
             	case SDL_VIDEORESIZE:
@@ -290,6 +294,41 @@ int main(int argc, char **argv)
 					mandelbrot(&p, 3.5, res);
                     break;
 
+                case SDL_KEYDOWN:
+                    switch (event.key.keysym.sym) {
+	                    case SDLK_ESCAPE:
+							if (zooming) 
+								zooming = 0;
+							else
+								prog_running = 0;
+                            break;
+                        default:
+                            break;
+                        }
+					break;
+
+                 case SDL_MOUSEMOTION:
+					if (zooming) {
+                    	zoom.w = event.motion.x;
+                    	zoom.h = event.motion.y;
+					}
+                    break;
+
+                case SDL_MOUSEBUTTONDOWN:
+					if (zooming) {
+						zooming = 0;
+						/* Compute new boundaries */
+						/* Relaunch a new mandelbrot */
+					}
+					else {
+						zooming = 1;
+                    	zoom.x = event.button.x;
+                     	zoom.w = event.button.x;
+                    	zoom.y = event.button.y;
+ 	                  	zoom.h = event.button.y;
+					}
+					break;
+ 
                 case SDL_QUIT:
 					prog_running = 0;
                     break;
