@@ -316,12 +316,11 @@ void compute(point_t *p, double width, int *res) {
 }
 
 void screen_to_real(double width, point_t *center, point_t *p) {
-	point_t o;
 	double r;
 			
 	r = width/settings.nx;
-	p->x = center->x - r*settings.nx/2 + p->x/2*r;
-	p->y = center->y + r*settings.ny/2 - p->y/2*r;
+	p->x = center->x - r*settings.nx/2 + p->x*r;
+	p->y = center->y + r*settings.ny/2 - p->y*r;
 }
 
 int main(int argc, char **argv)
@@ -397,6 +396,9 @@ int main(int argc, char **argv)
 							if (settings.algo == MANDELBROT) {
 								int x, y;
 								SDL_GetMouseState(&x, &y);
+								settings.julia_c.x = x; settings.julia_c.y = y;
+								screen_to_real(width, &p, &settings.julia_c);
+								fprintf(stderr, "Julia center: %d, %d (%f, %f)\n", x, y, settings.julia_c.x, settings.julia_c.y);
 								p.x = 0; p.y = 0; 
 								settings.algo = JULIA;
 								compute(&p, width, res);
