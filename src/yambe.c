@@ -12,10 +12,17 @@ typedef struct {
 	double y;
 } point_t;
 
+typedef enum {
+	MANDELBROT = 0,
+	JULIA
+} algo_t;
+
 typedef struct {
 	int nx; /* X resolution of window */
 	int ny; /* Y resolution of window */
 	int nmax; /* Number of iterations to perform before auuming divergence */
+	point_t julia_c;
+	algo_t algo;
 } settings_t;
 
 static settings_t settings;
@@ -37,6 +44,9 @@ void default_settings(void)
 	settings.nmax = 1024;
 	settings.nx = 640; 
 	settings.ny = 480; 
+	settings.algo = MANDELBROT;
+	settings.julia_c.x = (double)rand()/RAND_MAX;
+	settings.julia_c.y = (double)rand()/RAND_MAX;
 }
 
 int set_geometry(char *s) {
@@ -90,6 +100,7 @@ void parse_options (int argc, char **argv)
           {"help",         no_argument, 0, 'h'},
           {"n_iterations", required_argument, 0, 'n'},
           {"geometry",     required_argument, 0, 'g'},
+          {"algo",         required_argument, 0, 'a'},
           {0, 0, 0, 0}
         };
       /* getopt_long stores the option index here. */
@@ -120,6 +131,22 @@ void parse_options (int argc, char **argv)
 
 		case 'g':
 			if (set_geometry(optarg)) exit(EXIT_FAILURE);
+			break;
+
+		case 'a':
+			if (strcmp(optarg, "mandelbrot") == 0) {
+				settings.algo = MANDELBROT;
+				break;
+			}
+
+			if (strcmp(optarg, "julia") == 0) {
+				settings.algo = JULIA;
+				break;
+			}
+
+			fprintf(stderr, "Unknown algorithm specified: %s\n", optarg);
+			usage(argv[0], stderr);
+			exit(EXIT_FAILURE);
 			break;
 
         case '?':
@@ -157,6 +184,31 @@ void mandelbrot(point_t *center, double width, int *res)
 			do {
 				x1 = x*x-y*y+a;
 				y  = 2*x*y+b;
+				x  = x1;
+				n++;
+			} while (((x*x+y*y) < 4) && (n < settings.nmax));
+			res[j*settings.nx + i] = n;
+		}
+	}
+}
+
+void julia(point_t *center, double width, int *res, point_t *c)
+{
+	double a, b, x, y, x1, xmin, ymax, step;
+	int i, j, n;
+	
+	xmin = center->x-width/2;
+	ymax = center->y+width/2*settings.ny/settings.nx;
+	step = width/settings.nx;
+	
+	for (j=0; j<settings.ny; j++) {
+		b = ymax-j*step;
+		for (i=0; i < settings.nx; i++) {
+			a = i*step+xmin;
+			x=a; y=b; n=0;
+			do {
+				x1 = x*x-y*y+c->x;
+				y  = 2*x*y+c->y;
 				x  = x1;
 				n++;
 			} while (((x*x+y*y) < 4) && (n < settings.nmax));
@@ -248,6 +300,30 @@ void create_colormap(SDL_Surface *screen) {
 	colormap[settings.nmax] = SDL_MapRGB(screen->format, 0, 0, 0);
 }
 
+void compute(point_t *p, double width, int *res) {
+	switch (settings.algo) {
+		case MANDELBROT:
+			mandelbrot(p, width, res);
+			break;
+
+		case JULIA:
+			julia(p, width, res, &settings.julia_c);
+			break;
+
+		default:
+			break;
+	}
+}
+
+void screen_to_real(double width, point_t *center, point_t *p) {
+	point_t o;
+	double r;
+			
+	r = width/settings.nx;
+	p->x = center->x - r*settings.nx/2 + p->x/2*r;
+	p->y = center->y + r*settings.ny/2 - p->y/2*r;
+}
+
 int main(int argc, char **argv)
 {
 	int *res, prog_running = 1, zooming = 0;
@@ -268,7 +344,7 @@ int main(int argc, char **argv)
 	screen = init_SDL();
 	create_colormap(screen);
 	p.x = -0.5; p.y = 0; width = 3.5;
-	mandelbrot(&p, width, res);
+	compute(&p, width, res);
 	while (prog_running) {
 		display_screen(screen, res);
 		if (zooming) 
@@ -292,7 +368,7 @@ int main(int argc, char **argv)
                     if (screen == NULL) {
                         return -1;
                     }
-					mandelbrot(&p, width, res);
+					compute(&p, width, res);
                     break;
 
                 case SDL_KEYDOWN:
@@ -304,19 +380,42 @@ int main(int argc, char **argv)
 								prog_running = 0;
                             break;
 					 
-						case SDLK_PLUS:
-						case SDLK_0:
+						case SDLK_EQUALS:
 							settings.nmax*=2;	
 							create_colormap(screen);
-							mandelbrot(&p, width, res);
+							compute(&p, width, res);
 							break;	
 
                        	case SDLK_MINUS:
 							settings.nmax/=2;	
+							if (settings.nmax < 1) settings.nmax = 1;
 							colormap[settings.nmax] = SDL_MapRGB(screen->format, 0, 0, 0);
-							mandelbrot(&p, width, res);
+							compute(&p, width, res);
 							break;	
-                       
+
+                       	case SDLK_j:
+							if (settings.algo == MANDELBROT) {
+								int x, y;
+								SDL_GetMouseState(&x, &y);
+								p.x = 0; p.y = 0; 
+								settings.algo = JULIA;
+								compute(&p, width, res);
+							}	
+							break;	
+
+                       	case SDLK_m:
+							if (settings.algo == JULIA) {
+								settings.algo = MANDELBROT;
+								compute(&p, width, res);
+							}	
+							break;	
+
+                       	case SDLK_r:
+							settings.algo = MANDELBROT;
+							p.x = -0.5; p.y = 0; width = 3.5;
+							compute(&p, width, res);
+							break;	
+                      
 						default:
                             break;
 					}
@@ -332,14 +431,12 @@ int main(int argc, char **argv)
                 case SDL_MOUSEBUTTONDOWN:
 					if (zooming) {
 						zooming = 0;
-						/* Compute new boundaries */
 						r = width/settings.nx;
 						p.x = p.x - r*settings.nx/2 + (zoom.x+zoom.w)/2*r;
 						p.y = p.y + r*settings.ny/2 - (zoom.y+zoom.h)/2*r;
-						
+					
 						width = r*abs(zoom.w-zoom.x);
-						/* Relaunch a new mandelbrot */
-						mandelbrot(&p, width, res);
+						compute(&p, width, res);
 					}
 					else {
 						zooming = 1;
