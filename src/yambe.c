@@ -398,16 +398,8 @@ int main(int argc, char **argv)
 								SDL_GetMouseState(&x, &y);
 								settings.julia_c.x = x; settings.julia_c.y = y;
 								screen_to_real(width, &p, &settings.julia_c);
-								fprintf(stderr, "Julia center: %d, %d (%f, %f)\n", x, y, settings.julia_c.x, settings.julia_c.y);
-								p.x = 0; p.y = 0; 
+								p.x = 0; p.y = 0; width = 3.5; 
 								settings.algo = JULIA;
-								compute(&p, width, res);
-							}	
-							break;	
-
-                       	case SDLK_m:
-							if (settings.algo == JULIA) {
-								settings.algo = MANDELBROT;
 								compute(&p, width, res);
 							}	
 							break;	
