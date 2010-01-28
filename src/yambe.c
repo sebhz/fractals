@@ -36,7 +36,7 @@ void usage(char *prog_name, FILE *stream) {
 	fprintf(stream, "\t--version      | -v: show program version\n");
 	fprintf(stream, "\t--help         | -h: show this help\n");
 	fprintf(stream, "\t--n_iterations | -n: number of iterations to perform before assuming divergence\n");
-	fprintf(stream, "\t--geometry=<geo>  | -g: sets the window geometry.\n\n");
+	fprintf(stream, "\t--geometry=<geo>  | -g: sets the window geometry.\n");
 }
 
 void default_settings(void) 
@@ -100,7 +100,6 @@ void parse_options (int argc, char **argv)
           {"help",         no_argument, 0, 'h'},
           {"n_iterations", required_argument, 0, 'n'},
           {"geometry",     required_argument, 0, 'g'},
-          {"algo",         required_argument, 0, 'a'},
           {0, 0, 0, 0}
         };
       /* getopt_long stores the option index here. */
@@ -131,22 +130,6 @@ void parse_options (int argc, char **argv)
 
 		case 'g':
 			if (set_geometry(optarg)) exit(EXIT_FAILURE);
-			break;
-
-		case 'a':
-			if (strcmp(optarg, "mandelbrot") == 0) {
-				settings.algo = MANDELBROT;
-				break;
-			}
-
-			if (strcmp(optarg, "julia") == 0) {
-				settings.algo = JULIA;
-				break;
-			}
-
-			fprintf(stderr, "Unknown algorithm specified: %s\n", optarg);
-			usage(argv[0], stderr);
-			exit(EXIT_FAILURE);
 			break;
 
         case '?':
