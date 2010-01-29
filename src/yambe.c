@@ -87,6 +87,17 @@ int set_geometry(char *s) {
 
 }
 
+void create_color_gradient(Uint32 *c, Uint32 c1, Uint32 c2, Uint32 n, SDL_Surface *s)
+{
+	int i, color;
+	double step = (double)(c2-c1+1)/(n-1);
+
+	for (i=0; i<n; i++) {
+		color = c1 + (int)(i*step);
+		*(c+i) = SDL_MapRGB(s->format, (color & 0xFF0000)>>16, (color & 0xFF00) >> 8, color & 0xFF);
+	}
+} 
+
 void parse_options (int argc, char **argv)
 {
   int c;
@@ -270,17 +281,14 @@ void display_screen(SDL_Surface *screen, int *res)
 
 void create_colormap(SDL_Surface *screen) {
 
-	int i;
-
 	if (colormap != NULL) free(colormap);
 	if ((colormap = (Uint32 *)malloc((settings.nmax+1)*sizeof(Uint32))) == NULL ) {
 		fprintf(stderr, "Unable to allocate memory for colormap\n");
 		exit(EXIT_FAILURE);
 	}
-	for (i=0; i<settings.nmax; i++) {
-		colormap[i] = SDL_MapRGB(screen->format, rand()%256, rand()%256, rand()%256);
-	}
+	create_color_gradient(colormap, 0, 0xFFFFFF, settings.nmax, screen);
 	colormap[settings.nmax] = SDL_MapRGB(screen->format, 0, 0, 0);
+
 }
 
 void compute(point_t *p, double width, int *res) {
@@ -371,7 +379,7 @@ int main(int argc, char **argv)
                        	case SDLK_MINUS:
 							settings.nmax/=2;	
 							if (settings.nmax < 1) settings.nmax = 1;
-							colormap[settings.nmax] = SDL_MapRGB(screen->format, 0, 0, 0);
+							create_colormap(screen);
 							compute(&p, width, res);
 							break;	
 
