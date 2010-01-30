@@ -40,6 +40,7 @@ static SDL_Rect zoom;
 
 const char *WINDOW_TITLE = "Mandelbrot explorer";
 static Uint32 *colormap = NULL;
+static int *res;
 
 void usage(char *prog_name, FILE *stream) {
 	fprintf(stream, "%s (version %s):\n", prog_name, VERSION_STRING);
@@ -363,9 +364,29 @@ void screen_to_real(double width, point_t *center, point_t *p) {
 	p->y = center->y + r*settings.ny/2 - p->y*r;
 }
 
+void reset_video_mode(SDL_Surface *screen, int w, int h, Uint32 flag) { 
+	settings.nx = w;
+	settings.ny = h;
+	if (settings.nx*settings.ny >  settings.current_alloc) {
+		while (settings.nx*settings.ny >  settings.current_alloc) settings.current_alloc*=2;
+		if ((res = (int *)realloc(res, settings.current_alloc*sizeof(int))) == NULL ) {
+			fprintf(stderr, "Unable to allocate memory for screen buffer\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+	screen =
+    SDL_SetVideoMode (settings.nx,
+           	              settings.ny, 0,
+						  flag);
+   	if (screen == NULL) {
+   		fprintf(stderr, "Unable to change video mode. Exiting...\n");
+		exit(EXIT_FAILURE);
+    }
+}
+
 int main(int argc, char **argv)
 {
-	int *res, prog_running = 1, zooming = 0;
+	int prog_running = 1, zooming = 0, cw=0, ch=0, fullscreen = 0;
 	point_t p;
 	double width, r;
 	SDL_Surface *screen;
@@ -398,23 +419,7 @@ int main(int argc, char **argv)
 		if (SDL_PollEvent (&event)) {
 			switch (event.type) {
             	case SDL_VIDEORESIZE:
-         			settings.nx = event.resize.w;
-					settings.ny = event.resize.h;
-					if (settings.nx*settings.ny >  settings.current_alloc) {
-						while (settings.nx*settings.ny >  settings.current_alloc) settings.current_alloc*=2;
-						if ((res = (int *)realloc(res, settings.current_alloc*sizeof(int))) == NULL ) {
-							fprintf(stderr, "Unable to allocate memory for screen buffer\n");
-							exit(EXIT_FAILURE);
-						}
-					}
-					screen =
-                        SDL_SetVideoMode (event.resize.w,
-                                          event.resize.h, 0,
-                                          SDL_HWSURFACE |
-                                          SDL_DOUBLEBUF | SDL_RESIZABLE);
-                    if (screen == NULL) {
-                        return -1;
-                    }
+					reset_video_mode(screen, event.resize.w, event.resize.h, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_RESIZABLE);
 					compute(&p, width, res);
                     break;
 
@@ -452,24 +457,16 @@ int main(int argc, char **argv)
 							}	
 							break;	
 
-					    case SDLK_i:
-		         			settings.nx = settings.wmax;
-							settings.ny = settings.hmax;
-							if (settings.nx*settings.ny >  settings.current_alloc) {
-								while (settings.nx*settings.ny >  settings.current_alloc) settings.current_alloc*=2;
-								if ((res = (int *)realloc(res, settings.current_alloc*sizeof(int))) == NULL ) {
-									fprintf(stderr, "Unable to allocate memory for screen buffer\n");
-									exit(EXIT_FAILURE);
-								}
+					    case SDLK_RETURN:
+							if (fullscreen == 0) { 
+								cw = settings.nx; ch = settings.ny;
+								reset_video_mode(screen, settings.wmax, settings.hmax, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN);
+								fullscreen = 1;
 							}
-							screen =
-                        	SDL_SetVideoMode (settings.nx,
-                            	              settings.ny, 0,
-                                	          SDL_HWSURFACE |
-                                    	      SDL_DOUBLEBUF | SDL_FULLSCREEN);
-                    		if (screen == NULL) {
-                        		return -1;
-                    		}
+							else {
+								reset_video_mode(screen, cw, ch, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_RESIZABLE);
+								fullscreen = 0;
+							}
 							compute(&p, width, res);
                     		break;
 
