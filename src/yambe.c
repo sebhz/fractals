@@ -220,19 +220,21 @@ void julia(point_t *center, double width, int *res, point_t *c)
 {
 	double a, b, x, y, x1, xmin, ymax, step;
 	int i, j, n;
+	point_t c1; c1.x = c->x; c1.y = c->y;
 	
 	xmin = center->x-width/2;
 	ymax = center->y+width/2*settings.ny/settings.nx;
 	step = width/settings.nx;
 	
+	parametrize(&(c1.x), &(c1.y));
 	for (j=0; j<settings.ny; j++) {
 		b = ymax-j*step;
 		for (i=0; i < settings.nx; i++) {
 			a = i*step+xmin;
 			x=a; y=b; n=0;
 			do {
-				x1 = x*x-y*y+c->x;
-				y  = 2*x*y+c->y;
+				x1 = x*x-y*y+c1.x;
+				y  = 2*x*y+c1.y;
 				x  = x1;
 				n++;
 			} while (((x*x+y*y) < 4) && (n < settings.nmax));
@@ -441,7 +443,11 @@ int main(int argc, char **argv)
 
                        	case SDLK_r:
 							settings.algo = MANDELBROT;
-							p.x = -0.5; p.y = 0; width = 3.5;
+							switch(settings.para) {
+								case MU: p.x = -0.75; p.y = 0; width = 3; break;
+								case INV_MU: p.x = 1/.75; p.y = 0; width = 6; break;
+								default: break;
+							}
 							compute(&p, width, res);
 							break;	
                       
