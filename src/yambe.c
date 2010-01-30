@@ -129,15 +129,14 @@ void parse_options (int argc, char **argv)
         case 'h':
 			usage(argv[0], stdout);
 			exit(EXIT_SUCCESS);
-			break;
 
         case 'v':
 			fprintf(stdout, "%s\n", VERSION_STRING);
 			exit(EXIT_SUCCESS);
-			break;
 
         case 'n':
 			settings.nmax = atoi(optarg);
+			if ((settings.nmax < 1) || (settings.nmax > 2*65536)) settings.nmax = 1024;
 			break;
 
 		case 'g':
@@ -156,7 +155,6 @@ void parse_options (int argc, char **argv)
 			fprintf(stderr, "Bad parametrization parameter\n");
 			usage(argv[0], stderr);
 			exit(EXIT_FAILURE);
-			break;
 
 		case '?':
           /* getopt_long already printed an error message. */
@@ -176,11 +174,10 @@ void parse_options (int argc, char **argv)
 	}
 }
 
-void parametrize (double *x, double *y) {
+inline void parametrize (double *x, double *y) {
 	double a = *x, b = *y, m;
 
 	switch(settings.para) {
-		case MU: return;
 		case INV_MU:
 			m = a*a + b*b;
 			*x = a/m; *y = -b/m;
