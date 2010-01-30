@@ -329,14 +329,13 @@ void create_colormap(SDL_Surface *screen) {
 		exit(EXIT_FAILURE);
 	}
 	for (i=0; i<settings.nmax; i++) {
-		v = (int)(2048*(double)i/settings.nmax);
-		if (v > 1024) 
-			colormap[i] = SDL_MapRGB(screen->format, 0xFF, 0xFF, v%255);
-		else if (v>512) 
-			colormap[i] = SDL_MapRGB(screen->format, 0xFF, v%255, 0);
+		v = (int)(767*(double)i/(settings.nmax-1));
+		if (v > 511) 
+			colormap[i] = SDL_MapRGB(screen->format, 0xFF, 0xFF, v%256);
+		else if (v>255) 
+			colormap[i] = SDL_MapRGB(screen->format, 0, v%256, 0xFF);
 		else 
-			colormap[i] = SDL_MapRGB(screen->format, v%255,   0,  0);
-
+			colormap[i] = SDL_MapRGB(screen->format, 0,   0,  v%256);
 	}
 	colormap[settings.nmax] = SDL_MapRGB(screen->format, 0, 0, 0);
 }
@@ -405,7 +404,7 @@ int main(int argc, char **argv)
 	width = 3;
 	
 	switch(settings.para) {
-		case MU: p.x = -0.75; p.y = 0; width = 3; break;
+		case MU: p.x = -0.75; p.y = 0; width = 3.5; break;
 		case INV_MU: p.x = 1/.75; p.y = 0; width = 6; break;
 		default: break;
 	}
@@ -476,7 +475,7 @@ int main(int argc, char **argv)
                        	case SDLK_r:
 							settings.algo = MANDELBROT;
 							switch(settings.para) {
-								case MU: p.x = -0.75; p.y = 0; width = 3; break;
+								case MU: p.x = -0.75; p.y = 0; width = 3.5; break;
 								case INV_MU: p.x = 1/.75; p.y = 0; width = 6; break;
 								default: break;
 							}
