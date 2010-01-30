@@ -17,12 +17,20 @@ typedef enum {
 	JULIA
 } algo_t;
 
+typedef enum {
+	MU = 0,
+	INV_MU,
+	INV_MUP,
+	MAX_PAR
+} parametrization_t;
+
 typedef struct {
 	int nx; /* X resolution of window */
 	int ny; /* Y resolution of window */
 	int nmax; /* Number of iterations to perform before auuming divergence */
 	point_t julia_c;
 	algo_t algo;
+	parametrization_t para;
 } settings_t;
 
 static settings_t settings;
@@ -37,6 +45,7 @@ void usage(char *prog_name, FILE *stream) {
 	fprintf(stream, "\t--help         | -h: show this help\n");
 	fprintf(stream, "\t--n_iterations | -n: number of iterations to perform before assuming divergence\n");
 	fprintf(stream, "\t--geometry=<geo>  | -g: sets the window geometry.\n");
+	fprintf(stream, "\t--parametrization=<para>  | -p: sets initial parametrization. Valid values are mu and mu_inv.\n\n");
 }
 
 void default_settings(void) 
@@ -45,8 +54,9 @@ void default_settings(void)
 	settings.nx = 640; 
 	settings.ny = 480; 
 	settings.algo = MANDELBROT;
-	settings.julia_c.x = (double)rand()/RAND_MAX;
-	settings.julia_c.y = (double)rand()/RAND_MAX;
+	settings.julia_c.x = 0;
+	settings.julia_c.y = 0;
+	settings.para = MU;
 }
 
 int set_geometry(char *s) {
@@ -111,12 +121,13 @@ void parse_options (int argc, char **argv)
           {"help",         no_argument, 0, 'h'},
           {"n_iterations", required_argument, 0, 'n'},
           {"geometry",     required_argument, 0, 'g'},
+          {"parametrization", required_argument, 0, 'p'},
           {0, 0, 0, 0}
         };
       /* getopt_long stores the option index here. */
       int option_index = 0;
 
-      c = getopt_long (argc, argv, "vhn:g:",
+      c = getopt_long (argc, argv, "vhn:g:p:",
                        long_options, &option_index);
 
       /* Detect the end of the options. */
@@ -143,7 +154,21 @@ void parse_options (int argc, char **argv)
 			if (set_geometry(optarg)) exit(EXIT_FAILURE);
 			break;
 
-        case '?':
+   		case 'p':
+			if (strcmp(optarg, "mu") == 0) {
+				settings.para = MU;
+				break;
+			}
+			if (strcmp(optarg, "mu_inv") == 0) {
+				settings.para = INV_MU;
+				break;
+			}
+			fprintf(stderr, "Bad parametrization parameter\n");
+			usage(argv[0], stderr);
+			exit(EXIT_FAILURE);
+			break;
+
+		case '?':
           /* getopt_long already printed an error message. */
           break;
 
@@ -161,6 +186,20 @@ void parse_options (int argc, char **argv)
 	}
 }
 
+void parametrize (double *x, double *y) {
+	double a = *x, b = *y, m;
+
+	switch(settings.para) {
+		case MU: return;
+		case INV_MU:
+			m = a*a + b*b;
+			*x = a/m; *y = -b/m;
+			break;
+		default:
+			break;
+	}
+}
+		
 void mandelbrot(point_t *center, double width, int *res)
 {
 	double a, b, x, y, x1, xmin, ymax, step;
@@ -173,11 +212,13 @@ void mandelbrot(point_t *center, double width, int *res)
 	for (j=0; j<settings.ny; j++) {
 		b = ymax-j*step;
 		for (i=0; i < settings.nx; i++) {
+			double c = b;
 			a = i*step+xmin;
+			parametrize(&a, &c);
 			x=0; y=0; n=0;
 			do {
 				x1 = x*x-y*y+a;
-				y  = 2*x*y+b;
+				y  = 2*x*y+c;
 				x  = x1;
 				n++;
 			} while (((x*x+y*y) < 4) && (n < settings.nmax));
@@ -333,7 +374,13 @@ int main(int argc, char **argv)
 
 	screen = init_SDL();
 	create_colormap(screen);
-	p.x = -0.5; p.y = 0; width = 3.5;
+	width = 3;
+	
+	switch(settings.para) {
+		case MU: p.x = -0.75; p.y = 0; width = 3; break;
+		case INV_MU: p.x = 1/.75; p.y = 0; width = 6; break;
+		default: break;
+	}
 	compute(&p, width, res);
 	while (prog_running) {
 		display_screen(screen, res);
