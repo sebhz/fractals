@@ -19,9 +19,8 @@ typedef enum {
 
 typedef enum {
 	MU = 0,
-	INV_MU,
-	INV_MUP,
-	MAX_PAR
+	INV_MU = 1,
+	MAX_PAR = 2
 } parametrization_t;
 
 typedef struct {
@@ -31,6 +30,7 @@ typedef struct {
 	point_t julia_c;
 	algo_t algo;
 	parametrization_t para;
+	int current_alloc;
 } settings_t;
 
 static settings_t settings;
@@ -57,6 +57,7 @@ void default_settings(void)
 	settings.julia_c.x = 0;
 	settings.julia_c.y = 0;
 	settings.para = MU;
+	settings.current_alloc = 640*480;
 }
 
 int set_geometry(char *s) {
@@ -367,11 +368,11 @@ int main(int argc, char **argv)
 	default_settings();
 	parse_options(argc, argv);
 	
-	if ((res = (int *)malloc(settings.nx*settings.ny*sizeof(int))) == NULL ) {
+	if ((res = (int *)malloc(settings.nx*settings.ny*2*sizeof(int))) == NULL ) {
 		fprintf(stderr, "Unable to allocate memory for screen buffer\n");
 		exit(EXIT_FAILURE);
 	}
-
+	settings.current_alloc = settings.nx*settings.ny*2;
 	screen = init_SDL();
 	create_colormap(screen);
 	width = 3;
@@ -393,9 +394,12 @@ int main(int argc, char **argv)
             	case SDL_VIDEORESIZE:
          			settings.nx = event.resize.w;
 					settings.ny = event.resize.h;
-					if ((res = (int *)realloc(res, settings.nx*settings.ny*sizeof(int))) == NULL ) {
-						fprintf(stderr, "Unable to allocate memory for screen buffer\n");
-						exit(EXIT_FAILURE);
+					if (settings.nx*settings.ny >  settings.current_alloc) {
+						while (settings.nx*settings.ny >  settings.current_alloc) settings.current_alloc*=2;
+						if ((res = (int *)realloc(res, settings.current_alloc*sizeof(int))) == NULL ) {
+							fprintf(stderr, "Unable to allocate memory for screen buffer\n");
+							exit(EXIT_FAILURE);
+						}
 					}
 					screen =
                         SDL_SetVideoMode (event.resize.w,
@@ -441,7 +445,9 @@ int main(int argc, char **argv)
 								compute(&p, width, res);
 							}	
 							break;	
-
+				
+				     	case SDLK_p:
+							settings.para = (settings.para+1)%MAX_PAR;
                        	case SDLK_r:
 							settings.algo = MANDELBROT;
 							switch(settings.para) {
@@ -451,7 +457,7 @@ int main(int argc, char **argv)
 							}
 							compute(&p, width, res);
 							break;	
-                      
+                            
 						default:
                             break;
 					}
