@@ -320,13 +320,14 @@ void create_colormap(SDL_Surface *screen) {
 		exit(EXIT_FAILURE);
 	}
 	for (i=0; i<settings.nmax; i++) {
-		v = (int)(765*(double)i/settings.nmax);
-		if (v > 510) 
+		v = (int)(2048*(double)i/settings.nmax);
+		if (v > 1024) 
 			colormap[i] = SDL_MapRGB(screen->format, 0xFF, 0xFF, v%255);
-		else if (v>255) 
+		else if (v>512) 
 			colormap[i] = SDL_MapRGB(screen->format, 0xFF, v%255, 0);
 		else 
 			colormap[i] = SDL_MapRGB(screen->format, v%255,   0,  0);
+
 	}
 	colormap[settings.nmax] = SDL_MapRGB(screen->format, 0, 0, 0);
 }
