@@ -31,6 +31,8 @@ typedef struct {
 	algo_t algo;
 	parametrization_t para;
 	int current_alloc;
+	int wmax;
+	int hmax;
 } settings_t;
 
 static settings_t settings;
@@ -58,6 +60,8 @@ void default_settings(void)
 	settings.julia_c.y = 0;
 	settings.para = MU;
 	settings.current_alloc = 640*480;
+	settings.wmax = 640; 
+	settings.hmax = 480; 
 }
 
 int set_geometry(char *s) {
@@ -244,8 +248,14 @@ void julia(point_t *center, double width, int *res, point_t *c)
 SDL_Surface *init_SDL(void)
 {
 	SDL_Surface *s;
+	SDL_VideoInfo *vinfo;
 
 	SDL_Init(SDL_INIT_VIDEO);
+
+	vinfo = (SDL_VideoInfo *)SDL_GetVideoInfo();
+	settings.wmax = vinfo->current_w;
+	settings.hmax = vinfo->current_h;
+
     s = SDL_SetVideoMode (settings.nx, settings.ny, 0,
                           SDL_HWSURFACE | SDL_DOUBLEBUF |
                           SDL_RESIZABLE);
@@ -360,7 +370,6 @@ int main(int argc, char **argv)
 	double width, r;
 	SDL_Surface *screen;
     SDL_Event event;
-	
     srand (time (NULL));
 	default_settings();
 	parse_options(argc, argv);
@@ -442,9 +451,31 @@ int main(int argc, char **argv)
 								compute(&p, width, res);
 							}	
 							break;	
-				
+
+					    case SDLK_i:
+		         			settings.nx = settings.wmax;
+							settings.ny = settings.hmax;
+							if (settings.nx*settings.ny >  settings.current_alloc) {
+								while (settings.nx*settings.ny >  settings.current_alloc) settings.current_alloc*=2;
+								if ((res = (int *)realloc(res, settings.current_alloc*sizeof(int))) == NULL ) {
+									fprintf(stderr, "Unable to allocate memory for screen buffer\n");
+									exit(EXIT_FAILURE);
+								}
+							}
+							screen =
+                        	SDL_SetVideoMode (settings.nx,
+                            	              settings.ny, 0,
+                                	          SDL_HWSURFACE |
+                                    	      SDL_DOUBLEBUF | SDL_FULLSCREEN);
+                    		if (screen == NULL) {
+                        		return -1;
+                    		}
+							compute(&p, width, res);
+                    		break;
+
 				     	case SDLK_p:
 							settings.para = (settings.para+1)%MAX_PAR;
+
                        	case SDLK_r:
 							settings.algo = MANDELBROT;
 							switch(settings.para) {
