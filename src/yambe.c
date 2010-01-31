@@ -48,12 +48,12 @@ const char *WINDOW_TITLE = "Mandelbrot explorer";
 
 void usage(char *prog_name, FILE *stream) {
 	fprintf(stream, "%s (version %s):\n", prog_name, VERSION_STRING);
-	fprintf(stream, "\t--version      | -v: show program version\n");
-	fprintf(stream, "\t--help         | -h: show this help\n");
-	fprintf(stream, "\t--n_iterations | -n: number of iterations to perform before assuming divergence\n");
-	fprintf(stream, "\t--geometry=<geo>  | -g: sets the window geometry.\n");
-	fprintf(stream, "\t--parametrization=<para>  | -p: sets initial parametrization. Valid values are mu and mu_inv.\n\n");
-	fprintf(stream, "\t--fullscreen   | -f: runs in fullscreen.\n\n");
+	fprintf(stream, "\t--version      | -v            : show program version\n");
+	fprintf(stream, "\t--help         | -h            : show this help\n");
+	fprintf(stream, "\t--n_iterations | -n            : number of iterations to perform before assuming divergence\n");
+	fprintf(stream, "\t--geometry=<geo> | -g          : sets the window geometry.\n");
+	fprintf(stream, "\t--parametrization=<para> | -p  : sets initial parametrization. Valid values are mu and mu_inv.\n\n");
+	fprintf(stream, "\t--fullscreen                   : runs in fullscreen.\n\n");
 }
 
 void default_settings(void) 
@@ -123,13 +123,13 @@ void parse_options (int argc, char **argv)
           {"n_iterations", required_argument, 0, 'n'},
           {"geometry",     required_argument, 0, 'g'},
           {"parametrization", required_argument, 0, 'p'},
-          {"fullscreen",   no_argument, 0, 'f'},
+          {"fullscreen",   no_argument, &dset.fullscreen, 1},
           {0, 0, 0, 0}
         };
       /* getopt_long stores the option index here. */
       int option_index = 0;
 
-      c = getopt_long (argc, argv, "fvhn:g:p:",
+      c = getopt_long (argc, argv, "vhn:g:p:",
                        long_options, &option_index);
 
       /* Detect the end of the options. */
@@ -149,10 +149,6 @@ void parse_options (int argc, char **argv)
         case 'n':
 			fset.nmax = atoi(optarg);
 			if ((fset.nmax < 1) || (fset.nmax > 2*65536)) fset.nmax = 1024;
-			break;
-
-        case 'f':
-			dset.fullscreen = 1;
 			break;
 
 		case 'g':
@@ -276,6 +272,7 @@ SDL_Surface *init_SDL(void)
 	else {
 		dset.w = dset.screen_w;
 		dset.h = dset.screen_h;
+		fset.current_alloc = dset.w*dset.h;
 		s = SDL_SetVideoMode (dset.w, dset.h, 0,
         	                  SDL_HWSURFACE | SDL_DOUBLEBUF |
             	              SDL_FULLSCREEN);
