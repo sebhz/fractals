@@ -478,6 +478,19 @@ int main(int argc, char **argv)
 							}	
 							break;	
 
+                       	case SDLK_c:
+							{
+								int x, y;
+								point_t tmp;
+								SDL_GetMouseState(&x, &y);
+								tmp.x = x; tmp.y = y;
+								screen_to_real(width, &p, &tmp);
+								p.x = tmp.x; p.y = tmp.y;
+								compute(&p, width);
+							}	
+							break;	
+
+
 					    case SDLK_RETURN:
 							if (dset.fullscreen == 0) { 
 								cw = dset.w; ch = dset.h;
