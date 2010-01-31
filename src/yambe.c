@@ -33,6 +33,7 @@ typedef struct {
 	int current_alloc;
 	int wmax;
 	int hmax;
+	int fullscreen;
 } settings_t;
 
 static settings_t settings;
@@ -49,6 +50,7 @@ void usage(char *prog_name, FILE *stream) {
 	fprintf(stream, "\t--n_iterations | -n: number of iterations to perform before assuming divergence\n");
 	fprintf(stream, "\t--geometry=<geo>  | -g: sets the window geometry.\n");
 	fprintf(stream, "\t--parametrization=<para>  | -p: sets initial parametrization. Valid values are mu and mu_inv.\n\n");
+	fprintf(stream, "\t--fullscreen   | -f: runs in fullscreen.\n\n");
 }
 
 void default_settings(void) 
@@ -63,6 +65,7 @@ void default_settings(void)
 	settings.current_alloc = 640*480;
 	settings.wmax = 640; 
 	settings.hmax = 480; 
+	settings.fullscreen = 0; 
 }
 
 int set_geometry(char *s) {
@@ -117,12 +120,13 @@ void parse_options (int argc, char **argv)
           {"n_iterations", required_argument, 0, 'n'},
           {"geometry",     required_argument, 0, 'g'},
           {"parametrization", required_argument, 0, 'p'},
+          {"fullscreen",   no_argument, 0, 'f'},
           {0, 0, 0, 0}
         };
       /* getopt_long stores the option index here. */
       int option_index = 0;
 
-      c = getopt_long (argc, argv, "vhn:g:p:",
+      c = getopt_long (argc, argv, "fvhn:g:p:",
                        long_options, &option_index);
 
       /* Detect the end of the options. */
@@ -142,6 +146,10 @@ void parse_options (int argc, char **argv)
         case 'n':
 			settings.nmax = atoi(optarg);
 			if ((settings.nmax < 1) || (settings.nmax > 2*65536)) settings.nmax = 1024;
+			break;
+
+        case 'f':
+			settings.fullscreen = 1;
 			break;
 
 		case 'g':
@@ -257,10 +265,19 @@ SDL_Surface *init_SDL(void)
 	settings.wmax = vinfo->current_w;
 	settings.hmax = vinfo->current_h;
 
-    s = SDL_SetVideoMode (settings.nx, settings.ny, 0,
-                          SDL_HWSURFACE | SDL_DOUBLEBUF |
-                          SDL_RESIZABLE);
-    SDL_WM_SetCaption (WINDOW_TITLE, 0);
+	if (settings.fullscreen == 0) {
+   		 s = SDL_SetVideoMode (settings.nx, settings.ny, 0,
+        	                  SDL_HWSURFACE | SDL_DOUBLEBUF |
+            	              SDL_RESIZABLE);
+    }
+	else {
+		settings.nx = settings.wmax;
+		settings.ny = settings.hmax;
+		s = SDL_SetVideoMode (settings.nx, settings.ny, 0,
+        	                  SDL_HWSURFACE | SDL_DOUBLEBUF |
+            	              SDL_FULLSCREEN);
+	}
+	SDL_WM_SetCaption (WINDOW_TITLE, 0);
 
 	return s;
 }
@@ -385,7 +402,7 @@ void reset_video_mode(SDL_Surface *screen, int w, int h, Uint32 flag) {
 
 int main(int argc, char **argv)
 {
-	int prog_running = 1, zooming = 0, cw=0, ch=0, fullscreen = 0;
+	int prog_running = 1, zooming = 0, cw=640, ch=480;
 	point_t p;
 	double width, r;
 	SDL_Surface *screen;
@@ -394,15 +411,16 @@ int main(int argc, char **argv)
 	default_settings();
 	parse_options(argc, argv);
 	
+	screen = init_SDL();
+	create_colormap(screen);
+	width = 3;
+	
 	if ((res = (int *)malloc(settings.nx*settings.ny*2*sizeof(int))) == NULL ) {
 		fprintf(stderr, "Unable to allocate memory for screen buffer\n");
 		exit(EXIT_FAILURE);
 	}
 	settings.current_alloc = settings.nx*settings.ny*2;
-	screen = init_SDL();
-	create_colormap(screen);
-	width = 3;
-	
+
 	switch(settings.para) {
 		case MU: p.x = -0.75; p.y = 0; width = 3.5; break;
 		case INV_MU: p.x = 1/.75; p.y = 0; width = 6; break;
@@ -457,14 +475,14 @@ int main(int argc, char **argv)
 							break;	
 
 					    case SDLK_RETURN:
-							if (fullscreen == 0) { 
+							if (settings.fullscreen == 0) { 
 								cw = settings.nx; ch = settings.ny;
 								reset_video_mode(screen, settings.wmax, settings.hmax, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN);
-								fullscreen = 1;
+								settings.fullscreen = 1;
 							}
 							else {
 								reset_video_mode(screen, cw, ch, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_RESIZABLE);
-								fullscreen = 0;
+								settings.fullscreen = 0;
 							}
 							compute(&p, width, res);
                     		break;
