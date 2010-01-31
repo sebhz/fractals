@@ -490,6 +490,10 @@ int main(int argc, char **argv)
 							}	
 							break;	
 
+						case SDLK_o:
+							width*=2;
+							compute(&p, width);
+							break;
 
 					    case SDLK_RETURN:
 							if (dset.fullscreen == 0) { 
