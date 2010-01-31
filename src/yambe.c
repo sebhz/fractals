@@ -237,7 +237,7 @@ void julia(point_t *center, double width, point_t *c)
 	point_t c1; c1.x = c->x; c1.y = c->y;
 	
 	xmin = center->x-width/2;
-	ymax = center->y+width/2*dset.w/dset.h;
+	ymax = center->y+width/2*dset.h/dset.w;
 	step = width/dset.w;
 	
 	parametrize(&(c1.x), &(c1.y));
