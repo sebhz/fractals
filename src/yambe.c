@@ -138,6 +138,9 @@ void parse_options (int argc, char **argv)
 
       switch (c)
         {
+		case 0:
+			break;
+
         case 'h':
 			usage(argv[0], stdout);
 			exit(EXIT_SUCCESS);
