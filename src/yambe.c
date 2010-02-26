@@ -7,6 +7,8 @@
 
 #define VERSION_STRING "1.0"
 
+Uint32 *create_colormap(SDL_Surface *screen, Uint32 *colormap, int nmax);
+
 typedef struct {
 	double x;
 	double y;
@@ -340,26 +342,6 @@ void display_screen(SDL_Surface *screen)
   }
 } 
 
-void create_colormap(SDL_Surface *screen) {
-	int i, v;
-
-	if (dset.colormap != NULL) free(dset.colormap);
-	if ((dset.colormap = (Uint32 *)malloc((fset.nmax+1)*sizeof(Uint32))) == NULL ) {
-		fprintf(stderr, "Unable to allocate memory for colormap\n");
-		exit(EXIT_FAILURE);
-	}
-	for (i=0; i<fset.nmax; i++) {
-		v = (int)(767*(double)i/(fset.nmax-1));
-		if (v > 511) 
-			dset.colormap[i] = SDL_MapRGB(screen->format, 0xFF, 0xFF, v%256);
-		else if (v>255) 
-			dset.colormap[i] = SDL_MapRGB(screen->format, 0, v%256, 0xFF);
-		else 
-			dset.colormap[i] = SDL_MapRGB(screen->format, 0,   0,  v%256);
-	}
-	dset.colormap[fset.nmax] = SDL_MapRGB(screen->format, 0, 0, 0);
-}
-
 void compute(point_t *p, double width) {
 	switch (fset.algo) {
 		case MANDELBROT:
@@ -417,7 +399,7 @@ int main(int argc, char **argv)
 	parse_options(argc, argv);
 	
 	screen = init_SDL();
-	create_colormap(screen);
+	dset.colormap = create_colormap(screen, dset.colormap, fset.nmax);
 	width = 3;
 
 	if ((fset.t = (int *)malloc(fset.current_alloc*sizeof(int))) == NULL ) {
@@ -455,14 +437,14 @@ int main(int argc, char **argv)
 					 
 						case SDLK_EQUALS:
 							fset.nmax*=2;	
-							create_colormap(screen);
+							dset.colormap = create_colormap(screen, dset.colormap, fset.nmax);
 							compute(&p, width);
 							break;	
 
                        	case SDLK_MINUS:
 							fset.nmax/=2;	
 							if (fset.nmax < 1) fset.nmax = 1;
-							create_colormap(screen);
+							dset.colormap = create_colormap(screen, dset.colormap, fset.nmax);
 							compute(&p, width);
 							break;	
 

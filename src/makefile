@@ -4,7 +4,7 @@ INDENT=indent
 CFLAGS=-Wall -O3
 CPPFLAGS=-I/usr/include/SDL 
 LDFLAGS=-lSDL -lSDL_gfx 
-OBJS=yambe.o
+OBJS=yambe.o color.o
 
 TARGET=yambe
 
