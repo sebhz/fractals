@@ -392,7 +392,7 @@ int main(int argc, char **argv)
 	double width, r;
 	SDL_Surface *screen;
     SDL_Event event;
-	SDL_Rect zoom;
+	SDL_Rect zoom = {0, 0};
 
     srand (time (NULL));
 	default_settings();
