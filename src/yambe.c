@@ -10,8 +10,8 @@
 Uint32 *create_colormap(SDL_Surface *screen, Uint32 *colormap, int nmax);
 
 typedef struct {
-	double x;
-	double y;
+	long double x;
+	long double y;
 } point_t;
 
 typedef enum {
@@ -191,12 +191,12 @@ void parse_options (int argc, char **argv)
 	}
 }
 
-inline void parametrize (double *x, double *y) {
+inline void parametrize (long double *x, long double *y) {
 
 	switch(fset.para) {
 		case INV_MU:
 		{	
-			double a = *x, b = *y, m;
+			long double a = *x, b = *y, m;
 			m = a*a + b*b;
 			*x = a/m; *y = -b/m;
 		}
@@ -206,9 +206,9 @@ inline void parametrize (double *x, double *y) {
 	}
 }
 		
-void mandelbrot(point_t *center, double width)
+void mandelbrot(point_t *center, long double width)
 {
-	double a, b, x, y, x1, xmin, ymax, step;
+	long double a, b, x, y, x1, xmin, ymax, step;
 	int i, j, n;
 	
 	xmin = center->x-width/2;
@@ -218,7 +218,7 @@ void mandelbrot(point_t *center, double width)
 	for (j=0; j<dset.h; j++) {
 		b = ymax-j*step;
 		for (i=0; i < dset.w; i++) {
-			double c = b;
+			long double c = b;
 			a = i*step+xmin;
 			parametrize(&a, &c);
 			x=0; y=0; n=0;
@@ -232,9 +232,9 @@ void mandelbrot(point_t *center, double width)
 	}
 }
 
-void julia(point_t *center, double width, point_t *c)
+void julia(point_t *center, long double width, point_t *c)
 {
-	double a, b, x, y, x1, xmin, ymax, step;
+	long double a, b, x, y, x1, xmin, ymax, step;
 	int i, j, n;
 	point_t c1; c1.x = c->x; c1.y = c->y;
 	
@@ -342,7 +342,7 @@ void display_screen(SDL_Surface *screen)
   }
 } 
 
-void compute(point_t *p, double width) {
+void compute(point_t *p, long double width) {
 	switch (fset.algo) {
 		case MANDELBROT:
 			mandelbrot(p, width);
@@ -357,8 +357,8 @@ void compute(point_t *p, double width) {
 	}
 }
 
-void screen_to_real(double width, point_t *center, point_t *p) {
-	double r;
+void screen_to_real(long double width, point_t *center, point_t *p) {
+	long double r;
 			
 	r = width/dset.w;
 	p->x = center->x - r*dset.w/2 + p->x*r;
@@ -389,7 +389,7 @@ int main(int argc, char **argv)
 {
 	int prog_running = 1, zooming = 0, cw=640, ch=480;
 	point_t p;
-	double width, r;
+	long double width, r;
 	SDL_Surface *screen;
     SDL_Event event;
 	SDL_Rect zoom = {0, 0};
