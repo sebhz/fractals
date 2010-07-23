@@ -192,12 +192,14 @@ void parse_options (int argc, char **argv)
 }
 
 inline void parametrize (double *x, double *y) {
-	double a = *x, b = *y, m;
 
 	switch(fset.para) {
 		case INV_MU:
+		{	
+			double a = *x, b = *y, m;
 			m = a*a + b*b;
 			*x = a/m; *y = -b/m;
+		}
 			break;
 		default:
 			break;
@@ -224,8 +226,7 @@ void mandelbrot(point_t *center, double width)
 				x1 = x*x-y*y+a;
 				y  = 2*x*y+c;
 				x  = x1;
-				n++;
-			} while (((x*x+y*y) < 4) && (n < fset.nmax));
+			} while (((x*x+y*y) < 4) && (++n < fset.nmax));
 			fset.t[j*dset.w + i] = n;
 		}
 	}
@@ -251,8 +252,7 @@ void julia(point_t *center, double width, point_t *c)
 				x1 = x*x-y*y+c1.x;
 				y  = 2*x*y+c1.y;
 				x  = x1;
-				n++;
-			} while (((x*x+y*y) < 4) && (n < fset.nmax));
+			} while (((x*x+y*y) < 4) && (++n < fset.nmax));
 			fset.t[j*dset.w + i] = n;
 		}
 	}
