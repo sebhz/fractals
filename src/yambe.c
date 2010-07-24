@@ -20,21 +20,25 @@
 #include <getopt.h>
 #include "SDL/SDL.h"
 #include "SDL/SDL_gfxPrimitives.h"
+
 #define VERSION_STRING "2.0"
+
 typedef struct
 {
     long double x;
     long double y;
 } point_t;
+
 typedef enum
 { MANDELBROT = 0, JULIA
 } algo_t;
+
 typedef enum
 { MU = 0, INV_MU = 1, MAX_PAR = 2
 } parametrization_t;
+
 typedef struct
 {
-
     int nmax;                   /* Number of iterations to perform before assuming divergence */
     point_t julia_c;            /* Point on which to compute Julia set */
     algo_t algo;                /* Mandelbrot or Julia */
@@ -42,6 +46,7 @@ typedef struct
     int *t;                     /* Table containing the fractal data */
     int current_alloc;          /* Current allocated memory for t */
 } fractal_settings_t;
+
 typedef struct
 {
     int w;                      /* width of current window (in pixels) */
@@ -50,10 +55,13 @@ typedef struct
     int screen_h;               /* Height of thr screen (in pixels) */
     int fullscreen;             /* Are we drawing fullscreen or not */
     Uint32 *colormap;           /* The colormap */
+    Uint32 coef[3];             /* Coefficients for coloring */
 } display_settings_t;
+
 static fractal_settings_t fset;
 static display_settings_t dset;
 const char *WINDOW_TITLE = "Mandelbrot explorer";
+
 void
 usage (char *prog_name, FILE * stream)
 {
@@ -69,8 +77,11 @@ usage (char *prog_name, FILE * stream)
              "\t--parametrization=<para> | -p  : sets initial parametrization. Valid values are mu and mu_inv.\n\n");
     fprintf (stream,
              "\t--fullscreen                   : runs in fullscreen.\n\n");
-} void
+    fprintf (stream,
+             "\t--coef=<r>,<g>,<b>             : coefficients for coloring.\n\n");
+}
 
+void
 default_settings (void)
 {
     fset.nmax = 128;
@@ -84,8 +95,19 @@ default_settings (void)
     dset.screen_w = 640;
     dset.screen_h = 480;
     dset.fullscreen = 0;
-} int
+    dset.coef[0] = dset.coef[1] = dset.coef[2] = 1;
+}
 
+int
+isnumber (char c)
+{
+    if (c < '0' || c > '9') {
+        return 0;
+    }
+    return 1;
+}
+
+int
 set_geometry (char *s)
 {
     int l, i, spos = -1;
@@ -94,8 +116,13 @@ set_geometry (char *s)
         fprintf (stderr, "Missing geometry definition\n");
         return -1;
     }
+    if (!isnumber (s[l - 1])) {
+        fprintf (stderr,
+                 "Badly formed geometry definition (expecting <w>x<h)>\n");
+        return -1;
+    }
     for (i = 0; i < l; i++) {
-        if (((s[i] < '0') || (s[i] > '9')) && (s[i] != 'x')) {
+        if (!isnumber (s[i]) && (s[i] != 'x')) {
             fprintf (stderr,
                      "Wrong character found in geometry definition at position %d: %c\n",
                      i, s[i]);
@@ -125,6 +152,57 @@ set_geometry (char *s)
     return 0;
 }
 
+int
+get_coef (char *c)
+{
+    int l, i, spos[2] = { -1, -1 }, p = 0;
+
+    l = strlen (c);
+    if (l == 0) {
+        fprintf (stderr, "Missing coef definition (expecting <r>,<g>,<b>)\n");
+        return -1;
+    }
+
+    if (!isnumber (c[l - 1])) {
+        fprintf (stderr,
+                 "Badly formed coef definition (expecting <r>,<g>,<b>)\n");
+        return -1;
+    }
+
+    for (i = 0; i < l; i++) {
+        if (!isnumber (c[i]) && (c[i] != ',')) {
+            fprintf (stderr,
+                     "Wrong character found in coef definition at position %d: %c\n",
+                     i, c[i]);
+            return -1;
+        }
+        if (c[i] == ',') {
+            if (p > 1) {
+                fprintf (stderr,
+                         "Bad coef definition string (contains at least three ',')\n");
+                return -1;
+            }
+            if (i == 0) {
+                fprintf (stderr,
+                         "Bad coef definition string (missing coef)\n");
+                return -1;
+            }
+            c[i] = '\0';
+            spos[p++] = i;
+        }
+    }
+
+    if (spos[0] == -1 || spos[1] == -1) {
+        fprintf (stderr, "Bad coef definition\n");
+        return -1;
+    }
+    dset.coef[0] = atoi (c);
+    dset.coef[1] = atoi (c + spos[0] + 1);
+    dset.coef[2] = atoi (c + spos[1] + 1);
+    return 0;
+
+}
+
 void
 parse_options (int argc, char **argv)
 {
@@ -132,18 +210,20 @@ parse_options (int argc, char **argv)
     while (1) {
         static struct option long_options[] = {
             /* These options set a flag. */
-            {"version", no_argument, 0, 'v'},
+            {"coef", required_argument, 0, 'c'},
+            {"geometry", required_argument, 0, 'g'},
             {"help", no_argument, 0, 'h'},
             {"n_iterations", required_argument, 0, 'n'},
-            {"geometry", required_argument, 0, 'g'},
             {"parametrization", required_argument, 0, 'p'},
+            {"version", no_argument, 0, 'v'},
             {"fullscreen", no_argument, &dset.fullscreen, 1},
             {0, 0, 0, 0}
         };
 
         /* getopt_long stores the option index here. */
         int option_index = 0;
-        c = getopt_long (argc, argv, "vhn:g:p:", long_options, &option_index);
+        c = getopt_long (argc, argv, "vhn:g:p:c:", long_options,
+                         &option_index);
 
         /* Detect the end of the options. */
         if (c == -1)
@@ -178,6 +258,11 @@ parse_options (int argc, char **argv)
             fprintf (stderr, "Bad parametrization parameter\n");
             usage (argv[0], stderr);
             exit (EXIT_FAILURE);
+        case 'c':
+            if (get_coef (optarg)) {
+                exit (EXIT_FAILURE);
+            }
+            break;
         case '?':
 
             /* getopt_long already printed an error message. */
@@ -222,11 +307,15 @@ colorize_pixel (SDL_Surface * screen, int n)
     else {
         long double a = 8 * sqrt (n + 2);
         return SDL_MapRGB (screen->format,
-                           periodic_color ((int) (floor (a * 2)) % 512),
-                           periodic_color ((int) (floor (a * 3)) % 512),
-                           periodic_color ((int) (floor (a * 5)) % 512));
-}} Uint32 *
+                           periodic_color ((int) (floor (a * dset.coef[0])) %
+                                           512),
+                           periodic_color ((int) (floor (a * dset.coef[1])) %
+                                           512),
+                           periodic_color ((int) (floor (a * dset.coef[2])) %
+                                           512));
+}}
 
+Uint32 *
 create_colormap (SDL_Surface * screen, Uint32 * colormap, int nmax)
 {
     int i;
