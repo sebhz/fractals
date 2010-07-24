@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /* 
  * This program is free software; you can redistribute it and/or modify 
  * it under the terms of the GNU General Public License as published by 
@@ -25,8 +26,8 @@
 #define VERSION_STRING "2.0"
 typedef struct
 {
-    double x;
-    double y;
+    long double x;
+    long double y;
 } point_t;
 typedef enum
 { MANDELBROT = 0, JULIA
@@ -222,7 +223,7 @@ colorize_pixel (SDL_Surface * screen, int n)
         return SDL_MapRGB (screen->format, 64, 64, 64);
     }
     else {
-        double a = 8 * sqrt (n + 2);
+        long double a = 8 * sqrt (n + 2);
         return SDL_MapRGB (screen->format,
                            periodic_color ((int) (floor (a * 2)) % 512),
                            periodic_color ((int) (floor (a * 3)) % 512),
@@ -245,12 +246,12 @@ create_colormap (SDL_Surface * screen, Uint32 * colormap, int nmax)
 }
 
 inline void
-parametrize (double *x, double *y)
+parametrize (long double *x, long double *y)
 {
     switch (fset.para) {
     case INV_MU:
         {
-            double a = *x, b = *y, m;
+            long double a = *x, b = *y, m;
             m = a * a + b * b;
             *x = a / m;
             *y = -b / m;
@@ -261,9 +262,9 @@ parametrize (double *x, double *y)
 }
 
 void
-mandelbrot (point_t * center, double width)
+mandelbrot (point_t * center, long double width)
 {
-    double a, b, x, y, x1, xmin, ymax, step;
+    long double a, b, x, y, x1, xmin, ymax, step;
     int i, j, n;
     xmin = center->x - width / 2;
     ymax = center->y + width / 2 * dset.h / dset.w;
@@ -271,7 +272,7 @@ mandelbrot (point_t * center, double width)
     for (j = 0; j < dset.h; j++) {
         b = ymax - j * step;
         for (i = 0; i < dset.w; i++) {
-            double c = b;
+            long double c = b;
             a = i * step + xmin;
             parametrize (&a, &c);
             x = 0;
@@ -289,9 +290,9 @@ mandelbrot (point_t * center, double width)
 }
 
 void
-julia (point_t * center, double width, point_t * c)
+julia (point_t * center, long double width, point_t * c)
 {
-    double a, b, x, y, x1, xmin, ymax, step;
+    long double a, b, x, y, x1, xmin, ymax, step;
     int i, j, n;
     point_t c1;
     c1.x = c->x;
@@ -397,7 +398,7 @@ display_screen (SDL_Surface * screen)
 }
 
 void
-compute (point_t * p, double width)
+compute (point_t * p, long double width)
 {
     switch (fset.algo) {
     case MANDELBROT:
@@ -412,9 +413,9 @@ compute (point_t * p, double width)
 }
 
 void
-screen_to_real (double width, point_t * center, point_t * p)
+screen_to_real (long double width, point_t * center, point_t * p)
 {
-    double r;
+    long double r;
     r = width / dset.w;
     p->x = center->x - r * dset.w / 2 + p->x * r;
     p->y = center->y + r * dset.h / 2 - p->y * r;
@@ -446,7 +447,7 @@ main (int argc, char **argv)
 {
     int prog_running = 1, zooming = 0, cw = 640, ch = 480;
     point_t p;
-    double width, r;
+    long double width, r;
     SDL_Surface *screen;
     SDL_Event event;
     SDL_Rect zoom;
