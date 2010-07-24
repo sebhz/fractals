@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /* 
  * This program is free software; you can redistribute it and/or modify 
  * it under the terms of the GNU General Public License as published by 
@@ -14,7 +13,6 @@
  * with this program; if not, write to the Free Software Foundation, Inc., 
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-
 /* Colorization code copied from David Madore's site: http://www.madore.org/~david/programs/#prog_mandel */
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,7 +20,6 @@
 #include <getopt.h>
 #include "SDL/SDL.h"
 #include "SDL/SDL_gfxPrimitives.h"
-
 #define VERSION_STRING "2.0"
 typedef struct
 {
