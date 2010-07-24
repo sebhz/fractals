@@ -1,3 +1,4 @@
+/* Colorization code copied from David Madore's site: http://www.madore.org/~david/programs/#prog_mandel */
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -6,8 +7,6 @@
 #include "SDL/SDL_gfxPrimitives.h"
 
 #define VERSION_STRING "1.0"
-
-Uint32 *create_colormap(SDL_Surface *screen, Uint32 *colormap, int nmax);
 
 typedef struct {
 	double x;
@@ -191,6 +190,44 @@ void parse_options (int argc, char **argv)
 	}
 }
 
+/* Maps an integer between 0-512 to a 0-256 integer using a triangular function */
+inline int periodic_color(int x) {
+	if ( x < 128 ) {
+		return 128 + x;
+	}
+
+	if ( x < 384 ) {
+		return 383-x;
+	}
+
+	return x - 384;
+}
+
+/* Return a color associated to a convergence value */
+inline Uint32 colorize_pixel ( SDL_Surface *screen, int n ) {
+	if ( n == fset.nmax ) {
+		return SDL_MapRGB(screen->format, 64, 64, 64);
+	} else {
+		double a = 8*sqrt(n+2);
+		return SDL_MapRGB(screen->format, periodic_color ((int)(floor(a*2))%512), periodic_color ((int)(floor(a*3))%512), periodic_color ((int)(floor(a*5))%512));
+	}
+}
+
+Uint32 *create_colormap(SDL_Surface *screen, Uint32 *colormap, int nmax) {
+	int i;
+
+	if (colormap != NULL) free(colormap);
+	if ( (colormap = (Uint32 *)malloc((nmax+1)*sizeof(Uint32))) == NULL ) {
+		fprintf(stderr, "Unable to allocate memory for colormap\n");
+		exit(EXIT_FAILURE);
+	}
+
+	for (i=0; i<=nmax; i++) {
+		colormap[i] = colorize_pixel(screen, i);
+	}
+	return colormap;
+}
+
 inline void parametrize (double *x, double *y) {
 
 	switch(fset.para) {
@@ -300,7 +337,7 @@ void display_screen(SDL_Surface *screen)
         	bufp = (Uint8 *)screen->pixels + i;
         	*bufp = dset.colormap[fset.t[i]];
       	}
-		}
+	}
       	break;
     case 2: // 15-bpp or 16-bpp
       {
