@@ -67,18 +67,18 @@ usage (char *prog_name, FILE * stream)
 {
     fprintf (stream, "%s (version %s):\n", prog_name, VERSION_STRING);
     fprintf (stream,
-             "\t--version      | -v            : show program version\n");
-    fprintf (stream, "\t--help         | -h            : show this help\n");
+             "\t--version                | -v  : show program version\n");
+    fprintf (stream, "\t--help                   | -h  : show this help\n");
     fprintf (stream,
-             "\t--n_iterations | -n            : number of iterations to perform before assuming divergence\n");
+             "\t--n_iterations           | -n  : number of iterations to perform before assuming divergence\n");
     fprintf (stream,
-             "\t--geometry=<geo> | -g          : sets the window geometry.\n");
+             "\t--geometry=<geo>         | -g  : sets the window geometry.\n");
     fprintf (stream,
-             "\t--parametrization=<para> | -p  : sets initial parametrization. Valid values are mu and mu_inv.\n\n");
+             "\t--parametrization=<para> | -p  : sets initial parametrization. Valid values are mu and mu_inv.\n");
     fprintf (stream,
-             "\t--fullscreen                   : runs in fullscreen.\n\n");
+             "\t--fullscreen             | -f  : runs in fullscreen.\n");
     fprintf (stream,
-             "\t--coef=<r>,<g>,<b>             : coefficients for coloring.\n\n");
+             "\t--coef=<r>,<g>,<b>       | -c  : coefficients for coloring.\n\n");
 }
 
 void
