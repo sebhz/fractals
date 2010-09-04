@@ -20,22 +20,14 @@
 #include <getopt.h>
 #include "SDL/SDL.h"
 #include "SDL/SDL_gfxPrimitives.h"
-<<<<<<< HEAD
 #include "prec.h"
-=======
->>>>>>> 07df49a716685bb55d44de95aac478b9cb243ffe
 
 #define VERSION_STRING "2.0"
 
 typedef struct
 {
-<<<<<<< HEAD
     mpfr_t x;
     mpfr_t y;
-=======
-    long double x;
-    long double y;
->>>>>>> 07df49a716685bb55d44de95aac478b9cb243ffe
 } point_t;
 
 typedef enum
@@ -54,11 +46,8 @@ typedef struct
     parametrization_t para;     /* Normal or inverted */
     int *t;                     /* Table containing the fractal data */
     int current_alloc;          /* Current allocated memory for t */
-<<<<<<< HEAD
     mpfr_prec_t prec;           /* Precision for floats */
     mpfr_rnd_t round;           /* Rounding for floats */
-=======
->>>>>>> 07df49a716685bb55d44de95aac478b9cb243ffe
 } fractal_settings_t;
 
 typedef struct
@@ -91,13 +80,10 @@ usage (char *prog_name, FILE * stream)
              "\t--parametrization=<para> | -p  : sets initial parametrization. Valid values are mu and mu_inv.\n");
     fprintf (stream,
              "\t--fullscreen             | -f  : runs in fullscreen.\n");
-<<<<<<< HEAD
 #ifdef HAS_MPRF
     fprintf (stream,
              "\t--prec=<prec>            | -r  : set precision to <prec> bits.\n");
 #endif
-=======
->>>>>>> 07df49a716685bb55d44de95aac478b9cb243ffe
     fprintf (stream,
              "\t--coef=<r>,<g>,<b>       | -c  : coefficients for coloring.\n\n");
 }
@@ -106,11 +92,8 @@ void
 default_settings (void)
 {
     fset.nmax = 128;
-<<<<<<< HEAD
     fset.prec = 64;
     fset.round = MPFR_RNDZ;
-=======
->>>>>>> 07df49a716685bb55d44de95aac478b9cb243ffe
     dset.w = 640;
     dset.h = 480;
     fset.algo = MANDELBROT;
@@ -241,10 +224,7 @@ parse_options (int argc, char **argv)
             {"help", no_argument, 0, 'h'},
             {"n_iterations", required_argument, 0, 'n'},
             {"parametrization", required_argument, 0, 'p'},
-<<<<<<< HEAD
             {"precision", required_argument, 0, 'r'},
-=======
->>>>>>> 07df49a716685bb55d44de95aac478b9cb243ffe
             {"version", no_argument, 0, 'v'},
             {"fullscreen", no_argument, &dset.fullscreen, 1},
             {0, 0, 0, 0}
@@ -252,11 +232,7 @@ parse_options (int argc, char **argv)
 
         /* getopt_long stores the option index here. */
         int option_index = 0;
-<<<<<<< HEAD
         c = getopt_long (argc, argv, "vhn:g:p:c:r:", long_options,
-=======
-        c = getopt_long (argc, argv, "vhn:g:p:c:", long_options,
->>>>>>> 07df49a716685bb55d44de95aac478b9cb243ffe
                          &option_index);
 
         /* Detect the end of the options. */
@@ -297,7 +273,6 @@ parse_options (int argc, char **argv)
                 exit (EXIT_FAILURE);
             }
             break;
-<<<<<<< HEAD
         case 'r':
 #ifndef HAS_MPFR
             fprintf (stderr,
@@ -311,8 +286,6 @@ parse_options (int argc, char **argv)
             }
 #endif
             break;
-=======
->>>>>>> 07df49a716685bb55d44de95aac478b9cb243ffe
         case '?':
 
             /* getopt_long already printed an error message. */
@@ -382,16 +355,11 @@ create_colormap (SDL_Surface * screen, Uint32 * colormap, int nmax)
 }
 
 inline void
-<<<<<<< HEAD
 parametrize (mpfr_t * x, mpfr_t * y)
-=======
-parametrize (long double *x, long double *y)
->>>>>>> 07df49a716685bb55d44de95aac478b9cb243ffe
 {
     switch (fset.para) {
     case INV_MU:
         {
-<<<<<<< HEAD
             mpfr_t a, b, m;
             a = *x;
             b = *y;
@@ -404,28 +372,15 @@ parametrize (long double *x, long double *y)
             mpfr_clear (m);
         }
         break;
-=======
-            long double a = *x, b = *y, m;
-            m = a * a + b * b;
-            *x = a / m;
-            *y = -b / m;
-        } break;
->>>>>>> 07df49a716685bb55d44de95aac478b9cb243ffe
     default:
         break;
     }
 }
 
 void
-<<<<<<< HEAD
 mandelbrot (point_t * center, mpfr_t width)
 {
     mpfr_t a, b, x, y, x1, xmin, ymax, step;
-=======
-mandelbrot (point_t * center, long double width)
-{
-    long double a, b, x, y, x1, xmin, ymax, step;
->>>>>>> 07df49a716685bb55d44de95aac478b9cb243ffe
     int i, j, n;
     xmin = center->x - width / 2;
     ymax = center->y + width / 2 * dset.h / dset.w;
@@ -433,12 +388,8 @@ mandelbrot (point_t * center, long double width)
     for (j = 0; j < dset.h; j++) {
         b = ymax - j * step;
         for (i = 0; i < dset.w; i++) {
-<<<<<<< HEAD
             mpfr_t c;
             c = b;
-=======
-            long double c = b;
->>>>>>> 07df49a716685bb55d44de95aac478b9cb243ffe
             a = i * step + xmin;
             parametrize (&a, &c);
             x = 0;
@@ -456,15 +407,9 @@ mandelbrot (point_t * center, long double width)
 }
 
 void
-<<<<<<< HEAD
 julia (point_t * center, mpfr_t width, point_t * c)
 {
     mpfr_t a, b, x, y, x1, xmin, ymax, step;
-=======
-julia (point_t * center, long double width, point_t * c)
-{
-    long double a, b, x, y, x1, xmin, ymax, step;
->>>>>>> 07df49a716685bb55d44de95aac478b9cb243ffe
     int i, j, n;
     point_t c1;
     c1.x = c->x;
@@ -570,11 +515,7 @@ display_screen (SDL_Surface * screen)
 }
 
 void
-<<<<<<< HEAD
 compute (point_t * p, mpfr_t width)
-=======
-compute (point_t * p, long double width)
->>>>>>> 07df49a716685bb55d44de95aac478b9cb243ffe
 {
     switch (fset.algo) {
     case MANDELBROT:
@@ -589,7 +530,6 @@ compute (point_t * p, long double width)
 }
 
 void
-<<<<<<< HEAD
 screen_to_real (mpfr_t width, point_t * center, point_t * p)
 {
     mpfr_t r;
@@ -599,16 +539,6 @@ screen_to_real (mpfr_t width, point_t * center, point_t * p)
 }
 
 void
-=======
-screen_to_real (long double width, point_t * center, point_t * p)
-{
-    long double r;
-    r = width / dset.w;
-    p->x = center->x - r * dset.w / 2 + p->x * r;
-    p->y = center->y + r * dset.h / 2 - p->y * r;
-} void
-
->>>>>>> 07df49a716685bb55d44de95aac478b9cb243ffe
 reset_video_mode (SDL_Surface * screen, int w, int h, Uint32 flag)
 {
     dset.w = w;
@@ -635,11 +565,7 @@ main (int argc, char **argv)
 {
     int prog_running = 1, zooming = 0, cw = 640, ch = 480;
     point_t p;
-<<<<<<< HEAD
     mpfr_t width, r;
-=======
-    long double width, r;
->>>>>>> 07df49a716685bb55d44de95aac478b9cb243ffe
     SDL_Surface *screen;
     SDL_Event event;
     SDL_Rect zoom;
