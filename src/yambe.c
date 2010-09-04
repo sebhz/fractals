@@ -20,13 +20,14 @@
 #include <getopt.h>
 #include "SDL/SDL.h"
 #include "SDL/SDL_gfxPrimitives.h"
+#include "prec.h"
 
 #define VERSION_STRING "2.0"
 
 typedef struct
 {
-    long double x;
-    long double y;
+    mpfr_t x;
+    mpfr_t y;
 } point_t;
 
 typedef enum
@@ -45,6 +46,8 @@ typedef struct
     parametrization_t para;     /* Normal or inverted */
     int *t;                     /* Table containing the fractal data */
     int current_alloc;          /* Current allocated memory for t */
+    mpfr_prec_t prec;           /* Precision for floats */
+    mpfr_rnd_t round;           /* Rounding for floats */
 } fractal_settings_t;
 
 typedef struct
@@ -77,6 +80,10 @@ usage (char *prog_name, FILE * stream)
              "\t--parametrization=<para> | -p  : sets initial parametrization. Valid values are mu and mu_inv.\n");
     fprintf (stream,
              "\t--fullscreen             | -f  : runs in fullscreen.\n");
+#ifdef HAS_MPRF
+    fprintf (stream,
+             "\t--prec=<prec>            | -r  : set precision to <prec> bits.\n");
+#endif
     fprintf (stream,
              "\t--coef=<r>,<g>,<b>       | -c  : coefficients for coloring.\n\n");
 }
@@ -85,6 +92,8 @@ void
 default_settings (void)
 {
     fset.nmax = 128;
+    fset.prec = 64;
+    fset.round = MPFR_RNDZ;
     dset.w = 640;
     dset.h = 480;
     fset.algo = MANDELBROT;
@@ -215,6 +224,7 @@ parse_options (int argc, char **argv)
             {"help", no_argument, 0, 'h'},
             {"n_iterations", required_argument, 0, 'n'},
             {"parametrization", required_argument, 0, 'p'},
+            {"precision", required_argument, 0, 'r'},
             {"version", no_argument, 0, 'v'},
             {"fullscreen", no_argument, &dset.fullscreen, 1},
             {0, 0, 0, 0}
@@ -222,7 +232,7 @@ parse_options (int argc, char **argv)
 
         /* getopt_long stores the option index here. */
         int option_index = 0;
-        c = getopt_long (argc, argv, "vhn:g:p:c:", long_options,
+        c = getopt_long (argc, argv, "vhn:g:p:c:r:", long_options,
                          &option_index);
 
         /* Detect the end of the options. */
@@ -262,6 +272,19 @@ parse_options (int argc, char **argv)
             if (get_coef (optarg)) {
                 exit (EXIT_FAILURE);
             }
+            break;
+        case 'r':
+#ifndef HAS_MPFR
+            fprintf (stderr,
+                     "MPFR support not compiled in - ignoring precision setting\n");
+#else
+            fset.prec = atoi (optarg);
+            if (fset.prec < MPFR_PREC_MIN || fset.prec > MPFR_PREC_MAX) {
+                fprintf (stderr,
+                         "Invalid value (too high or too low) for precision. Falling back to 64 bits.\n");
+                fset.prec = 64;
+            }
+#endif
             break;
         case '?':
 
@@ -332,25 +355,32 @@ create_colormap (SDL_Surface * screen, Uint32 * colormap, int nmax)
 }
 
 inline void
-parametrize (long double *x, long double *y)
+parametrize (mpfr_t * x, mpfr_t * y)
 {
     switch (fset.para) {
     case INV_MU:
         {
-            long double a = *x, b = *y, m;
+            mpfr_t a, b, m;
+            a = *x;
+            b = *y;
+            mpfr_init2 (m, fset.prec);
             m = a * a + b * b;
-            *x = a / m;
-            *y = -b / m;
-        } break;
+            mpfr_div (*x, a, m, fset.round);
+            mpfr_div (*y, mpfr_neg (b, b, fset.round), m, fset.round);
+            mpfr_clear (a);
+            mpfr_clear (b);
+            mpfr_clear (m);
+        }
+        break;
     default:
         break;
     }
 }
 
 void
-mandelbrot (point_t * center, long double width)
+mandelbrot (point_t * center, mpfr_t width)
 {
-    long double a, b, x, y, x1, xmin, ymax, step;
+    mpfr_t a, b, x, y, x1, xmin, ymax, step;
     int i, j, n;
     xmin = center->x - width / 2;
     ymax = center->y + width / 2 * dset.h / dset.w;
@@ -358,7 +388,8 @@ mandelbrot (point_t * center, long double width)
     for (j = 0; j < dset.h; j++) {
         b = ymax - j * step;
         for (i = 0; i < dset.w; i++) {
-            long double c = b;
+            mpfr_t c;
+            c = b;
             a = i * step + xmin;
             parametrize (&a, &c);
             x = 0;
@@ -376,9 +407,9 @@ mandelbrot (point_t * center, long double width)
 }
 
 void
-julia (point_t * center, long double width, point_t * c)
+julia (point_t * center, mpfr_t width, point_t * c)
 {
-    long double a, b, x, y, x1, xmin, ymax, step;
+    mpfr_t a, b, x, y, x1, xmin, ymax, step;
     int i, j, n;
     point_t c1;
     c1.x = c->x;
@@ -484,7 +515,7 @@ display_screen (SDL_Surface * screen)
 }
 
 void
-compute (point_t * p, long double width)
+compute (point_t * p, mpfr_t width)
 {
     switch (fset.algo) {
     case MANDELBROT:
@@ -499,14 +530,15 @@ compute (point_t * p, long double width)
 }
 
 void
-screen_to_real (long double width, point_t * center, point_t * p)
+screen_to_real (mpfr_t width, point_t * center, point_t * p)
 {
-    long double r;
+    mpfr_t r;
     r = width / dset.w;
     p->x = center->x - r * dset.w / 2 + p->x * r;
     p->y = center->y + r * dset.h / 2 - p->y * r;
-} void
+}
 
+void
 reset_video_mode (SDL_Surface * screen, int w, int h, Uint32 flag)
 {
     dset.w = w;
@@ -533,7 +565,7 @@ main (int argc, char **argv)
 {
     int prog_running = 1, zooming = 0, cw = 640, ch = 480;
     point_t p;
-    long double width, r;
+    mpfr_t width, r;
     SDL_Surface *screen;
     SDL_Event event;
     SDL_Rect zoom;

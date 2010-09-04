@@ -3,10 +3,16 @@ TAR=tar
 INDENT=indent 
 CFLAGS=-Wall -O3
 CPPFLAGS=-I/usr/include/SDL 
-LDFLAGS=-lSDL -lSDL_gfx 
+LDFLAGS=-lSDL -lSDL_gfx
 OBJS=yambe.o
 SRC=yambe.c
 TARGET=yambe
+HAS_MPFR=
+
+ifeq ($(HAS_MPFR), 1)
+	CPPFLAGS += -DHAS_MPFR
+	LDFLAGS  += -lmpfr -lgmp
+endif
 
 $(TARGET): $(OBJS)
 	$(CC) -o $@ $(OBJS) $(CFLAGS) $(LDFLAGS) 
