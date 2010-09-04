@@ -22,11 +22,22 @@
 #define mpfr_t long double
 #define mpfr_rnd_t  int
 #define mpfr_prec_t int
+#define mpfr_sqr(a, b, c) ( (a) = (b)*(b) )
 #define mpfr_div(a, b, c, d) ( (a) = (b)/(c) )
+#define mpfr_div_ui(a, b, c, d) ( (a) = (b)/(c) )
+#define mpfr_add(a, b, c, d) ( (a) = (b)+(c) )
+#define mpfr_sub(a, b, c, d) ( (a) = (b)-(c) )
+#define mpfr_mul(a, b, c, d) ( (a) = (b)*(c) )
+#define mpfr_mul_d(a, b, c, d) ( (a) = (b)*(c) )
+#define mpfr_mul_ui(a, b, c, d) ( (a) = (b)*(c) )
+#define mpfr_set(a, b, c) ( (a) = (b) )
+#define mpfr_set_d(a, b, c) ( (a) = (b) )
+#define mpfr_set_ui(a, b, c) ( (a) = (b) )
 #define mpfr_neg(a, b, c) ( (a) = -(b) )
 #define mpfr_init2(a, b)
 #define mpfr_clear(a)
-#define MPFR_RNDZ 0
+#define mpfr_cmp_ui(a, b) ( ((a) < (b)) ? (-1) : ((a) > (b)) ? (1) : (0)  ) 
+#define GMP_RNDZ 0
 #endif
 
 #endif 

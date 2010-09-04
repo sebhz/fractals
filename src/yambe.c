@@ -52,8 +52,8 @@ typedef struct
 
 typedef struct
 {
-    int w;                      /* width of current window (in pixels) */
-    int h;                      /* height of current window (in pixels) */
+    unsigned long int w;        /* width of current window (in pixels) */
+    unsigned long int h;        /* height of current window (in pixels) */
     int screen_w;               /* Width of the screen (in pixels) */
     int screen_h;               /* Height of thr screen (in pixels) */
     int fullscreen;             /* Are we drawing fullscreen or not */
@@ -93,12 +93,12 @@ default_settings (void)
 {
     fset.nmax = 128;
     fset.prec = 64;
-    fset.round = MPFR_RNDZ;
+    fset.round = GMP_RNDZ;
     dset.w = 640;
     dset.h = 480;
     fset.algo = MANDELBROT;
-    fset.julia_c.x = 0;
-    fset.julia_c.y = 0;
+    mpfr_set_ui (fset.julia_c.x, 0, fset.round);
+    mpfr_set_ui (fset.julia_c.y, 0, fset.round);
     fset.para = MU;
     fset.current_alloc = dset.w * dset.h * 2;
     dset.screen_w = 640;
@@ -360,16 +360,31 @@ parametrize (mpfr_t * x, mpfr_t * y)
     switch (fset.para) {
     case INV_MU:
         {
-            mpfr_t a, b, m;
-            a = *x;
-            b = *y;
+            mpfr_t a, b, m, a2, b2, n;
+
+            mpfr_init2 (a, fset.prec);
+            mpfr_init2 (b, fset.prec);
+            mpfr_init2 (a2, fset.prec);
+            mpfr_init2 (b2, fset.prec);
             mpfr_init2 (m, fset.prec);
-            m = a * a + b * b;
+            mpfr_init2 (n, fset.prec);
+
+            mpfr_set (a, *x, fset.round);
+            mpfr_set (b, *y, fset.round);
+            mpfr_sqr (a2, a, fset.round);
+            mpfr_sqr (b2, b, fset.round);
+            mpfr_add (m, a2, b2, fset.round);
+            mpfr_neg (n, b, fset.round);
             mpfr_div (*x, a, m, fset.round);
-            mpfr_div (*y, mpfr_neg (b, b, fset.round), m, fset.round);
+            mpfr_div (*y, n, m, fset.round);
+
+            mpfr_clear (a2);
+            mpfr_clear (b2);
+            mpfr_clear (m);
+            mpfr_clear (m);
             mpfr_clear (a);
             mpfr_clear (b);
-            mpfr_clear (m);
+
         }
         break;
     default:
@@ -380,60 +395,172 @@ parametrize (mpfr_t * x, mpfr_t * y)
 void
 mandelbrot (point_t * center, mpfr_t width)
 {
-    mpfr_t a, b, x, y, x1, xmin, ymax, step;
-    int i, j, n;
-    xmin = center->x - width / 2;
-    ymax = center->y + width / 2 * dset.h / dset.w;
-    step = width / dset.w;
+    mpfr_t a, b, x, y, x1, xmin, ymax, step, w2, w3, b2, s2, x2, x3, x4, y2,
+        y3, modulus;
+    unsigned long int i, j, n;
+
+    mpfr_init2 (a, fset.prec);
+    mpfr_init2 (b, fset.prec);
+    mpfr_init2 (x, fset.prec);
+    mpfr_init2 (y, fset.prec);
+    mpfr_init2 (x1, fset.prec);
+    mpfr_init2 (xmin, fset.prec);
+    mpfr_init2 (ymax, fset.prec);
+    mpfr_init2 (step, fset.prec);
+    mpfr_init2 (w2, fset.prec);
+    mpfr_init2 (w3, fset.prec);
+    mpfr_init2 (b2, fset.prec);
+    mpfr_init2 (s2, fset.prec);
+    mpfr_init2 (x2, fset.prec);
+    mpfr_init2 (x3, fset.prec);
+    mpfr_init2 (x4, fset.prec);
+    mpfr_init2 (y2, fset.prec);
+    mpfr_init2 (y3, fset.prec);
+    mpfr_init2 (modulus, fset.prec);
+
+    mpfr_div_ui (w2, width, 2, fset.round);
+    mpfr_mul_d (w3, w2, (double) dset.h / (double) dset.w, fset.round);
+    mpfr_sub (xmin, center->x, w2, fset.round);
+    mpfr_add (ymax, center->y, w3, fset.round);
+    mpfr_div_ui (step, width, dset.w, fset.round);
+
     for (j = 0; j < dset.h; j++) {
-        b = ymax - j * step;
+        mpfr_mul_ui (b2, step, j, fset.round);
+        mpfr_sub (b, ymax, b2, fset.round);
         for (i = 0; i < dset.w; i++) {
             mpfr_t c;
-            c = b;
-            a = i * step + xmin;
+            mpfr_set (c, b, fset.round);
+            mpfr_mul_ui (s2, step, i, fset.round);
+            mpfr_add (a, s2, xmin, fset.round);
             parametrize (&a, &c);
-            x = 0;
-            y = 0;
+            mpfr_set_ui (x, 0, fset.round);
+            mpfr_set_ui (y, 0, fset.round);
             n = 0;
 
             do {
-                x1 = x * x - y * y + a;
-                y = 2 * x * y + c;
-                x = x1;
-            } while (((x * x + y * y) < 4) && (++n < fset.nmax));
+                mpfr_sqr (x2, x, fset.round);
+                mpfr_sqr (y2, y, fset.round);
+                mpfr_add (y3, x2, a, fset.round);
+                mpfr_sub (x1, y3, y2, fset.round);
+                mpfr_mul_ui (x3, x, 2, fset.round);
+                mpfr_mul (x4, x3, y, fset.round);
+                mpfr_add (y, x4, c, fset.round);
+                mpfr_set (x, x1, fset.round);
+                mpfr_sqr (x2, x, fset.round);
+                mpfr_sqr (y2, y, fset.round);
+                mpfr_add (modulus, x2, y2, fset.round);
+            } while ((mpfr_cmp_ui (modulus, 4) < 0)
+                     && (++n < fset.nmax));
             fset.t[j * dset.w + i] = n;
         }
     }
+    mpfr_clear (a);
+    mpfr_clear (b);
+    mpfr_clear (x);
+    mpfr_clear (y);
+    mpfr_clear (x);
+    mpfr_clear (x1);
+    mpfr_clear (ymax);
+    mpfr_clear (step);
+    mpfr_clear (w2);
+    mpfr_clear (w3);
+    mpfr_clear (b2);
+    mpfr_clear (s2);
+    mpfr_clear (x2);
+    mpfr_clear (x3);
+    mpfr_clear (x4);
+    mpfr_clear (y2);
+    mpfr_clear (y3);
+    mpfr_clear (modulus);
 }
 
 void
 julia (point_t * center, mpfr_t width, point_t * c)
 {
-    mpfr_t a, b, x, y, x1, xmin, ymax, step;
+    mpfr_t a, b, x, y, x1, xmin, ymax, step, w2, w3, b2, s2, x2, y2, x3, x4,
+        y3, modulus;
     int i, j, n;
     point_t c1;
-    c1.x = c->x;
-    c1.y = c->y;
-    xmin = center->x - width / 2;
-    ymax = center->y + width / 2 * dset.h / dset.w;
-    step = width / dset.w;
+
+    mpfr_init2 (c1.x, fset.prec);
+    mpfr_init2 (c1.y, fset.prec);
+    mpfr_init2 (x, fset.prec);
+    mpfr_init2 (y, fset.prec);
+    mpfr_init2 (x1, fset.prec);
+    mpfr_init2 (xmin, fset.prec);
+    mpfr_init2 (ymax, fset.prec);
+    mpfr_init2 (step, fset.prec);
+    mpfr_init2 (w2, fset.prec);
+    mpfr_init2 (b2, fset.prec);
+    mpfr_init2 (s2, fset.prec);
+    mpfr_init2 (w3, fset.prec);
+    mpfr_init2 (a, fset.prec);
+    mpfr_init2 (b, fset.prec);
+    mpfr_init2 (x2, fset.prec);
+    mpfr_init2 (y2, fset.prec);
+    mpfr_init2 (x3, fset.prec);
+    mpfr_init2 (x4, fset.prec);
+    mpfr_init2 (y3, fset.prec);
+    mpfr_init2 (modulus, fset.prec);
+
+    mpfr_set (c1.x, c->x, fset.round);
+    mpfr_set (c1.y, c->y, fset.round);
+
+    mpfr_div_ui (w2, width, 2, fset.round);
+    mpfr_mul_d (w3, w2, (double) dset.h / (double) dset.w, fset.round);
+    mpfr_sub (xmin, center->x, w2, fset.round);
+    mpfr_add (ymax, center->y, w3, fset.round);
+    mpfr_div_ui (step, width, dset.w, fset.round);
+
     parametrize (&(c1.x), &(c1.y));
+
     for (j = 0; j < dset.h; j++) {
-        b = ymax - j * step;
+        mpfr_mul_ui (b2, step, j, fset.round);
+        mpfr_sub (b, ymax, b2, fset.round);
         for (i = 0; i < dset.w; i++) {
-            a = i * step + xmin;
-            x = a;
-            y = b;
+            mpfr_mul_ui (s2, step, i, fset.round);
+            mpfr_add (a, s2, xmin, fset.round);
+            mpfr_set (x, a, fset.round);
+            mpfr_set (y, b, fset.round);
             n = 0;
 
             do {
-                x1 = x * x - y * y + c1.x;
-                y = 2 * x * y + c1.y;
-                x = x1;
-            } while (((x * x + y * y) < 4) && (++n < fset.nmax));
+                mpfr_sqr (x2, x, fset.round);
+                mpfr_sqr (y2, y, fset.round);
+                mpfr_add (y3, x2, c1.x, fset.round);
+                mpfr_sub (x1, y3, y2, fset.round);
+                mpfr_mul_ui (x3, x, 2, fset.round);
+                mpfr_mul (x4, x3, y, fset.round);
+                mpfr_add (y, x4, c1.y, fset.round);
+                mpfr_set (x, x1, fset.round);
+                mpfr_sqr (x2, x, fset.round);
+                mpfr_sqr (y2, y, fset.round);
+                mpfr_add (modulus, x2, y2, fset.round);
+            } while ((mpfr_cmp_ui (modulus, 4) < 0)
+                     && (++n < fset.nmax));
             fset.t[j * dset.w + i] = n;
         }
     }
+    mpfr_clear (c1.x);
+    mpfr_clear (c1.y);
+    mpfr_clear (x);
+    mpfr_clear (y);
+    mpfr_clear (x1);
+    mpfr_clear (xmin);
+    mpfr_clear (ymax);
+    mpfr_clear (step);
+    mpfr_clear (w2);
+    mpfr_clear (b2);
+    mpfr_clear (s2);
+    mpfr_clear (w3);
+    mpfr_clear (a);
+    mpfr_clear (x2);
+    mpfr_clear (x3);
+    mpfr_clear (x4);
+    mpfr_clear (y2);
+    mpfr_clear (y3);
+    mpfr_clear (modulus);
+    mpfr_clear (b);
 }
 
 SDL_Surface *
@@ -532,10 +659,31 @@ compute (point_t * p, mpfr_t width)
 void
 screen_to_real (mpfr_t width, point_t * center, point_t * p)
 {
-    mpfr_t r;
-    r = width / dset.w;
+    mpfr_t r, rm, r2;
+
+#ifdef HAS_MPFR
+    mpfr_inits2 (fset.prec, r, rm, r2, NULL);
+#endif
+
+    mpfr_div_ui (r, width, dset.w, fset.round);
+
+    mpfr_mul (rm, p->x, r, fset.round);
+    mpfr_add (p->x, center->x, rm, fset.round);
+    mpfr_mul_d (r2, r, (double) dset.w / 2, fset.round);
+    mpfr_sub (p->x, p->x, r2, fset.round);
+
+    mpfr_mul (rm, p->y, r, fset.round);
+    mpfr_sub (p->y, center->y, rm, fset.round);
+    mpfr_mul_d (r2, r, (double) dset.h / 2, fset.round);
+    mpfr_add (p->y, p->y, r2, fset.round);
+
+#ifdef HAS_MPFR
+    mpfr_clears (r, rm, r2, NULL);
+#endif
+/*
     p->x = center->x - r * dset.w / 2 + p->x * r;
     p->y = center->y + r * dset.h / 2 - p->y * r;
+*/
 }
 
 void
@@ -569,26 +717,36 @@ main (int argc, char **argv)
     SDL_Surface *screen;
     SDL_Event event;
     SDL_Rect zoom;
+
     srand (time (NULL));
     default_settings ();
     parse_options (argc, argv);
     screen = init_SDL ();
     dset.colormap = create_colormap (screen, dset.colormap, fset.nmax);
-    width = 3;
+
+    mpfr_init2 (width, fset.prec);
+    mpfr_init2 (p.x, fset.prec);
+    mpfr_init2 (p.y, fset.prec);
+    mpfr_init2 (fset.julia_c.x, fset.prec);
+    mpfr_init2 (fset.julia_c.y, fset.prec);
+
+    mpfr_set_ui (width, 3, fset.round);
+
     if ((fset.t = (int *) malloc (fset.current_alloc * sizeof (int))) == NULL) {
         fprintf (stderr, "Unable to allocate memory for screen buffer\n");
         exit (EXIT_FAILURE);
     }
+
     switch (fset.para) {
     case MU:
-        p.x = -0.75;
-        p.y = 0;
-        width = 3.5;
+        mpfr_set_d (p.x, -0.75, fset.round);
+        mpfr_set_ui (p.y, 0, fset.round);
+        mpfr_set_d (width, 3.5, fset.round);
         break;
     case INV_MU:
-        p.x = 1 / .75;
-        p.y = 0;
-        width = 6;
+        mpfr_set_d (p.x, 1.0 / .75, fset.round);
+        mpfr_set_ui (p.y, 0, fset.round);
+        mpfr_set_ui (width, 6, fset.round);
         break;
     default:
         break;
@@ -635,12 +793,12 @@ main (int argc, char **argv)
                     if (fset.algo == MANDELBROT) {
                         int x, y;
                         SDL_GetMouseState (&x, &y);
-                        fset.julia_c.x = x;
-                        fset.julia_c.y = y;
+                        mpfr_set_ui (fset.julia_c.x, x, fset.round);
+                        mpfr_set_ui (fset.julia_c.y, y, fset.round);
                         screen_to_real (width, &p, &fset.julia_c);
-                        p.x = 0;
-                        p.y = 0;
-                        width = 3.5;
+                        mpfr_set_ui (p.x, 0, fset.round);
+                        mpfr_set_ui (p.y, 0, fset.round);
+                        mpfr_set_d (width, 3.5, fset.round);
                         fset.algo = JULIA;
                         compute (&p, width);
                     }
@@ -649,16 +807,23 @@ main (int argc, char **argv)
                     {
                         int x, y;
                         point_t tmp;
+
+                        mpfr_init2 (tmp.x, fset.prec);
+                        mpfr_init2 (tmp.y, fset.prec);
+
                         SDL_GetMouseState (&x, &y);
-                        tmp.x = x;
-                        tmp.y = y;
+                        mpfr_set_ui (tmp.x, x, fset.round);
+                        mpfr_set_ui (tmp.y, y, fset.round);
                         screen_to_real (width, &p, &tmp);
-                        p.x = tmp.x;
-                        p.y = tmp.y;
+                        mpfr_set (p.x, tmp.x, fset.round);
+                        mpfr_set (p.y, tmp.y, fset.round);
                         compute (&p, width);
-                    } break;
+                        mpfr_clear (tmp.x);
+                        mpfr_clear (tmp.y);
+                    }
+                    break;
                 case SDLK_o:
-                    width *= 2;
+                    mpfr_mul_ui (width, width, 2, fset.round);
                     compute (&p, width);
                     break;
                 case SDLK_RETURN:
@@ -686,14 +851,14 @@ main (int argc, char **argv)
                     fset.algo = MANDELBROT;
                     switch (fset.para) {
                     case MU:
-                        p.x = -0.75;
-                        p.y = 0;
-                        width = 3.5;
+                        mpfr_set_d (p.x, -0.75, fset.round);
+                        mpfr_set_ui (p.y, 0, fset.round);
+                        mpfr_set_d (width, 3.5, fset.round);
                         break;
                     case INV_MU:
-                        p.x = 1 / .75;
-                        p.y = 0;
-                        width = 6;
+                        mpfr_set_d (p.x, 1.0 / .75, fset.round);
+                        mpfr_set_ui (p.y, 0, fset.round);
+                        mpfr_set_ui (width, 6, fset.round);
                         break;
                     default:
                         break;
@@ -712,12 +877,29 @@ main (int argc, char **argv)
                 break;
             case SDL_MOUSEBUTTONDOWN:
                 if (zooming) {
+                    mpfr_t r2, r3;
+                    mpfr_init2 (r2, fset.prec);
+                    mpfr_init2 (r3, fset.prec);
                     zooming = 0;
-                    r = width / dset.w;
-                    p.x = p.x - r * dset.w / 2 + (zoom.x + zoom.w) / 2 * r;
-                    p.y = p.y + r * dset.h / 2 - (zoom.y + zoom.h) / 2 * r;
-                    width = r * abs (zoom.w - zoom.x);
+
+                    mpfr_div_ui (r, width, dset.w, fset.round);
+                    mpfr_mul_d (r2, r, (double) dset.w / 2, fset.round);
+                    mpfr_mul_d (r3, r, (double) (zoom.x + zoom.w) / 2,
+                                fset.round);
+                    mpfr_add (p.x, p.x, r3, fset.round);
+                    mpfr_sub (p.x, p.x, r2, fset.round);
+
+//                    p.x = p.x - r * dset.w / 2 + r * (zoom.x + zoom.w) / 2;
+                    mpfr_mul_d (r2, r, (double) dset.h / 2, fset.round);
+                    mpfr_mul_d (r3, r, (double) (zoom.y + zoom.h) / 2,
+                                fset.round);
+                    mpfr_add (p.y, p.y, r2, fset.round);
+                    mpfr_sub (p.y, p.y, r3, fset.round);
+//                    p.y = p.y + r * dset.h / 2 - r * (zoom.y + zoom.h) / 2;
+                    mpfr_mul_ui (width, r, abs (zoom.w - zoom.x), fset.round);
                     compute (&p, width);
+                    mpfr_clear (r2);
+                    mpfr_clear (r3);
                 }
 
                 else {
@@ -736,6 +918,11 @@ main (int argc, char **argv)
             }
         }
     }
+    mpfr_clear (width);
+    mpfr_clear (p.x);
+    mpfr_clear (p.y);
+    mpfr_clear (fset.julia_c.x);
+    mpfr_clear (fset.julia_c.y);
     SDL_Quit ();
     return EXIT_SUCCESS;
 }
