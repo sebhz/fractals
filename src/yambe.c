@@ -324,7 +324,7 @@ periodic_color (int x)
 inline Uint32
 colorize_pixel (SDL_Surface * screen, int n)
 {
-    if (n == fset.nmax) {
+    if (n >= fset.nmax) {
         return SDL_MapRGB (screen->format, 64, 64, 64);
     }
     else {
@@ -439,7 +439,7 @@ mandelbrot (point_t * center, mpfr_t width)
 void
 julia (point_t * center, mpfr_t width, point_t * c)
 {
-    mpfr_t a, b, x, y, x1, xmin, ymax, step, w2, w3, b2, s2, x2, y2, x3, x4,
+    mpfr_t a, b, x, y, xmin, ymax, step, w2, w3, b2, s2, x2, y2, x3, x4,
         y3, modulus;
     int i, j, n;
     point_t c1;
@@ -636,7 +636,7 @@ reset_video_mode (SDL_Surface * screen, int w, int h, Uint32 flag)
 int
 main (int argc, char **argv)
 {
-    int prog_running = 1, zooming = 0, cw = 640, ch = 480;
+    int prog_running = 1, zooming = 0, coloring = 0, cw = 640, ch = 480;
     point_t p;
     mpfr_t width, r;
     SDL_Surface *screen;
@@ -692,20 +692,26 @@ main (int argc, char **argv)
                 break;
             case SDL_KEYDOWN:
                 switch (event.key.keysym.sym) {
+
                 case SDLK_ESCAPE:
+                    if (!zooming && !coloring) {
+                        prog_running = 0;
+                    }
                     if (zooming) {
                         zooming = 0;
                     }
-                    else {
-                        prog_running = 0;
-                    }
+					if (coloring) {
+						coloring = 0;
+					}
                     break;
+
                 case SDLK_EQUALS:
                     fset.nmax *= 2;
                     dset.colormap =
                         create_colormap (screen, dset.colormap, fset.nmax);
                     compute (&p, width);
                     break;
+
                 case SDLK_MINUS:
                     fset.nmax /= 2;
                     if (fset.nmax < 1)
@@ -714,6 +720,7 @@ main (int argc, char **argv)
                         create_colormap (screen, dset.colormap, fset.nmax);
                     compute (&p, width);
                     break;
+
                 case SDLK_j:
                     if (fset.algo == MANDELBROT) {
                         int x, y;
@@ -728,6 +735,13 @@ main (int argc, char **argv)
                         compute (&p, width);
                     }
                     break;
+
+				case SDLK_1:
+				case SDLK_2:
+				case SDLK_3:
+					coloring = event.key.keysym.sym-SDLK_1+1;
+					break;
+ 
                 case SDLK_c:
                     {
                         int x, y;
@@ -747,14 +761,30 @@ main (int argc, char **argv)
                         mpfr_clear (tmp.y);
                     }
                     break;
+
                 case SDLK_UP:
+					if (coloring) {
+						dset.coef[coloring-1]++;
+                    	dset.colormap = create_colormap (screen, dset.colormap, fset.nmax);
+						break;
+					}
+
                     mpfr_mul_ui (width, width, 2, fset.round);
                     compute (&p, width);
                     break;
+
                 case SDLK_DOWN:
-                    mpfr_div_ui (width, width, 2, fset.round);
+  					if (coloring) {
+						if (dset.coef[coloring -1] > 0) {
+							dset.coef[coloring-1]--;
+                    		dset.colormap = create_colormap (screen, dset.colormap, fset.nmax);
+						}
+						break;
+					}
+   	                mpfr_div_ui (width, width, 2, fset.round);
                     compute (&p, width);
                     break;
+
                 case SDLK_RETURN:
                     if (dset.fullscreen == 0) {
                         cw = dset.w;
@@ -774,8 +804,10 @@ main (int argc, char **argv)
                     }
                     compute (&p, width);
                     break;
+
                 case SDLK_p:
                     fset.para = (fset.para + 1) % MAX_PAR;
+
                 case SDLK_r:
                     fset.algo = MANDELBROT;
                     switch (fset.para) {
@@ -794,6 +826,7 @@ main (int argc, char **argv)
                     }
                     compute (&p, width);
                     break;
+
                 default:
                     break;
                 }
