@@ -16,6 +16,7 @@
 /* Colorization code copied from David Madore's site: http://www.madore.org/~david/programs/#prog_mandel */
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <time.h>
 #include <getopt.h>
 #include "SDL/SDL.h"
@@ -59,6 +60,7 @@ typedef struct
     int fullscreen;             /* Are we drawing fullscreen or not */
     Uint32 *colormap;           /* The colormap */
     Uint32 coef[3];             /* Coefficients for coloring */
+    Sint32 smooth;              /* Color smoothing used ? */
 } display_settings_t;
 
 static fractal_settings_t fset;
@@ -78,6 +80,8 @@ usage (char *prog_name, FILE * stream)
              "\t--geometry=<geo>         | -g  : sets the window geometry.\n");
     fprintf (stream,
              "\t--parametrization=<para> | -p  : sets initial parametrization. Valid values are mu and mu_inv.\n");
+    fprintf (stream,
+             "\t--smooth                 | -s  : performs color smoothing.\n");
     fprintf (stream,
              "\t--fullscreen             | -f  : runs in fullscreen.\n");
 #ifdef HAS_MPRF
@@ -104,6 +108,7 @@ default_settings (void)
     dset.screen_w = 640;
     dset.screen_h = 480;
     dset.fullscreen = 0;
+    dset.smooth = 0;
     dset.coef[0] = dset.coef[1] = dset.coef[2] = 1;
 }
 
@@ -227,6 +232,7 @@ parse_options (int argc, char **argv)
             {"precision", required_argument, 0, 'r'},
             {"version", no_argument, 0, 'v'},
             {"fullscreen", no_argument, &dset.fullscreen, 1},
+            {"smooth", no_argument, &dset.smooth, 1},
             {0, 0, 0, 0}
         };
 
@@ -287,7 +293,6 @@ parse_options (int argc, char **argv)
 #endif
             break;
         case '?':
-
             /* getopt_long already printed an error message. */
             break;
         default:
@@ -427,7 +432,11 @@ mandelbrot (point_t * center, mpfr_t width)
                 mpfr_add (y, x4, c, fset.round);
                 mpfr_sub (x, y3, y2, fset.round);
             } while (n++ < fset.nmax);
-            fset.t[j * dset.w + i] = n;
+			if (dset.smooth == 0) {
+	            fset.t[j * dset.w + i] = n;
+			} else {
+				fset.t[j * dset.w + i] = (int)((double)n - log2(log2(sqrt(modulus)))) ;
+			}
         }
     }
 #ifdef HAS_MPFR
