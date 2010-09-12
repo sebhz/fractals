@@ -32,6 +32,7 @@
 #define mpfr_mul_ui(a, b, c, d) ( (a) = (b)*(c) )
 #define mpfr_set(a, b, c) ( (a) = (b) )
 #define mpfr_set_d(a, b, c) ( (a) = (b) )
+#define mpfr_get_d(a, b) (a)
 #define mpfr_set_ui(a, b, c) ( (a) = (b) )
 #define mpfr_neg(a, b, c) ( (a) = -(b) )
 #define mpfr_init2(a, b)

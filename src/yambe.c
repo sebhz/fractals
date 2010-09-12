@@ -41,11 +41,18 @@ typedef enum
 
 typedef struct
 {
+    int n;                      /* Iteration number */
+    mpfr_t modulus;             /* Modulus of the point */
+    Uint32 color;               /* Color of the point */
+} mpoint_t;
+
+typedef struct
+{
     int nmax;                   /* Number of iterations to perform before assuming divergence */
     point_t julia_c;            /* Point on which to compute Julia set */
     algo_t algo;                /* Mandelbrot or Julia */
     parametrization_t para;     /* Normal or inverted */
-    int *t;                     /* Table containing the fractal data */
+    mpoint_t *t;                /* Table containing the fractal data */
     int current_alloc;          /* Current allocated memory for t */
     mpfr_prec_t prec;           /* Precision for floats */
     mpfr_rnd_t round;           /* Rounding for floats */
@@ -316,7 +323,7 @@ parse_options (int argc, char **argv)
 }
 
 
-/* Maps an integer between 0-512 to a 0-256 integer using a triangular function */
+/* Maps an integer between 0-511 to a 0-255 integer using a triangular function */
 inline int
 periodic_color (int x)
 {
@@ -335,7 +342,7 @@ inline Uint32
 colorize_pixel (SDL_Surface * screen, int n)
 {
     if (n >= fset.nmax) {
-        return SDL_MapRGB (screen->format, 64, 64, 64);
+        return SDL_MapRGB (screen->format, 16, 16, 16);
     }
     else {
         long double a = 8 * sqrt (n + 2);
@@ -348,20 +355,57 @@ colorize_pixel (SDL_Surface * screen, int n)
                                            512));
 }}
 
-Uint32 *
-create_colormap (SDL_Surface * screen, Uint32 * colormap, int nmax)
+void
+colorize (SDL_Surface * screen)
 {
-    int i;
-    if (colormap != NULL)
+    int i, imax = dset.w * dset.h;
+
+    if (dset.smooth == 0) {
+        Uint32 *colormap;
+        if ((colormap =
+             malloc ((fset.nmax + 1) * (sizeof *colormap))) == NULL) {
+            fprintf (stderr, "Unable to allocate memory for colormap\n");
+            exit (EXIT_FAILURE);
+        }
+        for (i = 0; i <= fset.nmax; i++) {
+            colormap[i] = colorize_pixel (screen, i);
+        }
+        for (i = 0; i < imax; i++) {
+            fset.t[i].color = colormap[fset.t[i].n];
+        }
         free (colormap);
-    if ((colormap = (Uint32 *) malloc ((nmax + 1) * sizeof (Uint32))) == NULL) {
-        fprintf (stderr, "Unable to allocate memory for colormap\n");
-        exit (EXIT_FAILURE);
     }
-    for (i = 0; i <= nmax; i++) {
-        colormap[i] = colorize_pixel (screen, i);
+    else {
+        double v, m;
+
+        for (i = 0; i < imax; i++) {
+            m = mpfr_get_d (fset.t[i].modulus, fset.round);
+            v = ((double) fset.t[i].n - log2 (log2 (sqrt (m)))) / fset.nmax;    /* Down to the continuous 0->1 interval */
+            v *= 511;
+            if (fset.t[i].n >= fset.nmax) {
+                fset.t[i].color = SDL_MapRGB (screen->format, 16, 16, 16);
+            }
+            else {
+                fset.t[i].color = SDL_MapRGB (screen->format,
+                                              periodic_color ((int)
+                                                              (floor
+                                                               (v *
+                                                                dset.coef[0]))
+                                                              % 512),
+                                              periodic_color ((int)
+                                                              (floor
+                                                               (v *
+                                                                dset.coef[1]))
+                                                              % 512),
+                                              periodic_color ((int)
+                                                              (floor
+                                                               (v *
+                                                                dset.coef[2]))
+                                                              % 512));
+            }
+        }
     }
-    return colormap;
+    return;
 }
 
 inline void
@@ -437,15 +481,8 @@ mandelbrot (point_t * center, mpfr_t width)
                 mpfr_add (y, x4, c, fset.round);
                 mpfr_sub (x, y3, y2, fset.round);
             } while (++n < fset.nmax);
-            if (dset.smooth == 0) {
-                fset.t[j * dset.w + i] = n;
-            }
-            else {
-#ifndef HAS_MPFR
-                fset.t[j * dset.w + i] =
-                    (int) ((double) n - log2 (log2 (sqrt (modulus))));
-#endif
-            }
+            mpfr_set (fset.t[j * dset.w + i].modulus, modulus, fset.round);
+            fset.t[j * dset.w + i].n = n;
         }
     }
 #ifdef HAS_MPFR
@@ -501,7 +538,8 @@ julia (point_t * center, mpfr_t width, point_t * c)
                 mpfr_add (y, x4, c1.y, fset.round);
                 mpfr_sub (x, y3, y2, fset.round);
             } while (++n < fset.nmax);
-            fset.t[j * dset.w + i] = n;
+            fset.t[j * dset.w + i].n = n;
+            mpfr_set (fset.t[j * dset.w + i].modulus, modulus, fset.round);
         }
     }
 #ifdef HAS_MPFR
@@ -545,7 +583,7 @@ display_screen (SDL_Surface * screen)
             Uint8 *bufp;
             for (i = 0; i < imax; i++) {
                 bufp = (Uint8 *) screen->pixels + i;
-                *bufp = dset.colormap[fset.t[i]];
+                *bufp = fset.t[i].color;
             }
         }
         break;
@@ -554,7 +592,7 @@ display_screen (SDL_Surface * screen)
             Uint16 *bufp;
             for (i = 0; i < imax; i++) {
                 bufp = (Uint16 *) screen->pixels + i;
-                *bufp = dset.colormap[fset.t[i]];
+                *bufp = fset.t[i].color;
             }
         }
         break;
@@ -564,14 +602,14 @@ display_screen (SDL_Surface * screen)
             for (i = 0; i < imax; i++) {
                 bufp = (Uint8 *) screen->pixels + i * 3;
                 if (SDL_BYTEORDER == SDL_LIL_ENDIAN) {
-                    bufp[0] = dset.colormap[fset.t[i]];
-                    bufp[1] = dset.colormap[fset.t[i]] >> 8;
-                    bufp[2] = dset.colormap[fset.t[i]] >> 16;
+                    bufp[0] = fset.t[i].color;
+                    bufp[1] = fset.t[i].color >> 8;
+                    bufp[2] = fset.t[i].color >> 16;
                 }
                 else {
-                    bufp[2] = dset.colormap[fset.t[i]];
-                    bufp[1] = dset.colormap[fset.t[i]] >> 8;
-                    bufp[0] = dset.colormap[fset.t[i]] >> 16;
+                    bufp[2] = fset.t[i].color;
+                    bufp[1] = fset.t[i].color >> 8;
+                    bufp[0] = fset.t[i].color >> 16;
                 }
             }
         }
@@ -581,7 +619,7 @@ display_screen (SDL_Surface * screen)
             Uint32 *bufp;
             for (i = 0; i < imax; i++) {
                 bufp = (Uint32 *) screen->pixels + i;
-                *bufp = dset.colormap[fset.t[i]];
+                *bufp = fset.t[i].color;
             }
         }
         break;
@@ -589,14 +627,16 @@ display_screen (SDL_Surface * screen)
 }
 
 void
-compute (point_t * p, mpfr_t width)
+compute (point_t * p, mpfr_t width, SDL_Surface * screen)
 {
     switch (fset.algo) {
     case MANDELBROT:
         mandelbrot (p, width);
+        colorize (screen);
         break;
     case JULIA:
         julia (p, width, &fset.julia_c);
+        colorize (screen);
         break;
     default:
         break;
@@ -638,8 +678,8 @@ reset_video_mode (SDL_Surface * screen, int w, int h, Uint32 flag)
         while (dset.w * dset.h > fset.current_alloc)
             fset.current_alloc *= 2;
         if ((fset.t =
-             (int *) realloc (fset.t,
-                              fset.current_alloc * sizeof (int))) == NULL) {
+             realloc (fset.t,
+                      fset.current_alloc * (sizeof *fset.t))) == NULL) {
             fprintf (stderr, "Unable to allocate memory for screen buffer\n");
             exit (EXIT_FAILURE);
         }
@@ -665,7 +705,6 @@ main (int argc, char **argv)
     default_settings ();
     parse_options (argc, argv);
     screen = init_SDL ();
-    dset.colormap = create_colormap (screen, dset.colormap, fset.nmax);
 
 #ifdef HAS_MPFR
     mpfr_inits2 (fset.prec, width, r, p.x, p.y, fset.julia_c.x,
@@ -674,7 +713,7 @@ main (int argc, char **argv)
 
     mpfr_set_ui (width, 3, fset.round);
 
-    if ((fset.t = (int *) malloc (fset.current_alloc * sizeof (int))) == NULL) {
+    if ((fset.t = malloc (fset.current_alloc * (sizeof *fset.t))) == NULL) {
         fprintf (stderr, "Unable to allocate memory for screen buffer\n");
         exit (EXIT_FAILURE);
     }
@@ -693,7 +732,7 @@ main (int argc, char **argv)
     default:
         break;
     }
-    compute (&p, width);
+    compute (&p, width, screen);
     while (prog_running) {
         display_screen (screen);
         if (zooming)
@@ -706,7 +745,7 @@ main (int argc, char **argv)
                 reset_video_mode (screen, event.resize.w, event.resize.h,
                                   SDL_HWSURFACE | SDL_DOUBLEBUF |
                                   SDL_RESIZABLE);
-                compute (&p, width);
+                compute (&p, width, screen);
                 break;
             case SDL_KEYDOWN:
                 switch (event.key.keysym.sym) {
@@ -725,33 +764,57 @@ main (int argc, char **argv)
 
                 case SDLK_EQUALS:
                     fset.nmax *= 2;
-                    dset.colormap =
-                        create_colormap (screen, dset.colormap, fset.nmax);
-                    compute (&p, width);
+                    compute (&p, width, screen);
                     break;
 
                 case SDLK_MINUS:
                     fset.nmax /= 2;
                     if (fset.nmax < 1)
                         fset.nmax = 1;
-                    dset.colormap =
-                        create_colormap (screen, dset.colormap, fset.nmax);
-                    compute (&p, width);
+                    compute (&p, width, screen);
                     break;
 
-                case SDLK_j:
-                    if (fset.algo == MANDELBROT) {
-                        int x, y;
-                        SDL_GetMouseState (&x, &y);
-                        mpfr_set_ui (fset.julia_c.x, x, fset.round);
-                        mpfr_set_ui (fset.julia_c.y, y, fset.round);
-                        screen_to_real (width, &p, &fset.julia_c);
-                        mpfr_set_ui (p.x, 0, fset.round);
-                        mpfr_set_ui (p.y, 0, fset.round);
-                        mpfr_set_d (width, 3.5, fset.round);
-                        fset.algo = JULIA;
-                        compute (&p, width);
+                case SDLK_UP:
+                    if (coloring) {
+                        dset.coef[coloring - 1]++;
+                        colorize (screen);
+                        break;
                     }
+
+                    mpfr_mul_ui (width, width, 2, fset.round);
+                    compute (&p, width, screen);
+                    break;
+
+                case SDLK_DOWN:
+                    if (coloring) {
+                        if (dset.coef[coloring - 1] > 0) {
+                            dset.coef[coloring - 1]--;
+                            colorize (screen);
+                        }
+                        break;
+                    }
+                    mpfr_div_ui (width, width, 2, fset.round);
+                    compute (&p, width, screen);
+                    break;
+
+                case SDLK_RETURN:
+                    if (dset.fullscreen == 0) {
+                        cw = dset.w;
+                        ch = dset.h;
+                        reset_video_mode (screen, dset.screen_w,
+                                          dset.screen_h,
+                                          SDL_HWSURFACE | SDL_DOUBLEBUF |
+                                          SDL_FULLSCREEN);
+                        dset.fullscreen = 1;
+                    }
+
+                    else {
+                        reset_video_mode (screen, cw, ch,
+                                          SDL_HWSURFACE | SDL_DOUBLEBUF |
+                                          SDL_RESIZABLE);
+                        dset.fullscreen = 0;
+                    }
+                    compute (&p, width, screen);
                     break;
 
                 case SDLK_1:
@@ -774,57 +837,25 @@ main (int argc, char **argv)
                         screen_to_real (width, &p, &tmp);
                         mpfr_set (p.x, tmp.x, fset.round);
                         mpfr_set (p.y, tmp.y, fset.round);
-                        compute (&p, width);
+                        compute (&p, width, screen);
                         mpfr_clear (tmp.x);
                         mpfr_clear (tmp.y);
                     }
                     break;
 
-                case SDLK_UP:
-                    if (coloring) {
-                        dset.coef[coloring - 1]++;
-                        dset.colormap =
-                            create_colormap (screen, dset.colormap,
-                                             fset.nmax);
-                        break;
+                case SDLK_j:
+                    if (fset.algo == MANDELBROT) {
+                        int x, y;
+                        SDL_GetMouseState (&x, &y);
+                        mpfr_set_ui (fset.julia_c.x, x, fset.round);
+                        mpfr_set_ui (fset.julia_c.y, y, fset.round);
+                        screen_to_real (width, &p, &fset.julia_c);
+                        mpfr_set_ui (p.x, 0, fset.round);
+                        mpfr_set_ui (p.y, 0, fset.round);
+                        mpfr_set_d (width, 3.5, fset.round);
+                        fset.algo = JULIA;
+                        compute (&p, width, screen);
                     }
-
-                    mpfr_mul_ui (width, width, 2, fset.round);
-                    compute (&p, width);
-                    break;
-
-                case SDLK_DOWN:
-                    if (coloring) {
-                        if (dset.coef[coloring - 1] > 0) {
-                            dset.coef[coloring - 1]--;
-                            dset.colormap =
-                                create_colormap (screen, dset.colormap,
-                                                 fset.nmax);
-                        }
-                        break;
-                    }
-                    mpfr_div_ui (width, width, 2, fset.round);
-                    compute (&p, width);
-                    break;
-
-                case SDLK_RETURN:
-                    if (dset.fullscreen == 0) {
-                        cw = dset.w;
-                        ch = dset.h;
-                        reset_video_mode (screen, dset.screen_w,
-                                          dset.screen_h,
-                                          SDL_HWSURFACE | SDL_DOUBLEBUF |
-                                          SDL_FULLSCREEN);
-                        dset.fullscreen = 1;
-                    }
-
-                    else {
-                        reset_video_mode (screen, cw, ch,
-                                          SDL_HWSURFACE | SDL_DOUBLEBUF |
-                                          SDL_RESIZABLE);
-                        dset.fullscreen = 0;
-                    }
-                    compute (&p, width);
                     break;
 
                 case SDLK_p:
@@ -846,19 +877,26 @@ main (int argc, char **argv)
                     default:
                         break;
                     }
-                    compute (&p, width);
+                    compute (&p, width, screen);
+                    break;
+
+                case SDLK_s:
+                    dset.smooth = abs (dset.smooth - 1);
+                    colorize (screen);
                     break;
 
                 default:
                     break;
                 }
                 break;
+
             case SDL_MOUSEMOTION:
                 if (zooming) {
                     zoom.w = event.motion.x;
                     zoom.h = event.motion.y;
                 }
                 break;
+
             case SDL_MOUSEBUTTONDOWN:
                 if (zooming) {
                     mpfr_t r2, r3;
@@ -879,7 +917,7 @@ main (int argc, char **argv)
                     mpfr_add (p.y, p.y, r2, fset.round);
                     mpfr_sub (p.y, p.y, r3, fset.round);
                     mpfr_mul_ui (width, r, abs (zoom.w - zoom.x), fset.round);
-                    compute (&p, width);
+                    compute (&p, width, screen);
 
                     mpfr_clear (r2);
                     mpfr_clear (r3);
