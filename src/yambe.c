@@ -431,7 +431,7 @@ mandelbrot (point_t * center, mpfr_t width)
                 mpfr_mul (x4, x3, y, fset.round);
                 mpfr_add (y, x4, c, fset.round);
                 mpfr_sub (x, y3, y2, fset.round);
-            } while (n++ < fset.nmax);
+            } while (++n < fset.nmax);
 			if (dset.smooth == 0) {
 	            fset.t[j * dset.w + i] = n;
 			} else {
@@ -491,7 +491,7 @@ julia (point_t * center, mpfr_t width, point_t * c)
                 mpfr_mul (x4, x3, y, fset.round);
                 mpfr_add (y, x4, c1.y, fset.round);
                 mpfr_sub (x, y3, y2, fset.round);
-            } while (n++ < fset.nmax);
+            } while (++n < fset.nmax);
             fset.t[j * dset.w + i] = n;
         }
     }
