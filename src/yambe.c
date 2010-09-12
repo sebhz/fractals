@@ -65,7 +65,12 @@ typedef struct
 
 static fractal_settings_t fset;
 static display_settings_t dset;
+
+#ifdef HAS_MPFR
+const char *WINDOW_TITLE = "Mandelbrot explorer (MPFR build)";
+#else
 const char *WINDOW_TITLE = "Mandelbrot explorer";
+#endif
 
 void
 usage (char *prog_name, FILE * stream)
@@ -432,11 +437,15 @@ mandelbrot (point_t * center, mpfr_t width)
                 mpfr_add (y, x4, c, fset.round);
                 mpfr_sub (x, y3, y2, fset.round);
             } while (++n < fset.nmax);
-			if (dset.smooth == 0) {
-	            fset.t[j * dset.w + i] = n;
-			} else {
-				fset.t[j * dset.w + i] = (int)((double)n - log2(log2(sqrt(modulus)))) ;
-			}
+            if (dset.smooth == 0) {
+                fset.t[j * dset.w + i] = n;
+            }
+            else {
+#ifndef HAS_MPFR
+                fset.t[j * dset.w + i] =
+                    (int) ((double) n - log2 (log2 (sqrt (modulus))));
+#endif
+            }
         }
     }
 #ifdef HAS_MPFR
@@ -454,7 +463,7 @@ julia (point_t * center, mpfr_t width, point_t * c)
     point_t c1;
 
 #ifdef HAS_MPFR
-    mpfr_inits2 (fset.prec, c1.x, c1.y, x, y, x1, xmin, ymax, step, w2, b2,
+    mpfr_inits2 (fset.prec, c1.x, c1.y, x, y, xmin, ymax, step, w2, b2,
                  s2, w3, a, b, x2, y2, x3, x4, y3, modulus, NULL);
 #endif
 
@@ -496,7 +505,7 @@ julia (point_t * center, mpfr_t width, point_t * c)
         }
     }
 #ifdef HAS_MPFR
-    mpfr_clears (c1.x, c1.y, x, y, x1, xmin, ymax, step, w2, b2, s2, w3, a, b,
+    mpfr_clears (c1.x, c1.y, x, y, xmin, ymax, step, w2, b2, s2, w3, a, b,
                  x2, y2, x3, x4, y3, modulus, NULL);
 #endif
 }
@@ -709,9 +718,9 @@ main (int argc, char **argv)
                     if (zooming) {
                         zooming = 0;
                     }
-					if (coloring) {
-						coloring = 0;
-					}
+                    if (coloring) {
+                        coloring = 0;
+                    }
                     break;
 
                 case SDLK_EQUALS:
@@ -745,12 +754,12 @@ main (int argc, char **argv)
                     }
                     break;
 
-				case SDLK_1:
-				case SDLK_2:
-				case SDLK_3:
-					coloring = event.key.keysym.sym-SDLK_1+1;
-					break;
- 
+                case SDLK_1:
+                case SDLK_2:
+                case SDLK_3:
+                    coloring = event.key.keysym.sym - SDLK_1 + 1;
+                    break;
+
                 case SDLK_c:
                     {
                         int x, y;
@@ -772,25 +781,29 @@ main (int argc, char **argv)
                     break;
 
                 case SDLK_UP:
-					if (coloring) {
-						dset.coef[coloring-1]++;
-                    	dset.colormap = create_colormap (screen, dset.colormap, fset.nmax);
-						break;
-					}
+                    if (coloring) {
+                        dset.coef[coloring - 1]++;
+                        dset.colormap =
+                            create_colormap (screen, dset.colormap,
+                                             fset.nmax);
+                        break;
+                    }
 
                     mpfr_mul_ui (width, width, 2, fset.round);
                     compute (&p, width);
                     break;
 
                 case SDLK_DOWN:
-  					if (coloring) {
-						if (dset.coef[coloring -1] > 0) {
-							dset.coef[coloring-1]--;
-                    		dset.colormap = create_colormap (screen, dset.colormap, fset.nmax);
-						}
-						break;
-					}
-   	                mpfr_div_ui (width, width, 2, fset.round);
+                    if (coloring) {
+                        if (dset.coef[coloring - 1] > 0) {
+                            dset.coef[coloring - 1]--;
+                            dset.colormap =
+                                create_colormap (screen, dset.colormap,
+                                                 fset.nmax);
+                        }
+                        break;
+                    }
+                    mpfr_div_ui (width, width, 2, fset.round);
                     compute (&p, width);
                     break;
 
