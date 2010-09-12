@@ -362,13 +362,9 @@ parametrize (mpfr_t * x, mpfr_t * y)
         {
             mpfr_t a, b, m, a2, b2, n;
 
-            mpfr_init2 (a, fset.prec);
-            mpfr_init2 (b, fset.prec);
-            mpfr_init2 (a2, fset.prec);
-            mpfr_init2 (b2, fset.prec);
-            mpfr_init2 (m, fset.prec);
-            mpfr_init2 (n, fset.prec);
-
+#ifdef HAS_MPFR
+            mpfr_inits2 (fset.prec, a, b, a2, b2, n, m, NULL);
+#endif
             mpfr_set (a, *x, fset.round);
             mpfr_set (b, *y, fset.round);
             mpfr_sqr (a2, a, fset.round);
@@ -378,13 +374,9 @@ parametrize (mpfr_t * x, mpfr_t * y)
             mpfr_div (*x, a, m, fset.round);
             mpfr_div (*y, n, m, fset.round);
 
-            mpfr_clear (a2);
-            mpfr_clear (b2);
-            mpfr_clear (m);
-            mpfr_clear (m);
-            mpfr_clear (a);
-            mpfr_clear (b);
-
+#ifdef HAS_MPFR
+            mpfr_clears (a, b, a2, b2, n, m, NULL);
+#endif
         }
         break;
     default:
@@ -395,28 +387,14 @@ parametrize (mpfr_t * x, mpfr_t * y)
 void
 mandelbrot (point_t * center, mpfr_t width)
 {
-    mpfr_t a, b, x, y, x1, xmin, ymax, step, w2, w3, b2, s2, x2, x3, x4, y2,
+    mpfr_t a, b, x, y, c, xmin, ymax, step, w2, w3, b2, x2, x3, x4, y2,
         y3, modulus;
     unsigned long int i, j, n;
 
-    mpfr_init2 (a, fset.prec);
-    mpfr_init2 (b, fset.prec);
-    mpfr_init2 (x, fset.prec);
-    mpfr_init2 (y, fset.prec);
-    mpfr_init2 (x1, fset.prec);
-    mpfr_init2 (xmin, fset.prec);
-    mpfr_init2 (ymax, fset.prec);
-    mpfr_init2 (step, fset.prec);
-    mpfr_init2 (w2, fset.prec);
-    mpfr_init2 (w3, fset.prec);
-    mpfr_init2 (b2, fset.prec);
-    mpfr_init2 (s2, fset.prec);
-    mpfr_init2 (x2, fset.prec);
-    mpfr_init2 (x3, fset.prec);
-    mpfr_init2 (x4, fset.prec);
-    mpfr_init2 (y2, fset.prec);
-    mpfr_init2 (y3, fset.prec);
-    mpfr_init2 (modulus, fset.prec);
+#ifdef HAS_MPFR
+    mpfr_inits2 (fset.prec, a, b, x, y, c, xmin, ymax, step, w2, w3, b2,
+                 x2, x3, x4, y2, y3, modulus, NULL);
+#endif
 
     mpfr_div_ui (w2, width, 2, fset.round);
     mpfr_mul_d (w3, w2, (double) dset.h / (double) dset.w, fset.round);
@@ -428,10 +406,9 @@ mandelbrot (point_t * center, mpfr_t width)
         mpfr_mul_ui (b2, step, j, fset.round);
         mpfr_sub (b, ymax, b2, fset.round);
         for (i = 0; i < dset.w; i++) {
-            mpfr_t c;
             mpfr_set (c, b, fset.round);
-            mpfr_mul_ui (s2, step, i, fset.round);
-            mpfr_add (a, s2, xmin, fset.round);
+            mpfr_mul_ui (a, step, i, fset.round);
+            mpfr_add (a, a, xmin, fset.round);
             parametrize (&a, &c);
             mpfr_set_ui (x, 0, fset.round);
             mpfr_set_ui (y, 0, fset.round);
@@ -440,38 +417,23 @@ mandelbrot (point_t * center, mpfr_t width)
             do {
                 mpfr_sqr (x2, x, fset.round);
                 mpfr_sqr (y2, y, fset.round);
+                mpfr_add (modulus, x2, y2, fset.round);
+                if ((mpfr_cmp_ui (modulus, 4) >= 0) && (n > 0)) {
+                    break;
+                }
                 mpfr_add (y3, x2, a, fset.round);
-                mpfr_sub (x1, y3, y2, fset.round);
                 mpfr_mul_ui (x3, x, 2, fset.round);
                 mpfr_mul (x4, x3, y, fset.round);
                 mpfr_add (y, x4, c, fset.round);
-                mpfr_set (x, x1, fset.round);
-                mpfr_sqr (x2, x, fset.round);
-                mpfr_sqr (y2, y, fset.round);
-                mpfr_add (modulus, x2, y2, fset.round);
-            } while ((mpfr_cmp_ui (modulus, 4) < 0)
-                     && (++n < fset.nmax));
+                mpfr_sub (x, y3, y2, fset.round);
+            } while (n++ < fset.nmax);
             fset.t[j * dset.w + i] = n;
         }
     }
-    mpfr_clear (a);
-    mpfr_clear (b);
-    mpfr_clear (x);
-    mpfr_clear (y);
-    mpfr_clear (x);
-    mpfr_clear (x1);
-    mpfr_clear (ymax);
-    mpfr_clear (step);
-    mpfr_clear (w2);
-    mpfr_clear (w3);
-    mpfr_clear (b2);
-    mpfr_clear (s2);
-    mpfr_clear (x2);
-    mpfr_clear (x3);
-    mpfr_clear (x4);
-    mpfr_clear (y2);
-    mpfr_clear (y3);
-    mpfr_clear (modulus);
+#ifdef HAS_MPFR
+    mpfr_clears (a, b, x, y, c, xmin, ymax, step, w2, w3, b2, x2, x3, x4,
+                 y2, y3, modulus, NULL);
+#endif
 }
 
 void
@@ -482,26 +444,10 @@ julia (point_t * center, mpfr_t width, point_t * c)
     int i, j, n;
     point_t c1;
 
-    mpfr_init2 (c1.x, fset.prec);
-    mpfr_init2 (c1.y, fset.prec);
-    mpfr_init2 (x, fset.prec);
-    mpfr_init2 (y, fset.prec);
-    mpfr_init2 (x1, fset.prec);
-    mpfr_init2 (xmin, fset.prec);
-    mpfr_init2 (ymax, fset.prec);
-    mpfr_init2 (step, fset.prec);
-    mpfr_init2 (w2, fset.prec);
-    mpfr_init2 (b2, fset.prec);
-    mpfr_init2 (s2, fset.prec);
-    mpfr_init2 (w3, fset.prec);
-    mpfr_init2 (a, fset.prec);
-    mpfr_init2 (b, fset.prec);
-    mpfr_init2 (x2, fset.prec);
-    mpfr_init2 (y2, fset.prec);
-    mpfr_init2 (x3, fset.prec);
-    mpfr_init2 (x4, fset.prec);
-    mpfr_init2 (y3, fset.prec);
-    mpfr_init2 (modulus, fset.prec);
+#ifdef HAS_MPFR
+    mpfr_inits2 (fset.prec, c1.x, c1.y, x, y, x1, xmin, ymax, step, w2, b2,
+                 s2, w3, a, b, x2, y2, x3, x4, y3, modulus, NULL);
+#endif
 
     mpfr_set (c1.x, c->x, fset.round);
     mpfr_set (c1.y, c->y, fset.round);
@@ -527,40 +473,23 @@ julia (point_t * center, mpfr_t width, point_t * c)
             do {
                 mpfr_sqr (x2, x, fset.round);
                 mpfr_sqr (y2, y, fset.round);
+                mpfr_add (modulus, x2, y2, fset.round);
+                if ((mpfr_cmp_ui (modulus, 4) >= 0) && (n > 0)) {
+                    break;
+                }
                 mpfr_add (y3, x2, c1.x, fset.round);
-                mpfr_sub (x1, y3, y2, fset.round);
                 mpfr_mul_ui (x3, x, 2, fset.round);
                 mpfr_mul (x4, x3, y, fset.round);
                 mpfr_add (y, x4, c1.y, fset.round);
-                mpfr_set (x, x1, fset.round);
-                mpfr_sqr (x2, x, fset.round);
-                mpfr_sqr (y2, y, fset.round);
-                mpfr_add (modulus, x2, y2, fset.round);
-            } while ((mpfr_cmp_ui (modulus, 4) < 0)
-                     && (++n < fset.nmax));
+                mpfr_sub (x, y3, y2, fset.round);
+            } while (n++ < fset.nmax);
             fset.t[j * dset.w + i] = n;
         }
     }
-    mpfr_clear (c1.x);
-    mpfr_clear (c1.y);
-    mpfr_clear (x);
-    mpfr_clear (y);
-    mpfr_clear (x1);
-    mpfr_clear (xmin);
-    mpfr_clear (ymax);
-    mpfr_clear (step);
-    mpfr_clear (w2);
-    mpfr_clear (b2);
-    mpfr_clear (s2);
-    mpfr_clear (w3);
-    mpfr_clear (a);
-    mpfr_clear (x2);
-    mpfr_clear (x3);
-    mpfr_clear (x4);
-    mpfr_clear (y2);
-    mpfr_clear (y3);
-    mpfr_clear (modulus);
-    mpfr_clear (b);
+#ifdef HAS_MPFR
+    mpfr_clears (c1.x, c1.y, x, y, x1, xmin, ymax, step, w2, b2, s2, w3, a, b,
+                 x2, y2, x3, x4, y3, modulus, NULL);
+#endif
 }
 
 SDL_Surface *
@@ -680,10 +609,6 @@ screen_to_real (mpfr_t width, point_t * center, point_t * p)
 #ifdef HAS_MPFR
     mpfr_clears (r, rm, r2, NULL);
 #endif
-/*
-    p->x = center->x - r * dset.w / 2 + p->x * r;
-    p->y = center->y + r * dset.h / 2 - p->y * r;
-*/
 }
 
 void
@@ -724,11 +649,10 @@ main (int argc, char **argv)
     screen = init_SDL ();
     dset.colormap = create_colormap (screen, dset.colormap, fset.nmax);
 
-    mpfr_init2 (width, fset.prec);
-    mpfr_init2 (p.x, fset.prec);
-    mpfr_init2 (p.y, fset.prec);
-    mpfr_init2 (fset.julia_c.x, fset.prec);
-    mpfr_init2 (fset.julia_c.y, fset.prec);
+#ifdef HAS_MPFR
+    mpfr_inits2 (fset.prec, width, r, p.x, p.y, fset.julia_c.x,
+                 fset.julia_c.y, NULL);
+#endif
 
     mpfr_set_ui (width, 3, fset.round);
 
@@ -769,11 +693,12 @@ main (int argc, char **argv)
             case SDL_KEYDOWN:
                 switch (event.key.keysym.sym) {
                 case SDLK_ESCAPE:
-                    if (zooming)
+                    if (zooming) {
                         zooming = 0;
-
-                    else
+                    }
+                    else {
                         prog_running = 0;
+                    }
                     break;
                 case SDLK_EQUALS:
                     fset.nmax *= 2;
@@ -822,8 +747,12 @@ main (int argc, char **argv)
                         mpfr_clear (tmp.y);
                     }
                     break;
-                case SDLK_o:
+                case SDLK_UP:
                     mpfr_mul_ui (width, width, 2, fset.round);
+                    compute (&p, width);
+                    break;
+                case SDLK_DOWN:
+                    mpfr_div_ui (width, width, 2, fset.round);
                     compute (&p, width);
                     break;
                 case SDLK_RETURN:
@@ -889,19 +818,17 @@ main (int argc, char **argv)
                     mpfr_add (p.x, p.x, r3, fset.round);
                     mpfr_sub (p.x, p.x, r2, fset.round);
 
-//                    p.x = p.x - r * dset.w / 2 + r * (zoom.x + zoom.w) / 2;
                     mpfr_mul_d (r2, r, (double) dset.h / 2, fset.round);
                     mpfr_mul_d (r3, r, (double) (zoom.y + zoom.h) / 2,
                                 fset.round);
                     mpfr_add (p.y, p.y, r2, fset.round);
                     mpfr_sub (p.y, p.y, r3, fset.round);
-//                    p.y = p.y + r * dset.h / 2 - r * (zoom.y + zoom.h) / 2;
                     mpfr_mul_ui (width, r, abs (zoom.w - zoom.x), fset.round);
                     compute (&p, width);
+
                     mpfr_clear (r2);
                     mpfr_clear (r3);
                 }
-
                 else {
                     zooming = 1;
                     zoom.x = event.button.x;
@@ -918,11 +845,10 @@ main (int argc, char **argv)
             }
         }
     }
-    mpfr_clear (width);
-    mpfr_clear (p.x);
-    mpfr_clear (p.y);
-    mpfr_clear (fset.julia_c.x);
-    mpfr_clear (fset.julia_c.y);
+
+#ifdef HAS_MPFR
+    mpfr_clears (width, r, p.x, p.y, fset.julia_c.x, fset.julia_c.y, NULL);
+#endif
     SDL_Quit ();
     return EXIT_SUCCESS;
 }
