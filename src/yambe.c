@@ -56,6 +56,7 @@ typedef struct
     int current_alloc;          /* Current allocated memory for t */
     mpfr_prec_t prec;           /* Precision for floats */
     mpfr_rnd_t round;           /* Rounding for floats */
+    int radius;                 /* Escape radius */
 } fractal_settings_t;
 
 typedef struct
@@ -83,6 +84,9 @@ void
 usage (char *prog_name, FILE * stream)
 {
     fprintf (stream, "%s (version %s):\n", prog_name, VERSION_STRING);
+#ifdef HAS_MPFR
+    fprintf (stream, "MPFR compiled in.\n");
+#endif
     fprintf (stream,
              "\t--version                | -v  : show program version\n");
     fprintf (stream, "\t--help                   | -h  : show this help\n");
@@ -107,8 +111,9 @@ usage (char *prog_name, FILE * stream)
 void
 default_settings (void)
 {
-    fset.nmax = 128;
+    fset.nmax = 64;
     fset.prec = 64;
+    fset.radius = 8;
     fset.round = GMP_RNDZ;
     dset.w = 640;
     dset.h = 480;
@@ -250,7 +255,7 @@ parse_options (int argc, char **argv)
 
         /* getopt_long stores the option index here. */
         int option_index = 0;
-        c = getopt_long (argc, argv, "vhn:g:p:c:r:", long_options,
+        c = getopt_long (argc, argv, "sfvhn:g:p:c:r:", long_options,
                          &option_index);
 
         /* Detect the end of the options. */
@@ -259,21 +264,32 @@ parse_options (int argc, char **argv)
         switch (c) {
         case 0:
             break;
+
+        case 'c':
+            if (get_coef (optarg)) {
+                exit (EXIT_FAILURE);
+            }
+            break;
+
+        case 'f':
+            dset.fullscreen = 1;
+            break;
+
+        case 'g':
+            if (set_geometry (optarg))
+                exit (EXIT_FAILURE);
+            break;
+
         case 'h':
             usage (argv[0], stdout);
             exit (EXIT_SUCCESS);
-        case 'v':
-            fprintf (stdout, "%s\n", VERSION_STRING);
-            exit (EXIT_SUCCESS);
+
         case 'n':
             fset.nmax = atoi (optarg);
             if ((fset.nmax < 1) || (fset.nmax > 2 * 65536))
                 fset.nmax = 1024;
             break;
-        case 'g':
-            if (set_geometry (optarg))
-                exit (EXIT_FAILURE);
-            break;
+
         case 'p':
             if (strcmp (optarg, "mu") == 0) {
                 fset.para = MU;
@@ -286,11 +302,7 @@ parse_options (int argc, char **argv)
             fprintf (stderr, "Bad parametrization parameter\n");
             usage (argv[0], stderr);
             exit (EXIT_FAILURE);
-        case 'c':
-            if (get_coef (optarg)) {
-                exit (EXIT_FAILURE);
-            }
-            break;
+
         case 'r':
 #ifndef HAS_MPFR
             fprintf (stderr,
@@ -304,9 +316,20 @@ parse_options (int argc, char **argv)
             }
 #endif
             break;
+
+        case 's':
+            dset.smooth = 1;
+            break;
+
+        case 'v':
+            fprintf (stdout, "%s\n", VERSION_STRING);
+            exit (EXIT_SUCCESS);
+            break;
+
         case '?':
             /* getopt_long already printed an error message. */
             break;
+
         default:
             abort ();
         }
@@ -381,7 +404,7 @@ colorize (SDL_Surface * screen)
 
         for (i = 0; i < imax; i++) {
             m = mpfr_get_d (fset.t[i].modulus, fset.round);
-            v = ((double) fset.t[i].n + 1 - log2 (log2 (sqrt (m)))) / fset.nmax;        /* Down to the continuous 0->1 interval */
+            v = ((double) fset.t[i].n + 1 - log2 (log (sqrt (m)))) / fset.nmax; /* Down to the continuous 0->1 interval */
             v *= 512;
             if (fset.t[i].n >= fset.nmax) {
                 fset.t[i].color = SDL_MapRGB (screen->format, 16, 16, 16);
@@ -473,7 +496,7 @@ mandelbrot (point_t * center, mpfr_t width)
                 mpfr_sqr (x2, x, fset.round);
                 mpfr_sqr (y2, y, fset.round);
                 mpfr_add (modulus, x2, y2, fset.round);
-                if ((mpfr_cmp_ui (modulus, 4) >= 0) && (n > 0)) {
+                if ((mpfr_cmp_ui (modulus, fset.radius) >= 0) && (n > 0)) {
                     break;
                 }
                 mpfr_add (y3, x2, a, fset.round);
@@ -530,7 +553,7 @@ julia (point_t * center, mpfr_t width, point_t * c)
                 mpfr_sqr (x2, x, fset.round);
                 mpfr_sqr (y2, y, fset.round);
                 mpfr_add (modulus, x2, y2, fset.round);
-                if ((mpfr_cmp_ui (modulus, 4) >= 0) && (n > 0)) {
+                if ((mpfr_cmp_ui (modulus, fset.radius) >= 0) && (n > 0)) {
                     break;
                 }
                 mpfr_add (y3, x2, c1.x, fset.round);
