@@ -353,7 +353,8 @@ colorize_pixel (SDL_Surface * screen, int n)
                                            512),
                            periodic_color ((int) (floor (a * dset.coef[2])) %
                                            512));
-}}
+    }
+}
 
 void
 colorize (SDL_Surface * screen)
@@ -380,8 +381,8 @@ colorize (SDL_Surface * screen)
 
         for (i = 0; i < imax; i++) {
             m = mpfr_get_d (fset.t[i].modulus, fset.round);
-            v = ((double) fset.t[i].n - log2 (log2 (sqrt (m)))) / fset.nmax;    /* Down to the continuous 0->1 interval */
-            v *= 511;
+            v = ((double) fset.t[i].n + 1 - log2 (log2 (sqrt (m)))) / fset.nmax;        /* Down to the continuous 0->1 interval */
+            v *= 512;
             if (fset.t[i].n >= fset.nmax) {
                 fset.t[i].color = SDL_MapRGB (screen->format, 16, 16, 16);
             }
@@ -670,20 +671,60 @@ screen_to_real (mpfr_t width, point_t * center, point_t * p)
 }
 
 void
+realloc_fset (int n)
+{
+#ifdef HAS_MPFR
+    int i;
+    for (i = 0; i < n; i++) {
+        mpfr_clear (fset.t[i].modulus);
+    }
+#endif
+
+    free (fset.t);
+    if ((fset.t = malloc (fset.current_alloc * (sizeof *fset.t))) == NULL) {
+        fprintf (stderr, "Unable to allocate memory for screen buffer\n");
+        exit (EXIT_FAILURE);
+    }
+
+#ifdef HAS_MPFR
+    int imax = dset.w * dset.h;
+    for (i = 0; i < imax; i++) {
+        mpfr_init2 (fset.t[i].modulus, fset.prec);
+    }
+#endif
+}
+
+void
+alloc_fset (void)
+{
+    if ((fset.t = malloc (fset.current_alloc * (sizeof *fset.t))) == NULL) {
+        fprintf (stderr, "Unable to allocate memory for screen buffer\n");
+        exit (EXIT_FAILURE);
+    }
+
+#ifdef HAS_MPFR
+    int i, imax = dset.w * dset.h;
+    for (i = 0; i < imax; i++) {
+        mpfr_init2 (fset.t[i].modulus, fset.prec);
+    }
+#endif
+}
+
+
+void
 reset_video_mode (SDL_Surface * screen, int w, int h, Uint32 flag)
 {
+    int ww = dset.w, hh = dset.h;
+
     dset.w = w;
     dset.h = h;
-    if (dset.w * dset.h > fset.current_alloc) {
-        while (dset.w * dset.h > fset.current_alloc)
+    if (w * h > fset.current_alloc) {
+        while (w * h > fset.current_alloc) {
             fset.current_alloc *= 2;
-        if ((fset.t =
-             realloc (fset.t,
-                      fset.current_alloc * (sizeof *fset.t))) == NULL) {
-            fprintf (stderr, "Unable to allocate memory for screen buffer\n");
-            exit (EXIT_FAILURE);
         }
+        realloc_fset (ww * hh);
     }
+
     screen = SDL_SetVideoMode (dset.w, dset.h, 0, flag);
     if (screen == NULL) {
         fprintf (stderr, "Unable to change video mode. Exiting...\n");
@@ -713,11 +754,7 @@ main (int argc, char **argv)
 
     mpfr_set_ui (width, 3, fset.round);
 
-    if ((fset.t = malloc (fset.current_alloc * (sizeof *fset.t))) == NULL) {
-        fprintf (stderr, "Unable to allocate memory for screen buffer\n");
-        exit (EXIT_FAILURE);
-    }
-
+    alloc_fset ();
     switch (fset.para) {
     case MU:
         mpfr_set_d (p.x, -0.75, fset.round);
