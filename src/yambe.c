@@ -737,7 +737,7 @@ alloc_fset (void)
 void
 reset_video_mode (SDL_Surface * screen, int w, int h, Uint32 flag)
 {
-    int ww = dset.w, hh = dset.h;
+    int ww = dset.w, hh = dset.h, i;
 
     dset.w = w;
     dset.h = h;
@@ -746,7 +746,14 @@ reset_video_mode (SDL_Surface * screen, int w, int h, Uint32 flag)
             fset.current_alloc *= 2;
         }
         realloc_fset (ww * hh);
-    }
+    } 
+#ifdef HAS_MPFR
+	else {
+		for (i = ww*hh; i < w * h; i++) {
+			mpfr_init2(fset.t[i].modulus, fset.prec);
+		} 
+	}
+#endif
 
     screen = SDL_SetVideoMode (dset.w, dset.h, 0, flag);
     if (screen == NULL) {
