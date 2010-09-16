@@ -4,8 +4,8 @@ INDENT=indent
 CFLAGS=-Wall -O3
 CPPFLAGS=-I/usr/include/SDL 
 LDFLAGS=-lSDL -lSDL_gfx -lm
-OBJS=yambe.o
-SRC=yambe.c
+OBJS=yambe.o bmp.o
+SRC=yambe.c bmp.c
 TARGET=yambe
 HAS_MPFR=
 

@@ -14,6 +14,7 @@
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 /* Colorization code copied from David Madore's site: http://www.madore.org/~david/programs/#prog_mandel */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -22,6 +23,7 @@
 #include "SDL/SDL.h"
 #include "SDL/SDL_gfxPrimitives.h"
 #include "prec.h"
+#include "bmp.h"
 
 #define VERSION_STRING "2.0"
 
@@ -737,7 +739,7 @@ alloc_fset (void)
 void
 reset_video_mode (SDL_Surface * screen, int w, int h, Uint32 flag)
 {
-    int ww = dset.w, hh = dset.h, i;
+    int ww = dset.w, hh = dset.h;
 
     dset.w = w;
     dset.h = h;
@@ -746,13 +748,14 @@ reset_video_mode (SDL_Surface * screen, int w, int h, Uint32 flag)
             fset.current_alloc *= 2;
         }
         realloc_fset (ww * hh);
-    } 
+    }
 #ifdef HAS_MPFR
-	else {
-		for (i = ww*hh; i < w * h; i++) {
-			mpfr_init2(fset.t[i].modulus, fset.prec);
-		} 
-	}
+    else {
+        int i;
+        for (i = ww * hh; i < w * h; i++) {
+            mpfr_init2 (fset.t[i].modulus, fset.prec);
+        }
+    }
 #endif
 
     screen = SDL_SetVideoMode (dset.w, dset.h, 0, flag);
@@ -910,6 +913,10 @@ main (int argc, char **argv)
                     }
                     break;
 
+                case SDLK_d:
+                    write_bmp (screen);
+                    break;
+
                 case SDLK_j:
                     if (fset.algo == MANDELBROT) {
                         int x, y;
@@ -927,6 +934,10 @@ main (int argc, char **argv)
 
                 case SDLK_p:
                     fset.para = (fset.para + 1) % MAX_PAR;
+
+                case SDLK_q:
+                    prog_running = 0;
+                    break;
 
                 case SDLK_r:
                     fset.algo = MANDELBROT;
