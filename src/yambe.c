@@ -45,7 +45,19 @@ typedef struct
 {
     int n;                      /* Iteration number */
     mpfr_t modulus;             /* Modulus of the point */
+} frac_t;
+
+typedef struct
+{
+    Uint8 r;
+    Uint8 g;
+    Uint8 b;
+} pixel_color_t;
+
+typedef struct
+{
     Uint32 color;               /* Color of the point */
+    pixel_color_t pixel_color;  /* Components of the color of the point */
 } mpoint_t;
 
 typedef struct
@@ -54,7 +66,7 @@ typedef struct
     point_t julia_c;            /* Point on which to compute Julia set */
     algo_t algo;                /* Mandelbrot or Julia */
     parametrization_t para;     /* Normal or inverted */
-    mpoint_t *t;                /* Table containing the fractal data */
+    frac_t *frac;               /* Table containing the fractal data */
     int current_alloc;          /* Current allocated memory for t */
     mpfr_prec_t prec;           /* Precision for floats */
     mpfr_rnd_t round;           /* Rounding for floats */
@@ -68,9 +80,9 @@ typedef struct
     int screen_w;               /* Width of the screen (in pixels) */
     int screen_h;               /* Height of thr screen (in pixels) */
     int fullscreen;             /* Are we drawing fullscreen or not */
-    Uint32 *colormap;           /* The colormap */
     Uint32 coef[3];             /* Coefficients for coloring */
     Sint32 smooth;              /* Color smoothing used ? */
+    mpoint_t *colors;           /* Table containing the coloring data for the pixels */
 } display_settings_t;
 
 static fractal_settings_t fset;
@@ -363,22 +375,29 @@ periodic_color (int x)
 
 
 /* Return a color associated to a convergence value */
-inline Uint32
-colorize_pixel (SDL_Surface * screen, int n)
+inline void
+colorize_pixel (SDL_Surface * screen, int n, mpoint_t * p)
 {
     if (n >= fset.nmax) {
-        return SDL_MapRGB (screen->format, 16, 16, 16);
+        p->pixel_color.r = 16;
+        p->pixel_color.g = 16;
+        p->pixel_color.b = 16;
     }
     else {
         long double a = 8 * sqrt (n + 2);
-        return SDL_MapRGB (screen->format,
-                           periodic_color ((int) (floor (a * dset.coef[0])) %
-                                           512),
-                           periodic_color ((int) (floor (a * dset.coef[1])) %
-                                           512),
-                           periodic_color ((int) (floor (a * dset.coef[2])) %
-                                           512));
+        p->pixel_color.r = periodic_color ((int)
+                                           (floor (a * dset.coef[0]))
+                                           % 512);
+        p->pixel_color.g = periodic_color ((int)
+                                           (floor (a * dset.coef[1]))
+                                           % 512);
+        p->pixel_color.b = periodic_color ((int)
+                                           (floor (a * dset.coef[2]))
+                                           % 512);
     }
+    p->color = SDL_MapRGB (screen->format, p->pixel_color.r, p->pixel_color.g,
+                           p->pixel_color.b);
+
 }
 
 void
@@ -387,17 +406,23 @@ colorize (SDL_Surface * screen)
     int i, imax = dset.w * dset.h;
 
     if (dset.smooth == 0) {
-        Uint32 *colormap;
+        mpoint_t *colormap;
         if ((colormap =
              malloc ((fset.nmax + 1) * (sizeof *colormap))) == NULL) {
             fprintf (stderr, "Unable to allocate memory for colormap\n");
             exit (EXIT_FAILURE);
         }
         for (i = 0; i <= fset.nmax; i++) {
-            colormap[i] = colorize_pixel (screen, i);
+            colorize_pixel (screen, i, colormap + i);
         }
         for (i = 0; i < imax; i++) {
-            fset.t[i].color = colormap[fset.t[i].n];
+            dset.colors[i].color = colormap[fset.frac[i].n].color;
+            dset.colors[i].pixel_color.r =
+                colormap[fset.frac[i].n].pixel_color.r;
+            dset.colors[i].pixel_color.g =
+                colormap[fset.frac[i].n].pixel_color.g;
+            dset.colors[i].pixel_color.b =
+                colormap[fset.frac[i].n].pixel_color.b;
         }
         free (colormap);
     }
@@ -405,30 +430,38 @@ colorize (SDL_Surface * screen)
         double v, m;
 
         for (i = 0; i < imax; i++) {
-            m = mpfr_get_d (fset.t[i].modulus, fset.round);
-            v = ((double) fset.t[i].n + 1 - log2 (log (sqrt (m)))) / fset.nmax; /* Down to the continuous 0->1 interval */
+            m = mpfr_get_d (fset.frac[i].modulus, fset.round);
+            v = ((double) fset.frac[i].n + 1 - log2 (log (sqrt (m)))) / fset.nmax;      /* Down to the continuous 0->1 interval */
             v *= 512;
-            if (fset.t[i].n >= fset.nmax) {
-                fset.t[i].color = SDL_MapRGB (screen->format, 16, 16, 16);
+            if (fset.frac[i].n >= fset.nmax) {
+                dset.colors[i].pixel_color.r = 16;
+                dset.colors[i].pixel_color.g = 16;
+                dset.colors[i].pixel_color.b = 16;
             }
             else {
-                fset.t[i].color = SDL_MapRGB (screen->format,
-                                              periodic_color ((int)
-                                                              (floor
-                                                               (v *
-                                                                dset.coef[0]))
-                                                              % 512),
-                                              periodic_color ((int)
-                                                              (floor
-                                                               (v *
-                                                                dset.coef[1]))
-                                                              % 512),
-                                              periodic_color ((int)
-                                                              (floor
-                                                               (v *
-                                                                dset.coef[2]))
-                                                              % 512));
+                dset.colors[i].pixel_color.r = periodic_color ((int)
+                                                               (floor
+                                                                (v *
+                                                                 dset.coef
+                                                                 [0]))
+                                                               % 512);
+                dset.colors[i].pixel_color.g = periodic_color ((int)
+                                                               (floor
+                                                                (v *
+                                                                 dset.coef
+                                                                 [1]))
+                                                               % 512);
+                dset.colors[i].pixel_color.b = periodic_color ((int)
+                                                               (floor
+                                                                (v *
+                                                                 dset.coef
+                                                                 [2]))
+                                                               % 512);
             }
+            dset.colors[i].color =
+                SDL_MapRGB (screen->format, dset.colors[i].pixel_color.r,
+                            dset.colors[i].pixel_color.g,
+                            dset.colors[i].pixel_color.b);
         }
     }
     return;
@@ -507,8 +540,8 @@ mandelbrot (point_t * center, mpfr_t width)
                 mpfr_add (y, x4, c, fset.round);
                 mpfr_sub (x, y3, y2, fset.round);
             } while (++n < fset.nmax);
-            mpfr_set (fset.t[j * dset.w + i].modulus, modulus, fset.round);
-            fset.t[j * dset.w + i].n = n;
+            mpfr_set (fset.frac[j * dset.w + i].modulus, modulus, fset.round);
+            fset.frac[j * dset.w + i].n = n;
         }
     }
 #ifdef HAS_MPFR
@@ -564,8 +597,8 @@ julia (point_t * center, mpfr_t width, point_t * c)
                 mpfr_add (y, x4, c1.y, fset.round);
                 mpfr_sub (x, y3, y2, fset.round);
             } while (++n < fset.nmax);
-            fset.t[j * dset.w + i].n = n;
-            mpfr_set (fset.t[j * dset.w + i].modulus, modulus, fset.round);
+            fset.frac[j * dset.w + i].n = n;
+            mpfr_set (fset.frac[j * dset.w + i].modulus, modulus, fset.round);
         }
     }
 #ifdef HAS_MPFR
@@ -609,7 +642,7 @@ display_screen (SDL_Surface * screen)
             Uint8 *bufp;
             for (i = 0; i < imax; i++) {
                 bufp = (Uint8 *) screen->pixels + i;
-                *bufp = fset.t[i].color;
+                *bufp = dset.colors[i].color;
             }
         }
         break;
@@ -618,7 +651,7 @@ display_screen (SDL_Surface * screen)
             Uint16 *bufp;
             for (i = 0; i < imax; i++) {
                 bufp = (Uint16 *) screen->pixels + i;
-                *bufp = fset.t[i].color;
+                *bufp = dset.colors[i].color;
             }
         }
         break;
@@ -628,14 +661,14 @@ display_screen (SDL_Surface * screen)
             for (i = 0; i < imax; i++) {
                 bufp = (Uint8 *) screen->pixels + i * 3;
                 if (SDL_BYTEORDER == SDL_LIL_ENDIAN) {
-                    bufp[0] = fset.t[i].color;
-                    bufp[1] = fset.t[i].color >> 8;
-                    bufp[2] = fset.t[i].color >> 16;
+                    bufp[0] = dset.colors[i].color;
+                    bufp[1] = dset.colors[i].color >> 8;
+                    bufp[2] = dset.colors[i].color >> 16;
                 }
                 else {
-                    bufp[2] = fset.t[i].color;
-                    bufp[1] = fset.t[i].color >> 8;
-                    bufp[0] = fset.t[i].color >> 16;
+                    bufp[2] = dset.colors[i].color;
+                    bufp[1] = dset.colors[i].color >> 8;
+                    bufp[0] = dset.colors[i].color >> 16;
                 }
             }
         }
@@ -645,7 +678,7 @@ display_screen (SDL_Surface * screen)
             Uint32 *bufp;
             for (i = 0; i < imax; i++) {
                 bufp = (Uint32 *) screen->pixels + i;
-                *bufp = fset.t[i].color;
+                *bufp = dset.colors[i].color;
             }
         }
         break;
@@ -696,41 +729,51 @@ screen_to_real (mpfr_t width, point_t * center, point_t * p)
 }
 
 void
-realloc_fset (int n)
+realloc_struct (int n)
 {
-#ifdef HAS_MPFR
-    int i;
-    for (i = 0; i < n; i++) {
-        mpfr_clear (fset.t[i].modulus);
-    }
-#endif
-
-    free (fset.t);
-    if ((fset.t = malloc (fset.current_alloc * (sizeof *fset.t))) == NULL) {
+    if ((fset.frac =
+         realloc (fset.frac,
+                  fset.current_alloc * (sizeof *fset.frac))) == NULL) {
         fprintf (stderr, "Unable to allocate memory for screen buffer\n");
         exit (EXIT_FAILURE);
     }
 
+    if ((dset.colors =
+         realloc (dset.colors,
+                  fset.current_alloc * (sizeof *dset.colors))) == NULL) {
+        fprintf (stderr, "Unable to allocate memory for color buffer\n");
+        exit (EXIT_FAILURE);
+    }
+
+
 #ifdef HAS_MPFR
-    int imax = dset.w * dset.h;
-    for (i = 0; i < imax; i++) {
-        mpfr_init2 (fset.t[i].modulus, fset.prec);
+    int i, imax = dset.w * dset.h;
+    for (i = n; i < imax; i++) {
+        mpfr_init2 (fset.frac[i].modulus, fset.prec);
     }
 #endif
 }
 
 void
-alloc_fset (void)
+alloc_struct (void)
 {
-    if ((fset.t = malloc (fset.current_alloc * (sizeof *fset.t))) == NULL) {
+    if ((fset.frac =
+         malloc (fset.current_alloc * (sizeof *fset.frac))) == NULL) {
         fprintf (stderr, "Unable to allocate memory for screen buffer\n");
         exit (EXIT_FAILURE);
     }
 
+    if ((dset.colors =
+         malloc (fset.current_alloc * (sizeof *dset.colors))) == NULL) {
+        fprintf (stderr, "Unable to allocate memory for color buffer\n");
+        exit (EXIT_FAILURE);
+    }
+
+
 #ifdef HAS_MPFR
     int i, imax = dset.w * dset.h;
     for (i = 0; i < imax; i++) {
-        mpfr_init2 (fset.t[i].modulus, fset.prec);
+        mpfr_init2 (fset.frac[i].modulus, fset.prec);
     }
 #endif
 }
@@ -747,13 +790,13 @@ reset_video_mode (SDL_Surface * screen, int w, int h, Uint32 flag)
         while (w * h > fset.current_alloc) {
             fset.current_alloc *= 2;
         }
-        realloc_fset (ww * hh);
+        realloc_struct (ww * hh);
     }
 #ifdef HAS_MPFR
     else {
         int i;
         for (i = ww * hh; i < w * h; i++) {
-            mpfr_init2 (fset.t[i].modulus, fset.prec);
+            mpfr_init2 (fset.frac[i].modulus, fset.prec);
         }
     }
 #endif
@@ -787,7 +830,7 @@ main (int argc, char **argv)
 
     mpfr_set_ui (width, 3, fset.round);
 
-    alloc_fset ();
+    alloc_struct ();
     switch (fset.para) {
     case MU:
         mpfr_set_d (p.x, -0.75, fset.round);
