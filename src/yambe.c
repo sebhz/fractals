@@ -1061,13 +1061,12 @@ main (int argc, char **argv)
                     }
                     break;
 
-                case SDLK_p:
-                    fset.para = (fset.para + 1) % MAX_PAR;
-
                 case SDLK_q:
                     prog_running = 0;
                     break;
 
+                case SDLK_p:
+                    fset.para = (fset.para + 1) % MAX_PAR;
                 case SDLK_r:
                     fset.algo = MANDELBROT;
                     switch (fset.para) {
