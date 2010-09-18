@@ -359,17 +359,19 @@ parse_options (int argc, char **argv)
 }
 
 void
-write_bmp_header (FILE * f, SDL_Surface * screen)
+write_bmp_header (FILE * f)
 {
     Uint32 w32, size;
     Uint16 w16;
     Uint8 s = 3;
-    int w = screen->w, h = screen->h;
+    int w = dset.w, h = dset.h;
+
     fputs ("BM", f);
     size = w * h * s;
     if ((w * s) % 4) {
         size += h * (4 - (w * s) % 4);
     }
+
     w32 = 54 + size;            /* Size of the file */
     fwrite (&w32, sizeof w32, 1, f);
     w32 = 0;
@@ -402,33 +404,24 @@ write_bmp_header (FILE * f, SDL_Surface * screen)
 }
 
 void
-write_bmp_data (FILE * f, SDL_Surface * screen)
+write_bmp_data (FILE * f)
 {
-    int x, y, pad = 0, w = screen->w, h = screen->h;
+    int x, y, pad = 0, w = dset.w, h = dset.h;
     Uint8 r, g, b, dummy = 0;
-    Uint32 *pixel, p, temp;
-    SDL_PixelFormat *fmt;
-    fmt = screen->format;
+    mpoint_t *pixel, p;
+
     if ((w * 3) % 4) {
         pad = 4 - (w * 3) % 4;
     }
-    SDL_LockSurface (screen);
+
     for (y = h - 1; y >= 0; y--) {
-        pixel = (Uint32 *) (screen->pixels) + (y * w);
+        pixel = dset.colors + (y * w);
         for (x = 0; x < w; x++) {
             p = *(pixel++);
-            temp = p & fmt->Rmask;      /* Isolate red component */
-            temp = temp >> fmt->Rshift; /* Shift it down to 8-bit */
-            temp = temp << fmt->Rloss;  /* Expand to a full 8-bit number */
-            r = (Uint8) temp;
-            temp = p & fmt->Gmask;      /* Isolate green component */
-            temp = temp >> fmt->Gshift; /* Shift it down to 8-bit */
-            temp = temp << fmt->Gloss;  /* Expand to a full 8-bit number */
-            g = (Uint8) temp;
-            temp = p & fmt->Bmask;      /* Isolate blue component */
-            temp = temp >> fmt->Bshift; /* Shift it down to 8-bit */
-            temp = temp << fmt->Bloss;  /* Expand to a full 8-bit number */
-            b = (Uint8) temp;
+            r = p.pixel_color.r;
+            g = p.pixel_color.g;
+            b = p.pixel_color.b;
+
             fwrite (&b, sizeof b, 1, f);
             fwrite (&g, sizeof b, 1, f);
             fwrite (&r, sizeof b, 1, f);
@@ -437,11 +430,10 @@ write_bmp_data (FILE * f, SDL_Surface * screen)
             fwrite (&dummy, sizeof dummy, 1, f);
         }
     }
-    SDL_UnlockSurface (screen);
 }
 
 void
-write_bmp (SDL_Surface * screen)
+write_bmp (void)
 {
     FILE *f;
     char name[] = "dump.bmp";   /* Need to create a unique name someday... */
@@ -449,8 +441,8 @@ write_bmp (SDL_Surface * screen)
         fprintf (stderr, "Unable to open file %s to  dump BMP\n", name);
         return;
     }
-    write_bmp_header (f, screen);
-    write_bmp_data (f, screen);
+    write_bmp_header (f);
+    write_bmp_data (f);
     fclose (f);
 }
 
@@ -1051,7 +1043,7 @@ main (int argc, char **argv)
                     break;
 
                 case SDLK_d:
-                    write_bmp (screen);
+                    write_bmp ();
                     break;
 
                 case SDLK_j:
