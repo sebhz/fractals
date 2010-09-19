@@ -916,6 +916,7 @@ main (int argc, char **argv)
 
     mpfr_set_ui (width, 3, fset.round);
 
+    fset.current_alloc = dset.w * dset.h * 2;
     alloc_struct ();
     switch (fset.para) {
     case MU:
