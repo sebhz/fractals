@@ -113,10 +113,12 @@ usage (char *prog_name, FILE * stream)
     fprintf (stream,
              "\t--smooth                 | -s  : performs color smoothing.\n");
     fprintf (stream,
+             "\t--radius=<radius>        | -r  : escape radius.\n");
+    fprintf (stream,
              "\t--fullscreen             | -f  : runs in fullscreen.\n");
 #ifdef HAS_MPRF
     fprintf (stream,
-             "\t--prec=<prec>            | -r  : set precision to <prec> bits.\n");
+             "\t--prec=<prec>            | -R  : set precision to <prec> bits.\n");
 #endif
     fprintf (stream,
              "\t--coef=<r>,<g>,<b>       | -c  : coefficients for coloring.\n\n");
@@ -257,10 +259,11 @@ parse_options (int argc, char **argv)
             /* These options set a flag. */
             {"coef", required_argument, 0, 'c'},
             {"geometry", required_argument, 0, 'g'},
+            {"radius", required_argument, 0, 'r'},
             {"help", no_argument, 0, 'h'},
             {"n_iterations", required_argument, 0, 'n'},
             {"parametrization", required_argument, 0, 'p'},
-            {"precision", required_argument, 0, 'r'},
+            {"precision", required_argument, 0, 'R'},
             {"version", no_argument, 0, 'v'},
             {"fullscreen", no_argument, &dset.fullscreen, 1},
             {"smooth", no_argument, &dset.smooth, 1},
@@ -269,7 +272,7 @@ parse_options (int argc, char **argv)
 
         /* getopt_long stores the option index here. */
         int option_index = 0;
-        c = getopt_long (argc, argv, "sfvhn:g:p:c:r:", long_options,
+        c = getopt_long (argc, argv, "sfvhn:g:p:c:r:R:", long_options,
                          &option_index);
 
         /* Detect the end of the options. */
@@ -317,7 +320,7 @@ parse_options (int argc, char **argv)
             usage (argv[0], stderr);
             exit (EXIT_FAILURE);
 
-        case 'r':
+        case 'R':
 #ifndef HAS_MPFR
             fprintf (stderr,
                      "MPFR support not compiled in - ignoring precision setting\n");
@@ -326,10 +329,20 @@ parse_options (int argc, char **argv)
             if (fset.prec < MPFR_PREC_MIN || fset.prec > MPFR_PREC_MAX) {
                 fprintf (stderr,
                          "Invalid value (too high or too low) for precision. Falling back to 64 bits.\n");
+                fprintf (stderr,
+                         "Precision must be between %d and %ld\n", MPFR_PREC_MIN, MPFR_PREC_MAX);
                 fset.prec = 64;
             }
 #endif
             break;
+
+		case 'r':
+			fset.radius = atoi(optarg);
+			if (fset.radius <= 0) {
+				fprintf (stderr, "Invalid radius set - defaulting to 2\n");
+				fset.radius = 2;
+			}
+			break;
 
         case 's':
             dset.smooth = 1;
