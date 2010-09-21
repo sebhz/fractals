@@ -116,7 +116,7 @@ usage (char *prog_name, FILE * stream)
              "\t--radius=<radius>        | -r  : escape radius.\n");
     fprintf (stream,
              "\t--fullscreen             | -f  : runs in fullscreen.\n");
-#ifdef HAS_MPRF
+#ifdef HAS_MPFR
     fprintf (stream,
              "\t--prec=<prec>            | -R  : set precision to <prec> bits.\n");
 #endif
