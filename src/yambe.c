@@ -13,7 +13,8 @@
  * with this program; if not, write to the Free Software Foundation, Inc., 
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-/* Colorization code copied from David Madore's site: http://www.madore.org/~david/programs/#prog_mandel */
+/* Colorization code inspired from David Madore's site: http://www.madore.org/~david/programs/#prog_mandel 
+  but I use a simple linear compression rather than square root */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -459,96 +460,47 @@ periodic_color (int x)
     return x - 384;
 }
 
-
-/* Return a color associated to a convergence value */
-inline void
-colorize_pixel (SDL_Surface * screen, int n, mpoint_t * p)
-{
-    if (n >= fset.nmax) {
-        p->pixel_color.r = 16;
-        p->pixel_color.g = 16;
-        p->pixel_color.b = 16;
-    }
-    else {
-        long double a = 8 * sqrt (n + 2);
-        p->pixel_color.r = periodic_color ((int)
-                                           (floor (a * dset.coef[0]))
-                                           % 512);
-        p->pixel_color.g = periodic_color ((int)
-                                           (floor (a * dset.coef[1]))
-                                           % 512);
-        p->pixel_color.b = periodic_color ((int)
-                                           (floor (a * dset.coef[2]))
-                                           % 512);
-    }
-    p->color = SDL_MapRGB (screen->format, p->pixel_color.r, p->pixel_color.g,
-                           p->pixel_color.b);
-
-}
-
 void
 colorize (SDL_Surface * screen)
 {
     int i, imax = dset.w * dset.h;
+    double v, m;
 
-    if (dset.smooth == 0) {
-        mpoint_t *colormap;
-        if ((colormap =
-             malloc ((fset.nmax + 1) * (sizeof *colormap))) == NULL) {
-            fprintf (stderr, "Unable to allocate memory for colormap\n");
-            exit (EXIT_FAILURE);
+    for (i = 0; i < imax; i++) {
+        if (dset.smooth == 0) {
+            v = (double) fset.frac[i].n / fset.nmax;    /* Down to discrete 0->1 interval */
         }
-        for (i = 0; i <= fset.nmax; i++) {
-            colorize_pixel (screen, i, colormap + i);
-        }
-        for (i = 0; i < imax; i++) {
-            dset.colors[i].color = colormap[fset.frac[i].n].color;
-            dset.colors[i].pixel_color.r =
-                colormap[fset.frac[i].n].pixel_color.r;
-            dset.colors[i].pixel_color.g =
-                colormap[fset.frac[i].n].pixel_color.g;
-            dset.colors[i].pixel_color.b =
-                colormap[fset.frac[i].n].pixel_color.b;
-        }
-        free (colormap);
-    }
-    else {
-        double v, m;
-
-        for (i = 0; i < imax; i++) {
+        else {
             m = mpfr_get_d (fset.frac[i].modulus, fset.round);
             v = ((double) fset.frac[i].n + 1 - log2 (log (sqrt (m)))) / fset.nmax;      /* Down to the continuous 0->1 interval */
-            v *= 512;
-            if (fset.frac[i].n >= fset.nmax) {
-                dset.colors[i].pixel_color.r = 16;
-                dset.colors[i].pixel_color.g = 16;
-                dset.colors[i].pixel_color.b = 16;
-            }
-            else {
-                dset.colors[i].pixel_color.r = periodic_color ((int)
-                                                               (floor
-                                                                (v *
-                                                                 dset.coef
-                                                                 [0]))
-                                                               % 512);
-                dset.colors[i].pixel_color.g = periodic_color ((int)
-                                                               (floor
-                                                                (v *
-                                                                 dset.coef
-                                                                 [1]))
-                                                               % 512);
-                dset.colors[i].pixel_color.b = periodic_color ((int)
-                                                               (floor
-                                                                (v *
-                                                                 dset.coef
-                                                                 [2]))
-                                                               % 512);
-            }
-            dset.colors[i].color =
-                SDL_MapRGB (screen->format, dset.colors[i].pixel_color.r,
-                            dset.colors[i].pixel_color.g,
-                            dset.colors[i].pixel_color.b);
         }
+        v *= 512;
+        if (fset.frac[i].n >= fset.nmax) {
+            dset.colors[i].pixel_color.r = 16;
+            dset.colors[i].pixel_color.g = 16;
+            dset.colors[i].pixel_color.b = 16;
+        }
+        else {
+            dset.colors[i].pixel_color.r = periodic_color ((int)
+                                                           (floor
+                                                            (v *
+                                                             dset.coef[0]))
+                                                           % 512);
+            dset.colors[i].pixel_color.g = periodic_color ((int)
+                                                           (floor
+                                                            (v *
+                                                             dset.coef[1]))
+                                                           % 512);
+            dset.colors[i].pixel_color.b = periodic_color ((int)
+                                                           (floor
+                                                            (v *
+                                                             dset.coef[2]))
+                                                           % 512);
+        }
+        dset.colors[i].color =
+            SDL_MapRGB (screen->format, dset.colors[i].pixel_color.r,
+                        dset.colors[i].pixel_color.g,
+                        dset.colors[i].pixel_color.b);
     }
     return;
 }
@@ -902,7 +854,7 @@ main (int argc, char **argv)
     mpfr_t width, r;
     SDL_Surface *screen;
     SDL_Event event;
-    SDL_Rect zoom;
+    SDL_Rect zoom = { 0, 0, 0, 0 };
 
     srand (time (NULL));
     default_settings ();
@@ -1070,6 +1022,7 @@ main (int argc, char **argv)
                     fset.para = (fset.para + 1) % MAX_PAR;
                 case SDLK_r:
                     fset.algo = MANDELBROT;
+					fset.nmax = 64;
                     switch (fset.para) {
                     case MU:
                         mpfr_set_d (p.x, -0.75, fset.round);
