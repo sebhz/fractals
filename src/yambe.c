@@ -367,13 +367,17 @@ parse_options (int argc, char **argv)
 		case 'w':
 #ifndef HAS_MPFR
 			fset.initial_width = strtold(optarg, NULL);
-			if (fset.initial_width <= 0) {
+			if (fset.initial_width == 0) {
 				fprintf(stderr, "Invalid initial width. Defaulting to %lf\n", DEFAULT_WIDTH);
 				mpfr_set_d (fset.initial_width, DEFAULT_WIDTH, fset.round);
 			}
 #else
 			mpfr_init2 (fset.initial_width, fset.prec);
 			if (mpfr_strtofr (fset.initial_width, optarg, NULL, 0, fset.round) != 0) {
+				fprintf (stderr, "Invalid format for initial width. Defaulting to %lf\n", DEFAULT_WIDTH);
+				mpfr_set_d (fset.initial_width, DEFAULT_WIDTH, fset.round);
+			}
+			if (mpfr_sgn (fset.initial_width) == 0) {
 				fprintf (stderr, "Invalid format for initial width. Defaulting to %lf\n", DEFAULT_WIDTH);
 				mpfr_set_d (fset.initial_width, DEFAULT_WIDTH, fset.round);
 			}
@@ -1144,7 +1148,7 @@ main (int argc, char **argv)
     }
 
 #ifdef HAS_MPFR
-    mpfr_clears (width, r, p.x, p.y, fset.julia_c.x, fset.julia_c.y, NULL);
+    mpfr_clears (width, r, p.x, p.y, fset.julia_c.x, fset.julia_c.y, fset.initial_width, NULL);
 #endif
     SDL_Quit ();
     return EXIT_SUCCESS;
