@@ -30,6 +30,8 @@
 #define DEFAULT_Y 480
 #define DEFAULT_WIDTH 3.5
 #define DEFAULT_NMAX 64
+#define DEFAULT_PREC 64
+#define DEFAULT_RADIUS 8
 
 typedef struct
 {
@@ -135,8 +137,8 @@ void
 default_settings (void)
 {
     fset.nmax = DEFAULT_NMAX;
-    fset.prec = 64;
-    fset.radius = 8;
+    fset.prec = DEFAULT_PREC;
+    fset.radius = DEFAULT_RADIUS;
     fset.round = GMP_RNDZ;
     dset.w = DEFAULT_X;
     dset.h = DEFAULT_Y;
@@ -1050,7 +1052,7 @@ main (int argc, char **argv)
                         screen_to_real (width, &p, &fset.julia_c);
                         mpfr_set_ui (p.x, 0, fset.round);
                         mpfr_set_ui (p.y, 0, fset.round);
-                        mpfr_set_d (width, 3.5, fset.round);
+                        mpfr_set_d (width, DEFAULT_WIDTH, fset.round);
                         fset.algo = JULIA;
                         compute (&p, width, screen);
                     }
