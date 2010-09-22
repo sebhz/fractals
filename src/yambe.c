@@ -26,6 +26,10 @@
 #include "prec.h"
 
 #define VERSION_STRING "2.0"
+#define DEFAULT_X 640
+#define DEFAULT_Y 480
+#define DEFAULT_WIDTH 3.5
+#define DEFAULT_NMAX 64
 
 typedef struct
 {
@@ -62,6 +66,7 @@ typedef struct
 
 typedef struct
 {
+	mpfr_t initial_width;       /* Initial width of the tracing window */
     int nmax;                   /* Number of iterations to perform before assuming divergence */
     point_t julia_c;            /* Point on which to compute Julia set */
     algo_t algo;                /* Mandelbrot or Julia */
@@ -121,25 +126,27 @@ usage (char *prog_name, FILE * stream)
              "\t--prec=<prec>            | -R  : set precision to <prec> bits.\n");
 #endif
     fprintf (stream,
-             "\t--coef=<r>,<g>,<b>       | -c  : coefficients for coloring.\n\n");
+             "\t--coef=<r>,<g>,<b>       | -c  : coefficients for coloring.\n");
+   fprintf (stream,
+             "\t--width=<w>              | -w  : width of the window.\n\n");
 }
 
 void
 default_settings (void)
 {
-    fset.nmax = 64;
+    fset.nmax = DEFAULT_NMAX;
     fset.prec = 64;
     fset.radius = 8;
     fset.round = GMP_RNDZ;
-    dset.w = 640;
-    dset.h = 480;
+    dset.w = DEFAULT_X;
+    dset.h = DEFAULT_Y;
     fset.algo = MANDELBROT;
     mpfr_set_ui (fset.julia_c.x, 0, fset.round);
     mpfr_set_ui (fset.julia_c.y, 0, fset.round);
     fset.para = MU;
     fset.current_alloc = dset.w * dset.h * 2;
-    dset.screen_w = 640;
-    dset.screen_h = 480;
+    dset.screen_w = DEFAULT_X;
+    dset.screen_h = DEFAULT_Y;
     dset.fullscreen = 0;
     dset.smooth = 0;
     dset.coef[0] = dset.coef[1] = dset.coef[2] = 1;
@@ -267,12 +274,13 @@ parse_options (int argc, char **argv)
             {"version", no_argument, 0, 'v'},
             {"fullscreen", no_argument, &dset.fullscreen, 1},
             {"smooth", no_argument, &dset.smooth, 1},
+            {"width", required_argument, 0, 'w'},
             {0, 0, 0, 0}
         };
 
         /* getopt_long stores the option index here. */
         int option_index = 0;
-        c = getopt_long (argc, argv, "sfvhn:g:p:c:r:R:", long_options,
+        c = getopt_long (argc, argv, "c:fg:hn:p:r:svw:R:", long_options,
                          &option_index);
 
         /* Detect the end of the options. */
@@ -303,8 +311,9 @@ parse_options (int argc, char **argv)
 
         case 'n':
             fset.nmax = atoi (optarg);
-            if ((fset.nmax < 1) || (fset.nmax > 2 * 65536))
-                fset.nmax = 1024;
+            if (fset.nmax < 1) { 
+                fset.nmax = DEFAULT_NMAX;
+			}
             break;
 
         case 'p':
@@ -352,6 +361,22 @@ parse_options (int argc, char **argv)
             fprintf (stdout, "%s\n", VERSION_STRING);
             exit (EXIT_SUCCESS);
             break;
+
+		case 'w':
+#ifndef HAS_MPFR
+			fset.initial_width = strtold(optarg, NULL);
+			if (fset.initial_width <= 0) {
+				fprintf(stderr, "Invalid initial width. Defaulting to %lf\n", DEFAULT_WIDTH);
+				mpfr_set_d (fset.initial_width, DEFAULT_WIDTH, fset.round);
+			}
+#else
+			mpfr_init2 (fset.initial_width, fset.prec);
+			if (mpfr_strtofr (fset.initial_width, optarg, NULL, 0, fset.round) != 0) {
+				fprintf (stderr, "Invalid format for initial width. Defaulting to %lf\n", DEFAULT_WIDTH);
+				mpfr_set_d (fset.initial_width, DEFAULT_WIDTH, fset.round);
+			}
+#endif
+			break;
 
         case '?':
             /* getopt_long already printed an error message. */
@@ -870,24 +895,28 @@ main (int argc, char **argv)
     SDL_Rect zoom = { 0, 0, 0, 0 };
 
     srand (time (NULL));
+
     default_settings ();
+	mpfr_init2 (fset.initial_width, fset.prec);
+    mpfr_set_d (fset.initial_width, DEFAULT_WIDTH, fset.round);
     parse_options (argc, argv);
+	mpfr_prec_round (fset.initial_width, fset.prec, fset.round);
     screen = init_SDL ();
 
 #ifdef HAS_MPFR
     mpfr_inits2 (fset.prec, width, r, p.x, p.y, fset.julia_c.x,
                  fset.julia_c.y, NULL);
 #endif
-
-    mpfr_set_ui (width, 3, fset.round);
+ 
+   mpfr_set (width, fset.initial_width, fset.round);
 
     fset.current_alloc = dset.w * dset.h * 2;
     alloc_struct ();
+
     switch (fset.para) {
     case MU:
         mpfr_set_d (p.x, -0.75, fset.round);
         mpfr_set_ui (p.y, 0, fset.round);
-        mpfr_set_d (width, 3.5, fset.round);
         break;
     case INV_MU:
         mpfr_set_d (p.x, 1.0 / .75, fset.round);
@@ -1035,12 +1064,12 @@ main (int argc, char **argv)
                     fset.para = (fset.para + 1) % MAX_PAR;
                 case SDLK_r:
                     fset.algo = MANDELBROT;
-					fset.nmax = 64;
+					fset.nmax = DEFAULT_NMAX;
                     switch (fset.para) {
                     case MU:
                         mpfr_set_d (p.x, -0.75, fset.round);
                         mpfr_set_ui (p.y, 0, fset.round);
-                        mpfr_set_d (width, 3.5, fset.round);
+                        mpfr_set_d (width, DEFAULT_WIDTH, fset.round);
                         break;
                     case INV_MU:
                         mpfr_set_d (p.x, 1.0 / .75, fset.round);

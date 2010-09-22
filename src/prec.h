@@ -37,6 +37,7 @@
 #define mpfr_neg(a, b, c) ( (a) = -(b) )
 #define mpfr_init2(a, b)
 #define mpfr_clear(a)
+#define mpfr_prec_round(a, b, c)
 #define mpfr_cmp_ui(a, b) ( ((a) < (b)) ? (-1) : ((a) > (b)) ? (1) : (0)  ) 
 #define GMP_RNDZ 0
 #endif
