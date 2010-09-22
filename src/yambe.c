@@ -32,6 +32,8 @@
 #define DEFAULT_NMAX 64
 #define DEFAULT_PREC 64
 #define DEFAULT_RADIUS 8
+#define DEFAULT_CENTER_X -0.75
+#define DEFAULT_CENTER_Y 0
 
 typedef struct
 {
@@ -68,7 +70,6 @@ typedef struct
 
 typedef struct
 {
-    mpfr_t initial_width;       /* Initial width of the tracing window */
     int nmax;                   /* Number of iterations to perform before assuming divergence */
     point_t julia_c;            /* Point on which to compute Julia set */
     algo_t algo;                /* Mandelbrot or Julia */
@@ -90,6 +91,8 @@ typedef struct
     Uint32 coef[3];             /* Coefficients for coloring */
     Sint32 smooth;              /* Color smoothing used ? */
     mpoint_t *colors;           /* Table containing the coloring data for the pixels */
+    point_t initial_center;     /* Initial center of the tracing window */
+    mpfr_t initial_width;       /* Initial width of the tracing window */
 } display_settings_t;
 
 static fractal_settings_t fset;
@@ -129,6 +132,8 @@ usage (char *prog_name, FILE * stream)
     fprintf (stream,
              "\t--coef=<r>,<g>,<b>       | -c  : coefficients for coloring.\n");
     fprintf (stream,
+             "\t--center=<center>        | -e  : center coordinates.\n");
+    fprintf (stream,
              "\t--width=<w>              | -w  : width of the window.\n\n");
 }
 
@@ -142,8 +147,6 @@ default_settings (void)
     dset.w = DEFAULT_X;
     dset.h = DEFAULT_Y;
     fset.algo = MANDELBROT;
-    mpfr_set_ui (fset.julia_c.x, 0, fset.round);
-    mpfr_set_ui (fset.julia_c.y, 0, fset.round);
     fset.para = MU;
     fset.current_alloc = dset.w * dset.h * 2;
     dset.screen_w = DEFAULT_X;
@@ -165,45 +168,45 @@ isnumber (char c)
 int
 numbers_from_string (long double *num, char *s, char separator, int n)
 {
-	int i;
-	char *ss = s, *p;
+    int i;
+    char *ss = s, *p;
 
-	for (i=0; i< n; i++) {
-		num[i] = strtold (ss, &p);
-		if ( (num[i] == 0) && (p == ss) ) {
-			return -1;
-		}
-		if (i == n-1) {
-			break;
-		}
-		if (*p++ != separator) {
-			return -1;
-		}
-		ss = p;
-	}
-	return 0;
+    for (i = 0; i < n; i++) {
+        num[i] = strtold (ss, &p);
+        if ((num[i] == 0) && (p == ss)) {
+            return -1;
+        }
+        if (i == n - 1) {
+            break;
+        }
+        if (*p++ != separator) {
+            return -1;
+        }
+        ss = p;
+    }
+    return 0;
 }
 
 #ifdef HAS_MPFR
 int
-mpfr_numbers_from_string (mpfr_t *num, char *s, char separator, int n)
+mpfr_numbers_from_string (mpfr_t * num, char *s, char separator, int n)
 {
-	int i;
-	char *ss = s, *p;
+    int i;
+    char *ss = s, *p;
 
-	for (i=0; i< n; i++) {
-	   	if (mpfr_strtofr (num[i], ss, &p, 0, fset.round) != 0) {
-			return -1;
-		}
-		if (i == n-1) {
-			break;
-		}
-		if (*p++ != separator) {
-			return -1;
-		}
-		ss = p;
-	}
-	return 0;
+    for (i = 0; i < n; i++) {
+        if (mpfr_strtofr (num[i], ss, &p, 0, fset.round) != 0) {
+            return -1;
+        }
+        if (i == n - 1) {
+            break;
+        }
+        if (*p++ != separator) {
+            return -1;
+        }
+        ss = p;
+    }
+    return 0;
 }
 #endif
 
@@ -215,6 +218,7 @@ parse_options (int argc, char **argv)
         static struct option long_options[] = {
             /* These options set a flag. */
             {"coef", required_argument, 0, 'c'},
+            {"center", required_argument, 0, 'e'},
             {"geometry", required_argument, 0, 'g'},
             {"radius", required_argument, 0, 'r'},
             {"help", no_argument, 0, 'h'},
@@ -230,7 +234,7 @@ parse_options (int argc, char **argv)
 
         /* getopt_long stores the option index here. */
         int option_index = 0;
-        c = getopt_long (argc, argv, "c:fg:hn:p:r:svw:R:", long_options,
+        c = getopt_long (argc, argv, "c:e:fg:hn:p:r:svw:R:", long_options,
                          &option_index);
 
         /* Detect the end of the options. */
@@ -240,34 +244,53 @@ parse_options (int argc, char **argv)
         case 0:
             break;
 
-        case 'c': {
-			long double n[3];
-			int i;
+        case 'c':{
+                long double n[3];
+                int i;
 
- 			if (numbers_from_string (n, optarg, ',', 3) == -1) {
-				fprintf (stderr, "Bad coef string\n");
-                exit (EXIT_FAILURE);
-			}
-			for (i=0; i < 3; i++) {
-				dset.coef[i] = (Uint32)n[i];
-			}	
-            break;
-		}
+                if (numbers_from_string (n, optarg, ',', 3) == -1) {
+                    fprintf (stderr, "Bad coef string\n");
+                    exit (EXIT_FAILURE);
+                }
+                for (i = 0; i < 3; i++) {
+                    dset.coef[i] = (Uint32) n[i];
+                }
+                break;
+            }
+
+        case 'e':{
+                mpfr_t coord[2];
+#ifdef HAS_MPFR
+                mpfr_inits2 (fset.prec, coord[0], coord[1], NULL);
+                if (mpfr_numbers_from_string (coord, optarg, 'x', 2) == -1) {
+#else
+                if (numbers_from_string (coord, optarg, 'x', 2) == -1) {
+#endif
+                    fprintf (stderr, "Bad center spec\n");
+                    exit (EXIT_FAILURE);
+                }
+                mpfr_set (dset.initial_center.x, coord[0], fset.round);
+                mpfr_set (dset.initial_center.y, coord[1], fset.round);
+#ifdef HAS_MPFR
+                mpfr_clears (coord[0], coord[1], NULL);
+#endif
+                break;
+            }
 
         case 'f':
             dset.fullscreen = 1;
             break;
 
-        case 'g': {
-			long double n[2];
- 			if (numbers_from_string (n, optarg, 'x', 2) == -1) {
-				fprintf (stderr, "Bad geometry string\n");
-                exit (EXIT_FAILURE);
-			}
-			dset.w = (int)n[0];
-			dset.h = (int)n[1];
-            break;
-		}
+        case 'g':{
+                long double n[2];
+                if (numbers_from_string (n, optarg, 'x', 2) == -1) {
+                    fprintf (stderr, "Bad geometry string\n");
+                    exit (EXIT_FAILURE);
+                }
+                dset.w = (int) n[0];
+                dset.h = (int) n[1];
+                break;
+            }
 
         case 'h':
             usage (argv[0], stdout);
@@ -329,26 +352,26 @@ parse_options (int argc, char **argv)
 
         case 'w':
 #ifndef HAS_MPFR
-            fset.initial_width = strtold (optarg, NULL);
-            if (fset.initial_width == 0) {
+            dset.initial_width = strtold (optarg, NULL);
+            if (dset.initial_width == 0) {
                 fprintf (stderr, "Invalid initial width. Defaulting to %lf\n",
                          DEFAULT_WIDTH);
-                mpfr_set_d (fset.initial_width, DEFAULT_WIDTH, fset.round);
+                mpfr_set_d (dset.initial_width, DEFAULT_WIDTH, fset.round);
             }
 #else
-            mpfr_init2 (fset.initial_width, fset.prec);
-            if (mpfr_strtofr (fset.initial_width, optarg, NULL, 0, fset.round)
+            mpfr_init2 (dset.initial_width, fset.prec);
+            if (mpfr_strtofr (dset.initial_width, optarg, NULL, 0, fset.round)
                 != 0) {
                 fprintf (stderr,
                          "Invalid format for initial width. Defaulting to %lf\n",
                          DEFAULT_WIDTH);
-                mpfr_set_d (fset.initial_width, DEFAULT_WIDTH, fset.round);
+                mpfr_set_d (dset.initial_width, DEFAULT_WIDTH, fset.round);
             }
-            if (mpfr_sgn (fset.initial_width) == 0) {
+            if (mpfr_sgn (dset.initial_width) == 0) {
                 fprintf (stderr,
                          "Invalid format for initial width. Defaulting to %lf\n",
                          DEFAULT_WIDTH);
-                mpfr_set_d (fset.initial_width, DEFAULT_WIDTH, fset.round);
+                mpfr_set_d (dset.initial_width, DEFAULT_WIDTH, fset.round);
             }
 #endif
             break;
@@ -872,10 +895,27 @@ main (int argc, char **argv)
     srand (time (NULL));
 
     default_settings ();
-    mpfr_init2 (fset.initial_width, fset.prec);
-    mpfr_set_d (fset.initial_width, DEFAULT_WIDTH, fset.round);
+
+    /* Init MPFR values */
+#ifdef HAS_MPFR
+    mpfr_inits2 (fset.prec, dset.initial_width, fset.julia_c.x,
+                 fset.julia_c.y, dset.initial_center.x, dset.initial_center.y,
+                 NULL);
+#endif
+    mpfr_set_ui (fset.julia_c.x, 0, fset.round);
+    mpfr_set_ui (fset.julia_c.y, 0, fset.round);
+    mpfr_set_d (dset.initial_width, DEFAULT_WIDTH, fset.round);
+    mpfr_set_d (dset.initial_center.x, DEFAULT_CENTER_X, fset.round);
+    mpfr_set_d (dset.initial_center.y, DEFAULT_CENTER_Y, fset.round);
+
     parse_options (argc, argv);
-    mpfr_prec_round (fset.initial_width, fset.prec, fset.round);
+
+    mpfr_prec_round (dset.initial_width, fset.prec, fset.round);
+    mpfr_prec_round (dset.initial_center.x, fset.prec, fset.round);
+    mpfr_prec_round (dset.initial_center.y, fset.prec, fset.round);
+    mpfr_prec_round (fset.julia_c.x, fset.prec, fset.round);
+    mpfr_prec_round (fset.julia_c.y, fset.prec, fset.round);
+
     screen = init_SDL ();
 
 #ifdef HAS_MPFR
@@ -883,15 +923,15 @@ main (int argc, char **argv)
                  fset.julia_c.y, NULL);
 #endif
 
-    mpfr_set (width, fset.initial_width, fset.round);
+    mpfr_set (width, dset.initial_width, fset.round);
 
     fset.current_alloc = dset.w * dset.h * 2;
     alloc_struct ();
 
     switch (fset.para) {
     case MU:
-        mpfr_set_d (p.x, -0.75, fset.round);
-        mpfr_set_ui (p.y, 0, fset.round);
+        mpfr_set (p.x, dset.initial_center.x, fset.round);
+        mpfr_set (p.y, dset.initial_center.y, fset.round);
         break;
     case INV_MU:
         mpfr_set_d (p.x, 1.0 / .75, fset.round);
@@ -1042,8 +1082,8 @@ main (int argc, char **argv)
                     fset.nmax = DEFAULT_NMAX;
                     switch (fset.para) {
                     case MU:
-                        mpfr_set_d (p.x, -0.75, fset.round);
-                        mpfr_set_ui (p.y, 0, fset.round);
+                        mpfr_set_d (p.x, DEFAULT_CENTER_X, fset.round);
+                        mpfr_set_ui (p.y, DEFAULT_CENTER_Y, fset.round);
                         mpfr_set_d (width, DEFAULT_WIDTH, fset.round);
                         break;
                     case INV_MU:
@@ -1118,7 +1158,7 @@ main (int argc, char **argv)
 
 #ifdef HAS_MPFR
     mpfr_clears (width, r, p.x, p.y, fset.julia_c.x, fset.julia_c.y,
-                 fset.initial_width, NULL);
+                 dset.initial_width, NULL);
 #endif
     SDL_Quit ();
     return EXIT_SUCCESS;
