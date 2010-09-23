@@ -92,7 +92,7 @@ typedef struct
     mpoint_t *colors;           /* Table containing the coloring data for the pixels */
     point_t initial_center;     /* Initial center of the tracing window */
     mpfr_t initial_width;       /* Initial width of the tracing window */
-	int batch;                  /* Runs in batch mode ? */
+    int batch;                  /* Runs in batch mode ? */
 } display_settings_t;
 
 static fractal_settings_t fset;
@@ -156,7 +156,7 @@ default_settings (void)
     dset.fullscreen = 0;
     dset.smooth = 0;
     dset.coef[0] = dset.coef[1] = dset.coef[2] = 1;
-	dset.batch = 0;
+    dset.batch = 0;
 }
 
 int
@@ -192,22 +192,18 @@ numbers_from_string (long double *num, char *s, char separator, int n)
 
 #ifdef HAS_MPFR
 int
-mpfr_numbers_from_string (mpfr_t *num, char *s, char separator, int n)
+mpfr_numbers_from_string (mpfr_t * num, char *s, char separator, int n)
 {
     int i;
     char *ss = s, *p;
 
     for (i = 0; i < n; i++) {
-		double d = strtold (ss, &p);
- 	    if ((d == 0) && (p == ss)) {
+        double d = strtold (ss, &p);
+        if ((d == 0) && (p == ss)) {
             return -1;
         }
-		mpfr_set_d (num[i], d, fset.round);
+        mpfr_set_d (num[i], d, fset.round);
 
-/*        if (mpfr_strtofr (num[i], ss, &p, 10, fset.round) != 0) {
-            return -1;
-        }
-*/
         if (i == n - 1) {
             break;
         }
@@ -255,9 +251,9 @@ parse_options (int argc, char **argv)
         case 0:
             break;
 
-		case 'b':
-			dset.batch = 1;
-			break;
+        case 'b':
+            dset.batch = 1;
+            break;
 
         case 'c':{
                 long double n[3];
@@ -374,26 +370,17 @@ parse_options (int argc, char **argv)
                 mpfr_set_d (dset.initial_width, DEFAULT_WIDTH, fset.round);
             }
 #else
-/*            if (mpfr_strtofr (dset.initial_width, optarg, NULL, 0, fset.round)
-                != 0) { 
-			  {
-				
-                fprintf (stderr,
-                         "Invalid format for initial width. Defaulting to %lf\n",
-                         DEFAULT_WIDTH);
-                mpfr_set_d (dset.initial_width, DEFAULT_WIDTH, fset.round);
+            {
+                double t = strtold (optarg, NULL);
+                mpfr_set_d (dset.initial_width, t, fset.round);
+                if (mpfr_sgn (dset.initial_width) == 0) {
+                    fprintf (stderr,
+                             "Width is null. Defaulting to %lf\n",
+                             DEFAULT_WIDTH);
+                    mpfr_set_d (dset.initial_width, DEFAULT_WIDTH,
+                                fset.round);
+                }
             }
-*/			
-			{
-			double t = strtold (optarg, NULL);
-            mpfr_set_d (dset.initial_width, t, fset.round);
-            if (mpfr_sgn (dset.initial_width) == 0) {
-                fprintf (stderr,
-                         "Width is null. Defaulting to %lf\n",
-                         DEFAULT_WIDTH);
-                mpfr_set_d (dset.initial_width, DEFAULT_WIDTH, fset.round);
-            }
-			}
 #endif
             break;
 
@@ -525,11 +512,12 @@ colorize (SDL_Surface * screen)
 
     for (i = 0; i < imax; i++) {
         if (dset.smooth == 0) {
-            v = 8*sqrt (fset.frac[i].n); 
+            v = 8 * sqrt (fset.frac[i].n);
         }
         else {
             m = mpfr_get_d (fset.frac[i].modulus, fset.round);
-            v = 8*sqrt ( ((double) fset.frac[i].n + 1 - log2 (log (sqrt (m))))) ;
+            v = 8 *
+                sqrt (((double) fset.frac[i].n + 1 - log2 (log (sqrt (m)))));
         }
         if (fset.frac[i].n >= fset.nmax) {
             dset.colors[i].pixel_color.r = 16;
@@ -553,12 +541,12 @@ colorize (SDL_Surface * screen)
                                                              dset.coef[2]))
                                                            % 512);
         }
-		if (screen != NULL) {
-	        dset.colors[i].color =
-    	        SDL_MapRGB (screen->format, dset.colors[i].pixel_color.r,
-        	                dset.colors[i].pixel_color.g,
-            	            dset.colors[i].pixel_color.b);
-		}
+        if (screen != NULL) {
+            dset.colors[i].color =
+                SDL_MapRGB (screen->format, dset.colors[i].pixel_color.r,
+                            dset.colors[i].pixel_color.g,
+                            dset.colors[i].pixel_color.b);
+        }
     }
     return;
 }
@@ -782,15 +770,34 @@ display_screen (SDL_Surface * screen)
 }
 
 void
-display_coordinates (point_t *p, mpfr_t width)
+display_coordinates (point_t * p, mpfr_t width)
 {
+    if (fset.algo == JULIA) {
+        fprintf (stdout, "Displaying Julia set\n");
 #ifdef HAS_MPFR
-	mpfr_printf("Center:\n\tx: %.64Rf\n\ty: %.64Rf\nWidth: %.64Rf\n", p->x, p->y, width);
+        mpfr_printf ("Julia origin x: %.64Rf\nJulia origin y: %.64Rf\n\n",
+                     fset.julia_c.x, fset.julia_c.y);
 #else
-	printf("Center:\n\tx: %.64Lf\n\ty: %.64Lf\nWidth: %.64Lf\n", p->x, p->y, width);
+        fprintf (stdout, "Julia origin x: %.64Lf\nJulia origin y: %.64Lf\n\n",
+                 fset.julia_c.x, fset.julia_c.y);
 #endif
-	fprintf (stdout, "Coloring coefficient: %d,%d, %d\n", dset.coef[0], dset.coef[1], dset.coef[2]);
-	fprintf (stdout, "Number of iterations: %d\n", fset.nmax);
+    }
+    else {
+        fprintf (stdout, "Displaying Mandelbrot set\n\n");
+    }
+
+#ifdef HAS_MPFR
+    mpfr_printf
+        ("Window center:\n\tx: %.64Rf\n\ty: %.64Rf\nWindow width: %.64Rf\n",
+         p->x, p->y, width);
+#else
+    fprintf (stdout,
+             "Window center:\n\tx: %.64Lf\n\ty: %.64Lf\nWindow width: %.64Lf\n",
+             p->x, p->y, width);
+#endif
+    fprintf (stdout, "Coloring coefficient: %d,%d, %d\n", dset.coef[0],
+             dset.coef[1], dset.coef[2]);
+    fprintf (stdout, "Number of iterations: %d\n", fset.nmax);
 }
 
 void
@@ -950,9 +957,9 @@ main (int argc, char **argv)
     mpfr_prec_round (fset.julia_c.x, fset.prec, fset.round);
     mpfr_prec_round (fset.julia_c.y, fset.prec, fset.round);
 
-	if (dset.batch == 0) {
-	    screen = init_SDL ();
-	}
+    if (dset.batch == 0) {
+        screen = init_SDL ();
+    }
 
 #ifdef HAS_MPFR
     mpfr_inits2 (fset.prec, width, r, p.x, p.y, fset.julia_c.x,
@@ -979,17 +986,17 @@ main (int argc, char **argv)
     }
 
 
-	if (dset.batch == 1) {
-		fprintf (stdout, "Computing set: ");
-		fflush (stdout);
-		compute ( &p, width, NULL );
-		fprintf (stdout, "done\n");
-		write_bmp();
-		fprintf(stdout, "Written image to BMP file\n");
-		display_coordinates(&p, width);
-		exit(EXIT_SUCCESS);
-	}
-	
+    if (dset.batch == 1) {
+        fprintf (stdout, "Computing set: ");
+        fflush (stdout);
+        compute (&p, width, NULL);
+        fprintf (stdout, "done\n");
+        write_bmp ();
+        fprintf (stdout, "Written image to BMP file\n");
+        display_coordinates (&p, width);
+        exit (EXIT_SUCCESS);
+    }
+
     compute (&p, width, screen);
     while (prog_running) {
         display_screen (screen);
@@ -1103,7 +1110,7 @@ main (int argc, char **argv)
 
                 case SDLK_d:
                     write_bmp ();
-					display_coordinates(&p, width);
+                    display_coordinates (&p, width);
                     break;
 
                 case SDLK_j:
@@ -1152,9 +1159,9 @@ main (int argc, char **argv)
                     colorize (screen);
                     break;
 
-				case SDLK_t:
-					display_coordinates(&p, width);
-					break;
+                case SDLK_t:
+                    display_coordinates (&p, width);
+                    break;
 
                 default:
                     break;
