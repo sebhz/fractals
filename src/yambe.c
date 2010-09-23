@@ -13,8 +13,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc., 
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-/* Colorization code inspired from David Madore's site: http://www.madore.org/~david/programs/#prog_mandel 
-  but I use a simple linear compression rather than square root */
+/* Colorization code inspired from David Madore's site: http://www.madore.org/~david/programs/#prog_mandel */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -517,13 +516,12 @@ colorize (SDL_Surface * screen)
 
     for (i = 0; i < imax; i++) {
         if (dset.smooth == 0) {
-            v = (double) fset.frac[i].n / fset.nmax;    /* Down to discrete 0->1 interval */
+            v = 8*sqrt (fset.frac[i].n); 
         }
         else {
             m = mpfr_get_d (fset.frac[i].modulus, fset.round);
-            v = ((double) fset.frac[i].n + 1 - log2 (log (sqrt (m)))) / fset.nmax;      /* Down to the continuous 0->1 interval */
+            v = 8*sqrt ( ((double) fset.frac[i].n + 1 - log2 (log (sqrt (m))))) ;
         }
-        v *= 512;
         if (fset.frac[i].n >= fset.nmax) {
             dset.colors[i].pixel_color.r = 16;
             dset.colors[i].pixel_color.g = 16;
