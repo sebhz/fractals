@@ -143,7 +143,7 @@ default_settings (void)
     fset.nmax = DEFAULT_NMAX;
     fset.prec = DEFAULT_PREC;
     fset.radius = DEFAULT_RADIUS;
-    fset.round = GMP_RNDZ;
+    fset.round = GMP_RNDN;
     dset.w = DEFAULT_X;
     dset.h = DEFAULT_Y;
     fset.algo = MANDELBROT;

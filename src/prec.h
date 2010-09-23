@@ -40,6 +40,7 @@
 #define mpfr_prec_round(a, b, c)
 #define mpfr_cmp_ui(a, b) ( ((a) < (b)) ? (-1) : ((a) > (b)) ? (1) : (0)  ) 
 #define GMP_RNDZ 0
+#define GMP_RNDN 0
 #endif
 
 #endif 
