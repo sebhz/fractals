@@ -189,15 +189,22 @@ numbers_from_string (long double *num, char *s, char separator, int n)
 
 #ifdef HAS_MPFR
 int
-mpfr_numbers_from_string (mpfr_t * num, char *s, char separator, int n)
+mpfr_numbers_from_string (mpfr_t *num, char *s, char separator, int n)
 {
     int i;
     char *ss = s, *p;
 
     for (i = 0; i < n; i++) {
-        if (mpfr_strtofr (num[i], ss, &p, 0, fset.round) != 0) {
+		double d = strtold (ss, &p);
+ 	    if ((d == 0) && (p == ss)) {
             return -1;
         }
+		mpfr_set_d (num[i], d, fset.round);
+
+/*        if (mpfr_strtofr (num[i], ss, &p, 10, fset.round) != 0) {
+            return -1;
+        }
+*/
         if (i == n - 1) {
             break;
         }
@@ -359,20 +366,26 @@ parse_options (int argc, char **argv)
                 mpfr_set_d (dset.initial_width, DEFAULT_WIDTH, fset.round);
             }
 #else
-            mpfr_init2 (dset.initial_width, fset.prec);
-            if (mpfr_strtofr (dset.initial_width, optarg, NULL, 0, fset.round)
-                != 0) {
+/*            if (mpfr_strtofr (dset.initial_width, optarg, NULL, 0, fset.round)
+                != 0) { 
+			  {
+				
                 fprintf (stderr,
                          "Invalid format for initial width. Defaulting to %lf\n",
                          DEFAULT_WIDTH);
                 mpfr_set_d (dset.initial_width, DEFAULT_WIDTH, fset.round);
             }
+*/			
+			{
+			double t = strtold (optarg, NULL);
+            mpfr_set_d (dset.initial_width, t, fset.round);
             if (mpfr_sgn (dset.initial_width) == 0) {
                 fprintf (stderr,
-                         "Invalid format for initial width. Defaulting to %lf\n",
+                         "Width is null. Defaulting to %lf\n",
                          DEFAULT_WIDTH);
                 mpfr_set_d (dset.initial_width, DEFAULT_WIDTH, fset.round);
             }
+			}
 #endif
             break;
 
@@ -774,6 +787,12 @@ compute (point_t * p, mpfr_t width, SDL_Surface * screen)
     default:
         break;
     }
+#ifdef HAS_MPFR
+	mpfr_printf("x: %.64Rf\ny: %.64Rf\nw: %.64Rf\n", p->x, p->y, width);
+#else
+	printf("x: %.64Lf\ny: %.64Lf\nw: %.64Lf\n", p->x, p->y, width);
+#endif
+
 }
 
 void
