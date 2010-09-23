@@ -92,6 +92,7 @@ typedef struct
     mpoint_t *colors;           /* Table containing the coloring data for the pixels */
     point_t initial_center;     /* Initial center of the tracing window */
     mpfr_t initial_width;       /* Initial width of the tracing window */
+	int batch;                  /* Runs in batch mode ? */
 } display_settings_t;
 
 static fractal_settings_t fset;
@@ -112,6 +113,8 @@ usage (char *prog_name, FILE * stream)
 #endif
     fprintf (stream,
              "\t--version                | -v  : show program version\n");
+    fprintf (stream,
+             "\t--batch                  | -b  : run in batch mode\n");
     fprintf (stream, "\t--help                   | -h  : show this help\n");
     fprintf (stream,
              "\t--n_iterations           | -n  : number of iterations to perform before assuming divergence\n");
@@ -153,6 +156,7 @@ default_settings (void)
     dset.fullscreen = 0;
     dset.smooth = 0;
     dset.coef[0] = dset.coef[1] = dset.coef[2] = 1;
+	dset.batch = 0;
 }
 
 int
@@ -234,13 +238,14 @@ parse_options (int argc, char **argv)
             {"version", no_argument, 0, 'v'},
             {"fullscreen", no_argument, &dset.fullscreen, 1},
             {"smooth", no_argument, &dset.smooth, 1},
+            {"batch", no_argument, &dset.batch, 1},
             {"width", required_argument, 0, 'w'},
             {0, 0, 0, 0}
         };
 
         /* getopt_long stores the option index here. */
         int option_index = 0;
-        c = getopt_long (argc, argv, "c:e:fg:hn:p:r:svw:R:", long_options,
+        c = getopt_long (argc, argv, "bc:e:fg:hn:p:r:svw:R:", long_options,
                          &option_index);
 
         /* Detect the end of the options. */
@@ -249,6 +254,10 @@ parse_options (int argc, char **argv)
         switch (c) {
         case 0:
             break;
+
+		case 'b':
+			dset.batch = 1;
+			break;
 
         case 'c':{
                 long double n[3];
@@ -544,10 +553,12 @@ colorize (SDL_Surface * screen)
                                                              dset.coef[2]))
                                                            % 512);
         }
-        dset.colors[i].color =
-            SDL_MapRGB (screen->format, dset.colors[i].pixel_color.r,
-                        dset.colors[i].pixel_color.g,
-                        dset.colors[i].pixel_color.b);
+		if (screen != NULL) {
+	        dset.colors[i].color =
+    	        SDL_MapRGB (screen->format, dset.colors[i].pixel_color.r,
+        	                dset.colors[i].pixel_color.g,
+            	            dset.colors[i].pixel_color.b);
+		}
     }
     return;
 }
@@ -771,6 +782,18 @@ display_screen (SDL_Surface * screen)
 }
 
 void
+display_coordinates (point_t *p, mpfr_t width)
+{
+#ifdef HAS_MPFR
+	mpfr_printf("Center:\n\tx: %.64Rf\n\ty: %.64Rf\nWidth: %.64Rf\n", p->x, p->y, width);
+#else
+	printf("Center:\n\tx: %.64Lf\n\ty: %.64Lf\nWidth: %.64Lf\n", p->x, p->y, width);
+#endif
+	fprintf (stdout, "Coloring coefficient: %d,%d, %d\n", dset.coef[0], dset.coef[1], dset.coef[2]);
+	fprintf (stdout, "Number of iterations: %d\n", fset.nmax);
+}
+
+void
 compute (point_t * p, mpfr_t width, SDL_Surface * screen)
 {
     switch (fset.algo) {
@@ -785,12 +808,6 @@ compute (point_t * p, mpfr_t width, SDL_Surface * screen)
     default:
         break;
     }
-#ifdef HAS_MPFR
-	mpfr_printf("x: %.64Rf\ny: %.64Rf\nw: %.64Rf\n", p->x, p->y, width);
-#else
-	printf("x: %.64Lf\ny: %.64Lf\nw: %.64Lf\n", p->x, p->y, width);
-#endif
-
 }
 
 void
@@ -905,7 +922,7 @@ main (int argc, char **argv)
     int prog_running = 1, zooming = 0, coloring = 0, cw = 640, ch = 480;
     point_t p;
     mpfr_t width, r;
-    SDL_Surface *screen;
+    SDL_Surface *screen = NULL;
     SDL_Event event;
     SDL_Rect zoom = { 0, 0, 0, 0 };
 
@@ -933,7 +950,9 @@ main (int argc, char **argv)
     mpfr_prec_round (fset.julia_c.x, fset.prec, fset.round);
     mpfr_prec_round (fset.julia_c.y, fset.prec, fset.round);
 
-    screen = init_SDL ();
+	if (dset.batch == 0) {
+	    screen = init_SDL ();
+	}
 
 #ifdef HAS_MPFR
     mpfr_inits2 (fset.prec, width, r, p.x, p.y, fset.julia_c.x,
@@ -958,6 +977,19 @@ main (int argc, char **argv)
     default:
         break;
     }
+
+
+	if (dset.batch == 1) {
+		fprintf (stdout, "Computing set: ");
+		fflush (stdout);
+		compute ( &p, width, NULL );
+		fprintf (stdout, "done\n");
+		write_bmp();
+		fprintf(stdout, "Written image to BMP file\n");
+		display_coordinates(&p, width);
+		exit(EXIT_SUCCESS);
+	}
+	
     compute (&p, width, screen);
     while (prog_running) {
         display_screen (screen);
@@ -1071,6 +1103,7 @@ main (int argc, char **argv)
 
                 case SDLK_d:
                     write_bmp ();
+					display_coordinates(&p, width);
                     break;
 
                 case SDLK_j:
@@ -1118,6 +1151,10 @@ main (int argc, char **argv)
                     dset.smooth = abs (dset.smooth - 1);
                     colorize (screen);
                     break;
+
+				case SDLK_t:
+					display_coordinates(&p, width);
+					break;
 
                 default:
                     break;
