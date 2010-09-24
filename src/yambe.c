@@ -20,14 +20,16 @@
 #include <math.h>
 #include <time.h>
 #include <getopt.h>
+#include <sys/time.h>
 #include "SDL/SDL.h"
 #include "SDL/SDL_gfxPrimitives.h"
 #include "prec.h"
 
-#define VERSION_STRING "2.0"
+#define VERSION_STRING "3.0"
 #define DEFAULT_X 640
 #define DEFAULT_Y 480
 #define DEFAULT_WIDTH 3.5
+#define DEFAULT_IMU_WIDTH 6
 #define DEFAULT_NMAX 64
 #define DEFAULT_PREC 64
 #define DEFAULT_RADIUS 8
@@ -112,30 +114,32 @@ usage (char *prog_name, FILE * stream)
     fprintf (stream, "MPFR compiled in.\n");
 #endif
     fprintf (stream,
-             "\t--version                | -v  : show program version\n");
-    fprintf (stream,
              "\t--batch                  | -b  : run in batch mode\n");
-    fprintf (stream, "\t--help                   | -h  : show this help\n");
-    fprintf (stream,
-             "\t--n_iterations           | -n  : number of iterations to perform before assuming divergence\n");
-    fprintf (stream,
-             "\t--geometry=<geo>         | -g  : sets the window geometry.\n");
-    fprintf (stream,
-             "\t--parametrization=<para> | -p  : sets initial parametrization. Valid values are mu and mu_inv.\n");
-    fprintf (stream,
-             "\t--smooth                 | -s  : performs color smoothing.\n");
-    fprintf (stream, "\t--radius=<radius>        | -r  : escape radius.\n");
-    fprintf (stream,
-             "\t--fullscreen             | -f  : runs in fullscreen.\n");
-#ifdef HAS_MPFR
-    fprintf (stream,
-             "\t--prec=<prec>            | -R  : set precision to <prec> bits.\n");
-#endif
     fprintf (stream,
              "\t--coef=<r>,<g>,<b>       | -c  : coefficients for coloring.\n");
     fprintf (stream,
              "\t--center=<center>        | -e  : center coordinates.\n");
     fprintf (stream,
+             "\t--fullscreen             | -f  : runs in fullscreen.\n");
+    fprintf (stream,
+             "\t--geometry=<geo>         | -g  : sets the window geometry.\n");
+    fprintf (stream, "\t--help                   | -h  : show this help\n");
+    fprintf (stream,
+             "\t--julia=<x>x<y>          | -j  : display Julia set at point (x,y)\n");
+    fprintf (stream,
+             "\t--n_iterations           | -n  : number of iterations to perform before assuming divergence\n");
+    fprintf (stream,
+             "\t--parametrization=<para> | -p  : sets initial parametrization. Valid values are mu and mu_inv.\n");
+ #ifdef HAS_MPFR
+    fprintf (stream,
+             "\t--prec=<prec>            | -R  : set precision to <prec> bits.\n");
+#endif
+   fprintf (stream, "\t--radius=<radius>        | -r  : escape radius.\n");
+   fprintf (stream,
+             "\t--smooth                 | -s  : performs color smoothing.\n");
+   fprintf (stream,
+             "\t--version                | -v  : show program version\n");
+   fprintf (stream,
              "\t--width=<w>              | -w  : width of the window.\n\n");
 }
 
@@ -219,13 +223,15 @@ mpfr_numbers_from_string (mpfr_t * num, char *s, char separator, int n)
 void
 parse_options (int argc, char **argv)
 {
-    int c;
+    int c, ndw = 0;
+
     while (1) {
         static struct option long_options[] = {
             /* These options set a flag. */
             {"coef", required_argument, 0, 'c'},
             {"center", required_argument, 0, 'e'},
             {"geometry", required_argument, 0, 'g'},
+            {"julia", required_argument, 0, 'j'},
             {"radius", required_argument, 0, 'r'},
             {"help", no_argument, 0, 'h'},
             {"n_iterations", required_argument, 0, 'n'},
@@ -241,7 +247,7 @@ parse_options (int argc, char **argv)
 
         /* getopt_long stores the option index here. */
         int option_index = 0;
-        c = getopt_long (argc, argv, "bc:e:fg:hn:p:r:svw:R:", long_options,
+        c = getopt_long (argc, argv, "bc:e:fg:hj:n:p:r:svw:R:", long_options,
                          &option_index);
 
         /* Detect the end of the options. */
@@ -307,6 +313,26 @@ parse_options (int argc, char **argv)
             usage (argv[0], stdout);
             exit (EXIT_SUCCESS);
 
+        case 'j':{
+                mpfr_t coord[2];
+                fset.algo = JULIA;
+#ifdef HAS_MPFR
+                mpfr_inits2 (fset.prec, coord[0], coord[1], NULL);
+                if (mpfr_numbers_from_string (coord, optarg, 'x', 2) == -1) {
+#else
+                if (numbers_from_string (coord, optarg, 'x', 2) == -1) {
+#endif
+                    fprintf (stderr, "Bad Julia set point spec.\n");
+                    exit (EXIT_FAILURE);
+                }
+                mpfr_set (fset.julia_c.x, coord[0], fset.round);
+                mpfr_set (fset.julia_c.y, coord[1], fset.round);
+#ifdef HAS_MPFR
+                mpfr_clears (coord[0], coord[1], NULL);
+#endif
+            }
+            break;
+
         case 'n':
             fset.nmax = atoi (optarg);
             if (fset.nmax < 1) {
@@ -362,23 +388,40 @@ parse_options (int argc, char **argv)
             break;
 
         case 'w':
+            ndw = 1;
 #ifndef HAS_MPFR
             dset.initial_width = strtold (optarg, NULL);
             if (dset.initial_width == 0) {
+                ndw = 0;
                 fprintf (stderr, "Invalid initial width. Defaulting to %lf\n",
-                         DEFAULT_WIDTH);
-                mpfr_set_d (dset.initial_width, DEFAULT_WIDTH, fset.round);
+                         fset.para == MU ? DEFAULT_WIDTH : DEFAULT_IMU_WIDTH);
+                if (fset.para == MU) {
+                    mpfr_set_d (dset.initial_width, DEFAULT_WIDTH,
+                                fset.round);
+                }
+                else {
+                    mpfr_set_d (dset.initial_width, DEFAULT_IMU_WIDTH,
+                                fset.round);
+                }
             }
 #else
             {
                 double t = strtold (optarg, NULL);
                 mpfr_set_d (dset.initial_width, t, fset.round);
                 if (mpfr_sgn (dset.initial_width) == 0) {
+                    ndw = 0;
                     fprintf (stderr,
                              "Width is null. Defaulting to %lf\n",
-                             DEFAULT_WIDTH);
-                    mpfr_set_d (dset.initial_width, DEFAULT_WIDTH,
-                                fset.round);
+                             fset.para ==
+                             MU ? DEFAULT_WIDTH : DEFAULT_IMU_WIDTH);
+                    if (fset.para == MU) {
+                        mpfr_set_d (dset.initial_width, DEFAULT_WIDTH,
+                                    fset.round);
+                    }
+                    else {
+                        mpfr_set_d (dset.initial_width, DEFAULT_IMU_WIDTH,
+                                    fset.round);
+                    }
                 }
             }
 #endif
@@ -400,6 +443,9 @@ parse_options (int argc, char **argv)
                      "%s is not recognized as a valid option or argument\n",
                      argv[optind++]);
         usage (argv[0], stderr);
+    }
+    if ((ndw == 0) && (fset.para == INV_MU)) {
+        mpfr_set_d (dset.initial_width, DEFAULT_IMU_WIDTH, fset.round);
     }
 }
 
@@ -481,7 +527,14 @@ void
 write_bmp (void)
 {
     FILE *f;
-    char name[] = "dump.bmp";   /* Need to create a unique name someday... */
+    struct timeval tv;
+    char name[28];
+
+    gettimeofday (&tv, NULL);
+    sprintf (name, "%c_%03d%03d%03d_%d.bmp", fset.algo == JULIA ? 'j' : 'm',
+             dset.coef[0], dset.coef[1], dset.coef[2], (int) tv.tv_sec);
+
+
     if ((f = fopen (name, "wb")) == NULL) {
         fprintf (stderr, "Unable to open file %s to  dump BMP\n", name);
         return;
@@ -945,9 +998,9 @@ main (int argc, char **argv)
 #endif
     mpfr_set_ui (fset.julia_c.x, 0, fset.round);
     mpfr_set_ui (fset.julia_c.y, 0, fset.round);
-    mpfr_set_d (dset.initial_width, DEFAULT_WIDTH, fset.round);
     mpfr_set_d (dset.initial_center.x, DEFAULT_CENTER_X, fset.round);
     mpfr_set_d (dset.initial_center.y, DEFAULT_CENTER_Y, fset.round);
+    mpfr_set_d (dset.initial_width, DEFAULT_WIDTH, fset.round);
 
     parse_options (argc, argv);
 
@@ -962,8 +1015,7 @@ main (int argc, char **argv)
     }
 
 #ifdef HAS_MPFR
-    mpfr_inits2 (fset.prec, width, r, p.x, p.y, fset.julia_c.x,
-                 fset.julia_c.y, NULL);
+    mpfr_inits2 (fset.prec, width, r, p.x, p.y, NULL);
 #endif
 
     mpfr_set (width, dset.initial_width, fset.round);
@@ -973,18 +1025,28 @@ main (int argc, char **argv)
 
     switch (fset.para) {
     case MU:
-        mpfr_set (p.x, dset.initial_center.x, fset.round);
-        mpfr_set (p.y, dset.initial_center.y, fset.round);
+        if (fset.algo == MANDELBROT) {
+            mpfr_set (p.x, dset.initial_center.x, fset.round);
+            mpfr_set (p.y, dset.initial_center.y, fset.round);
+        }
+        else {
+            mpfr_set_ui (p.x, 0, fset.round);
+            mpfr_set_ui (p.y, 0, fset.round);
+        }
         break;
     case INV_MU:
-        mpfr_set_d (p.x, 1.0 / .75, fset.round);
-        mpfr_set_ui (p.y, 0, fset.round);
-        mpfr_set_ui (width, 6, fset.round);
+        if (fset.algo == MANDELBROT) {
+            mpfr_set_d (p.x, -1.0 / DEFAULT_CENTER_X, fset.round);
+            mpfr_set_ui (p.y, DEFAULT_CENTER_Y, fset.round);
+        }
+        else {
+            mpfr_set_ui (p.x, 0, fset.round);
+            mpfr_set_ui (p.y, 0, fset.round);
+        }
         break;
     default:
         break;
     }
-
 
     if (dset.batch == 1) {
         fprintf (stdout, "Computing set: ");
@@ -1144,9 +1206,9 @@ main (int argc, char **argv)
                         mpfr_set_d (width, DEFAULT_WIDTH, fset.round);
                         break;
                     case INV_MU:
-                        mpfr_set_d (p.x, 1.0 / .75, fset.round);
-                        mpfr_set_ui (p.y, 0, fset.round);
-                        mpfr_set_ui (width, 6, fset.round);
+                        mpfr_set_d (p.x, -1.0 / DEFAULT_CENTER_X, fset.round);
+                        mpfr_set_ui (p.y, DEFAULT_CENTER_Y, fset.round);
+                        mpfr_set_ui (width, DEFAULT_IMU_WIDTH, fset.round);
                         break;
                     default:
                         break;
