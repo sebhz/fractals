@@ -32,7 +32,7 @@
 #define DEFAULT_IMU_WIDTH 6
 #define DEFAULT_NMAX 64
 #define DEFAULT_PREC 64
-#define DEFAULT_RADIUS 8
+#define DEFAULT_RADIUS 4
 #define DEFAULT_CENTER_X -0.75
 #define DEFAULT_CENTER_Y 0
 
@@ -130,16 +130,16 @@ usage (char *prog_name, FILE * stream)
              "\t--n_iterations           | -n  : number of iterations to perform before assuming divergence\n");
     fprintf (stream,
              "\t--parametrization=<para> | -p  : sets initial parametrization. Valid values are mu and mu_inv.\n");
- #ifdef HAS_MPFR
+#ifdef HAS_MPFR
     fprintf (stream,
              "\t--prec=<prec>            | -R  : set precision to <prec> bits.\n");
 #endif
-   fprintf (stream, "\t--radius=<radius>        | -r  : escape radius.\n");
-   fprintf (stream,
+    fprintf (stream, "\t--radius=<radius>        | -r  : escape radius.\n");
+    fprintf (stream,
              "\t--smooth                 | -s  : performs color smoothing.\n");
-   fprintf (stream,
+    fprintf (stream,
              "\t--version                | -v  : show program version\n");
-   fprintf (stream,
+    fprintf (stream,
              "\t--width=<w>              | -w  : width of the window.\n\n");
 }
 
@@ -334,7 +334,7 @@ parse_options (int argc, char **argv)
             break;
 
         case 'n':
-            fset.nmax = atoi (optarg);
+            fset.nmax = strtol (optarg, NULL, 0);
             if (fset.nmax < 1) {
                 fset.nmax = DEFAULT_NMAX;
             }
@@ -358,23 +358,24 @@ parse_options (int argc, char **argv)
             fprintf (stderr,
                      "MPFR support not compiled in - ignoring precision setting\n");
 #else
-            fset.prec = atoi (optarg);
+            fset.prec = strtol (optarg, NULL, 0);
             if (fset.prec < MPFR_PREC_MIN || fset.prec > MPFR_PREC_MAX) {
                 fprintf (stderr,
-                         "Invalid value (too high or too low) for precision. Falling back to 64 bits.\n");
-                fprintf (stderr,
-                         "Precision must be between %d and %ld\n",
+                         "Invalid value (too high or too low) for precision. Falling back to %d bits.\n",
+                         DEFAULT_PREC);
+                fprintf (stderr, "Precision must be between %d and %ld\n",
                          MPFR_PREC_MIN, MPFR_PREC_MAX);
-                fset.prec = 64;
+                fset.prec = DEFAULT_PREC;
             }
 #endif
             break;
 
         case 'r':
-            fset.radius = atoi (optarg);
+            fset.radius = strtol (optarg, NULL, 0);
             if (fset.radius <= 0) {
-                fprintf (stderr, "Invalid radius set - defaulting to 2\n");
-                fset.radius = 2;
+                fprintf (stderr, "Invalid radius set - defaulting to %d.\n",
+                         DEFAULT_RADIUS);
+                fset.radius = DEFAULT_RADIUS;
             }
             break;
 
@@ -490,7 +491,6 @@ write_bmp_header (FILE * f)
     fwrite (&w32, sizeof w32, 1, f);
     w32 = 0;
     fwrite (&w32, sizeof w32, 1, f);    /* Number of colors in the palette */
-    w32 = 0;
     fwrite (&w32, sizeof w32, 1, f);    /* Number of important colors */
 }
 
@@ -565,12 +565,12 @@ colorize (SDL_Surface * screen)
 
     for (i = 0; i < imax; i++) {
         if (dset.smooth == 0) {
-            v = 8 * sqrt (fset.frac[i].n);
+            v = 12 * sqrt (fset.frac[i].n + 2);
         }
         else {
             m = mpfr_get_d (fset.frac[i].modulus, fset.round);
-            v = 8 *
-                sqrt (((double) fset.frac[i].n + 1 - log2 (log (sqrt (m)))));
+            v = 12 *
+                sqrt (((double) fset.frac[i].n + 3 - log2 (log (sqrt (m)))));
         }
         if (fset.frac[i].n >= fset.nmax) {
             dset.colors[i].pixel_color.r = 16;
@@ -610,22 +610,21 @@ parametrize (mpfr_t * x, mpfr_t * y)
     switch (fset.para) {
     case INV_MU:
         {
-            mpfr_t a, b, m, a2, b2, n;
+            mpfr_t a, b, m, n;
 
 #ifdef HAS_MPFR
-            mpfr_inits2 (fset.prec, a, b, a2, b2, n, m, NULL);
+            mpfr_inits2 (fset.prec, a, b, n, m, NULL);
 #endif
             mpfr_set (a, *x, fset.round);
             mpfr_set (b, *y, fset.round);
-            mpfr_sqr (a2, a, fset.round);
-            mpfr_sqr (b2, b, fset.round);
-            mpfr_add (m, a2, b2, fset.round);
+            mpfr_sqr (*x, *x, fset.round);
+            mpfr_sqr (*y, *y, fset.round);
+            mpfr_add (m, *x, *y, fset.round);
             mpfr_neg (n, b, fset.round);
             mpfr_div (*x, a, m, fset.round);
-            mpfr_div (*y, n, m, fset.round);
-
+            mpfr_div (*y, b, m, fset.round);
 #ifdef HAS_MPFR
-            mpfr_clears (a, b, a2, b2, n, m, NULL);
+            mpfr_clears (a, b, n, m, NULL);
 #endif
         }
         break;
@@ -750,6 +749,7 @@ init_SDL (void)
     SDL_Surface *s;
     SDL_VideoInfo *vinfo;
     SDL_Init (SDL_INIT_VIDEO);
+
     vinfo = (SDL_VideoInfo *) SDL_GetVideoInfo ();
     dset.screen_w = vinfo->current_w;
     dset.screen_h = vinfo->current_h;
@@ -757,7 +757,6 @@ init_SDL (void)
         s = SDL_SetVideoMode (dset.w, dset.h, 0,
                               SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_RESIZABLE);
     }
-
     else {
         dset.w = dset.screen_w;
         dset.h = dset.screen_h;
@@ -1020,7 +1019,7 @@ main (int argc, char **argv)
 
     mpfr_set (width, dset.initial_width, fset.round);
 
-    fset.current_alloc = dset.w * dset.h * 2;
+    fset.current_alloc = dset.w * dset.h;
     alloc_struct ();
 
     switch (fset.para) {
@@ -1068,12 +1067,14 @@ main (int argc, char **argv)
         SDL_Flip (screen);
         if (SDL_PollEvent (&event)) {
             switch (event.type) {
+
             case SDL_VIDEORESIZE:
                 reset_video_mode (screen, event.resize.w, event.resize.h,
                                   SDL_HWSURFACE | SDL_DOUBLEBUF |
                                   SDL_RESIZABLE);
                 compute (&p, width, screen);
                 break;
+
             case SDL_KEYDOWN:
                 switch (event.key.keysym.sym) {
 
@@ -1134,7 +1135,6 @@ main (int argc, char **argv)
                                           SDL_FULLSCREEN);
                         dset.fullscreen = 1;
                     }
-
                     else {
                         reset_video_mode (screen, cw, ch,
                                           SDL_HWSURFACE | SDL_DOUBLEBUF |
@@ -1270,9 +1270,11 @@ main (int argc, char **argv)
                     zoom.h = event.button.y;
                 }
                 break;
+
             case SDL_QUIT:
                 prog_running = 0;
                 break;
+
             default:
                 break;
             }
@@ -1280,8 +1282,9 @@ main (int argc, char **argv)
     }
 
 #ifdef HAS_MPFR
-    mpfr_clears (width, r, p.x, p.y, fset.julia_c.x, fset.julia_c.y,
-                 dset.initial_width, NULL);
+    mpfr_clears (dset.initial_width, fset.julia_c.x,
+                 fset.julia_c.y, dset.initial_center.x, dset.initial_center.y,
+                 width, r, p.x, p.y, NULL);
 #endif
     SDL_Quit ();
     return EXIT_SUCCESS;
