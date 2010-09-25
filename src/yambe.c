@@ -35,6 +35,7 @@
 #define DEFAULT_RADIUS 4
 #define DEFAULT_CENTER_X -0.75
 #define DEFAULT_CENTER_Y 0
+#define JULIA_STEP 0.001
 
 typedef struct
 {
@@ -154,12 +155,12 @@ default_settings (void)
     dset.h = DEFAULT_Y;
     fset.algo = MANDELBROT;
     fset.para = MU;
-    fset.current_alloc = dset.w * dset.h * 2;
+    fset.current_alloc = dset.w * dset.h;
     dset.screen_w = DEFAULT_X;
     dset.screen_h = DEFAULT_Y;
     dset.fullscreen = 0;
     dset.smooth = 0;
-    dset.coef[0] = dset.coef[1] = dset.coef[2] = 1;
+    dset.coef[0] = dset.coef[1] = dset.coef[2] = 3;
     dset.batch = 0;
 }
 
@@ -850,6 +851,7 @@ display_coordinates (point_t * p, mpfr_t width)
     fprintf (stdout, "Coloring coefficient: %d,%d, %d\n", dset.coef[0],
              dset.coef[1], dset.coef[2]);
     fprintf (stdout, "Number of iterations: %d\n", fset.nmax);
+    fprintf (stdout, "Escape radius: %d\n", fset.radius);
 }
 
 void
@@ -1102,28 +1104,80 @@ main (int argc, char **argv)
                     compute (&p, width, screen);
                     break;
 
-                case SDLK_UP:
-                    if (coloring) {
-                        dset.coef[coloring - 1]++;
-                        colorize (screen);
-                        break;
-                    }
-
-                    mpfr_mul_ui (width, width, 2, fset.round);
-                    compute (&p, width, screen);
-                    break;
-
-                case SDLK_DOWN:
-                    if (coloring) {
-                        if (dset.coef[coloring - 1] > 0) {
-                            dset.coef[coloring - 1]--;
-                            colorize (screen);
+                case SDLK_UP:{
+                        SDLMod mod = SDL_GetModState ();
+                        if (mod & KMOD_SHIFT) {
+                            mpfr_add_d (p.y, p.y, 0.1, fset.round);
+                            compute (&p, width, screen);
+                            break;
                         }
+                        if ((mod & KMOD_CTRL) && fset.algo == JULIA) {
+                            mpfr_add_d (fset.julia_c.y, fset.julia_c.y, JULIA_STEP,
+                                        fset.round);
+                            compute (&p, width, screen);
+                            break;
+                        }
+                        if (coloring) {
+                            dset.coef[coloring - 1]++;
+                            colorize (screen);
+                            break;
+                        }
+
+                        mpfr_mul_ui (width, width, 2, fset.round);
+                        compute (&p, width, screen);
                         break;
                     }
-                    mpfr_div_ui (width, width, 2, fset.round);
-                    compute (&p, width, screen);
-                    break;
+
+                case SDLK_DOWN:{
+                        SDLMod mod = SDL_GetModState ();
+                        if (mod & KMOD_SHIFT) {
+                            mpfr_sub_d (p.y, p.y, 0.1, fset.round);
+                            compute (&p, width, screen);
+                            break;
+                        }
+                        if ((mod & KMOD_CTRL) && fset.algo == JULIA) {
+                            mpfr_sub_d (fset.julia_c.y, fset.julia_c.y, JULIA_STEP,
+                                        fset.round);
+                            compute (&p, width, screen);
+                            break;
+                        }
+                        if (coloring) {
+                            if (dset.coef[coloring - 1] > 0) {
+                                dset.coef[coloring - 1]--;
+                                colorize (screen);
+                            }
+                            break;
+                        }
+                        mpfr_div_ui (width, width, 2, fset.round);
+                        compute (&p, width, screen);
+                        break;
+                    }
+
+                case SDLK_LEFT:{
+                        SDLMod mod = SDL_GetModState ();
+                        if ((mod & KMOD_CTRL) && fset.algo == JULIA) {
+                            mpfr_sub_d (fset.julia_c.x, fset.julia_c.x, JULIA_STEP,
+                                        fset.round);
+                            compute (&p, width, screen);
+                            break;
+                        }
+                        mpfr_sub_d (p.x, p.x, 0.1, fset.round);
+                        compute (&p, width, screen);
+                        break;
+                    }
+
+                case SDLK_RIGHT:{
+                        SDLMod mod = SDL_GetModState ();
+                        if ((mod & KMOD_CTRL) && fset.algo == JULIA) {
+                            mpfr_add_d (fset.julia_c.x, fset.julia_c.x, JULIA_STEP,
+                                        fset.round);
+                            compute (&p, width, screen);
+                            break;
+                        }
+                        mpfr_add_d (p.x, p.x, 0.1, fset.round);
+                        compute (&p, width, screen);
+                        break;
+                    }
 
                 case SDLK_RETURN:
                     if (dset.fullscreen == 0) {
@@ -1175,6 +1229,16 @@ main (int argc, char **argv)
                     display_coordinates (&p, width);
                     break;
 
+				case SDLK_m:
+					if (fset.algo == JULIA) {
+	                    mpfr_set_d (p.x, DEFAULT_CENTER_X, fset.round);
+                        mpfr_set_ui (p.y, DEFAULT_CENTER_Y, fset.round);
+                        mpfr_set_d (width, DEFAULT_WIDTH, fset.round);
+                        fset.algo = MANDELBROT;
+                        compute (&p, width, screen);
+					}
+					break;
+
                 case SDLK_j:
                     if (fset.algo == MANDELBROT) {
                         int x, y;
@@ -1190,29 +1254,41 @@ main (int argc, char **argv)
                     }
                     break;
 
+                case SDLK_p:
+                    fset.para = (fset.para + 1) % MAX_PAR;
+					compute (&p, width, screen);
+					break;
+ 
                 case SDLK_q:
                     prog_running = 0;
                     break;
 
-                case SDLK_p:
-                    fset.para = (fset.para + 1) % MAX_PAR;
-                case SDLK_r:
-                    fset.algo = MANDELBROT;
+               case SDLK_r:
                     fset.nmax = DEFAULT_NMAX;
-                    switch (fset.para) {
-                    case MU:
-                        mpfr_set_d (p.x, DEFAULT_CENTER_X, fset.round);
-                        mpfr_set_ui (p.y, DEFAULT_CENTER_Y, fset.round);
-                        mpfr_set_d (width, DEFAULT_WIDTH, fset.round);
-                        break;
-                    case INV_MU:
-                        mpfr_set_d (p.x, -1.0 / DEFAULT_CENTER_X, fset.round);
-                        mpfr_set_ui (p.y, DEFAULT_CENTER_Y, fset.round);
-                        mpfr_set_ui (width, DEFAULT_IMU_WIDTH, fset.round);
-                        break;
-                    default:
-                        break;
-                    }
+					if (fset.algo == JULIA) {
+                        mpfr_set_d (p.x, 0, fset.round);
+                        mpfr_set_ui (p.y, 0, fset.round);
+ 						if (fset.para == MU) {
+                        	mpfr_set_d (width, DEFAULT_WIDTH, fset.round);
+						} else {
+                        	mpfr_set_d (width, DEFAULT_IMU_WIDTH, fset.round);
+						}
+					} else {	
+                    	switch (fset.para) {
+                    	case MU:
+                        	mpfr_set_d (p.x, DEFAULT_CENTER_X, fset.round);
+                        	mpfr_set_ui (p.y, DEFAULT_CENTER_Y, fset.round);
+                        	mpfr_set_d (width, DEFAULT_WIDTH, fset.round);
+                        	break;
+                    	case INV_MU:
+                        	mpfr_set_d (p.x, -1.0 / DEFAULT_CENTER_X, fset.round);
+                        	mpfr_set_ui (p.y, DEFAULT_CENTER_Y, fset.round);
+                        	mpfr_set_ui (width, DEFAULT_IMU_WIDTH, fset.round);
+                        	break;
+                    	default:
+                        	break;
+                    	}
+					}
                     compute (&p, width, screen);
                     break;
 
