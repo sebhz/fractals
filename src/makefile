@@ -5,6 +5,7 @@ CFLAGS=-Wall -O3
 CPPFLAGS=-I/usr/include/SDL 
 LDFLAGS=-lSDL -lSDL_gfx -lm
 OBJS=yambe.o 
+INC=prec.h
 SRC=yambe.c
 TARGET=yambe
 HAS_MPFR=
@@ -21,8 +22,8 @@ windows : CPPFLAGS += -D__MINGW__
 windows : LDFLAGS = -lmingw32 -lSDLmain -lSDL -lSDL_image -lSDL_ttf -lSDL_gfx
 windows : $(TARGET)
 
-indent: $(SRC)
-	$(INDENT) --braces-on-if-lines --no-tabs --indent-level4 $(SRC)
+indent: $(SRC) $(INC)
+	$(INDENT) --braces-on-if-lines --no-tabs --indent-level4 $(SRC) $(INC)
 
 clean:
 	rm -f yambe yambe.exe *.o *~

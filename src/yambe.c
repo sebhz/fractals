@@ -13,7 +13,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc., 
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-/* Colorization code inspired from David Madore's site: http://www.madore.org/~david/programs/#prog_mandel */
+/* Colorization code copied from David Madore's site: http://www.madore.org/~david/programs/#prog_mandel */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -566,11 +566,11 @@ colorize (SDL_Surface * screen)
 
     for (i = 0; i < imax; i++) {
         if (dset.smooth == 0) {
-            v = 12 * sqrt (fset.frac[i].n + 2);
+            v = 8 * sqrt (fset.frac[i].n + 2);
         }
         else {
             m = mpfr_get_d (fset.frac[i].modulus, fset.round);
-            v = 12 *
+            v = 8 *
                 sqrt (((double) fset.frac[i].n + 3 - log2 (log (sqrt (m)))));
         }
         if (fset.frac[i].n >= fset.nmax) {
@@ -1112,8 +1112,8 @@ main (int argc, char **argv)
                             break;
                         }
                         if ((mod & KMOD_CTRL) && fset.algo == JULIA) {
-                            mpfr_add_d (fset.julia_c.y, fset.julia_c.y, JULIA_STEP,
-                                        fset.round);
+                            mpfr_add_d (fset.julia_c.y, fset.julia_c.y,
+                                        JULIA_STEP, fset.round);
                             compute (&p, width, screen);
                             break;
                         }
@@ -1136,8 +1136,8 @@ main (int argc, char **argv)
                             break;
                         }
                         if ((mod & KMOD_CTRL) && fset.algo == JULIA) {
-                            mpfr_sub_d (fset.julia_c.y, fset.julia_c.y, JULIA_STEP,
-                                        fset.round);
+                            mpfr_sub_d (fset.julia_c.y, fset.julia_c.y,
+                                        JULIA_STEP, fset.round);
                             compute (&p, width, screen);
                             break;
                         }
@@ -1156,8 +1156,8 @@ main (int argc, char **argv)
                 case SDLK_LEFT:{
                         SDLMod mod = SDL_GetModState ();
                         if ((mod & KMOD_CTRL) && fset.algo == JULIA) {
-                            mpfr_sub_d (fset.julia_c.x, fset.julia_c.x, JULIA_STEP,
-                                        fset.round);
+                            mpfr_sub_d (fset.julia_c.x, fset.julia_c.x,
+                                        JULIA_STEP, fset.round);
                             compute (&p, width, screen);
                             break;
                         }
@@ -1169,8 +1169,8 @@ main (int argc, char **argv)
                 case SDLK_RIGHT:{
                         SDLMod mod = SDL_GetModState ();
                         if ((mod & KMOD_CTRL) && fset.algo == JULIA) {
-                            mpfr_add_d (fset.julia_c.x, fset.julia_c.x, JULIA_STEP,
-                                        fset.round);
+                            mpfr_add_d (fset.julia_c.x, fset.julia_c.x,
+                                        JULIA_STEP, fset.round);
                             compute (&p, width, screen);
                             break;
                         }
@@ -1229,15 +1229,15 @@ main (int argc, char **argv)
                     display_coordinates (&p, width);
                     break;
 
-				case SDLK_m:
-					if (fset.algo == JULIA) {
-	                    mpfr_set_d (p.x, DEFAULT_CENTER_X, fset.round);
+                case SDLK_m:
+                    if (fset.algo == JULIA) {
+                        mpfr_set_d (p.x, DEFAULT_CENTER_X, fset.round);
                         mpfr_set_ui (p.y, DEFAULT_CENTER_Y, fset.round);
                         mpfr_set_d (width, DEFAULT_WIDTH, fset.round);
                         fset.algo = MANDELBROT;
                         compute (&p, width, screen);
-					}
-					break;
+                    }
+                    break;
 
                 case SDLK_j:
                     if (fset.algo == MANDELBROT) {
@@ -1256,39 +1256,43 @@ main (int argc, char **argv)
 
                 case SDLK_p:
                     fset.para = (fset.para + 1) % MAX_PAR;
-					compute (&p, width, screen);
-					break;
- 
+                    compute (&p, width, screen);
+                    break;
+
                 case SDLK_q:
                     prog_running = 0;
                     break;
 
-               case SDLK_r:
+                case SDLK_r:
                     fset.nmax = DEFAULT_NMAX;
-					if (fset.algo == JULIA) {
+                    if (fset.algo == JULIA) {
                         mpfr_set_d (p.x, 0, fset.round);
                         mpfr_set_ui (p.y, 0, fset.round);
- 						if (fset.para == MU) {
-                        	mpfr_set_d (width, DEFAULT_WIDTH, fset.round);
-						} else {
-                        	mpfr_set_d (width, DEFAULT_IMU_WIDTH, fset.round);
-						}
-					} else {	
-                    	switch (fset.para) {
-                    	case MU:
-                        	mpfr_set_d (p.x, DEFAULT_CENTER_X, fset.round);
-                        	mpfr_set_ui (p.y, DEFAULT_CENTER_Y, fset.round);
-                        	mpfr_set_d (width, DEFAULT_WIDTH, fset.round);
-                        	break;
-                    	case INV_MU:
-                        	mpfr_set_d (p.x, -1.0 / DEFAULT_CENTER_X, fset.round);
-                        	mpfr_set_ui (p.y, DEFAULT_CENTER_Y, fset.round);
-                        	mpfr_set_ui (width, DEFAULT_IMU_WIDTH, fset.round);
-                        	break;
-                    	default:
-                        	break;
-                    	}
-					}
+                        if (fset.para == MU) {
+                            mpfr_set_d (width, DEFAULT_WIDTH, fset.round);
+                        }
+                        else {
+                            mpfr_set_d (width, DEFAULT_IMU_WIDTH, fset.round);
+                        }
+                    }
+                    else {
+                        switch (fset.para) {
+                        case MU:
+                            mpfr_set_d (p.x, DEFAULT_CENTER_X, fset.round);
+                            mpfr_set_ui (p.y, DEFAULT_CENTER_Y, fset.round);
+                            mpfr_set_d (width, DEFAULT_WIDTH, fset.round);
+                            break;
+                        case INV_MU:
+                            mpfr_set_d (p.x, -1.0 / DEFAULT_CENTER_X,
+                                        fset.round);
+                            mpfr_set_ui (p.y, DEFAULT_CENTER_Y, fset.round);
+                            mpfr_set_ui (width, DEFAULT_IMU_WIDTH,
+                                         fset.round);
+                            break;
+                        default:
+                            break;
+                        }
+                    }
                     compute (&p, width, screen);
                     break;
 
