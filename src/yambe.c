@@ -841,11 +841,11 @@ display_coordinates (point_t * p, mpfr_t width)
 
 #ifdef HAS_MPFR
     mpfr_printf
-        ("Window center:\n\tx: %.64Rf\n\ty: %.64Rf\nWindow width: %.64Rf\n",
+        ("Window center:\n\tx: %.32Rf\n\ty: %.32Rf\nWindow width: %.32Rf\n",
          p->x, p->y, width);
 #else
     fprintf (stdout,
-             "Window center:\n\tx: %.64Lf\n\ty: %.64Lf\nWindow width: %.64Lf\n",
+             "Window center:\n\tx: %.32Lf\n\ty: %.32Lf\nWindow width: %.32Lf\n",
              p->x, p->y, width);
 #endif
     fprintf (stdout, "Coloring coefficient: %d,%d, %d\n", dset.coef[0],
@@ -1013,6 +1013,10 @@ main (int argc, char **argv)
 
     if (dset.batch == 0) {
         screen = init_SDL ();
+#ifdef __MINGW__
+    freopen ("CON", "w", stdout);
+    freopen ("CON", "w", stderr);
+#endif
     }
 
 #ifdef HAS_MPFR
