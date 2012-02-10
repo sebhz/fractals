@@ -31,7 +31,9 @@ class attractor1D(object):
 		if not self.opt.has_key('init'):
 			self.init = 0.1
 
-		if not self.opt.has_key('order'):
+		if self.opt.has_key('order'):
+			self.order = self.opt['order']
+		else:
 			self.order = 2 # Quadratic by default
 
 		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
@@ -45,7 +47,13 @@ class attractor1D(object):
 
 	def computeLyapunov(self, x):
 		a = self.coef
-		df = abs(a[1] + 2*a[2]*x)
+
+		df = 0
+		for i in range(len(a)-1, 1, -1):
+			df = (df + i*a[i])*x
+		df = df + a[1]
+		df = abs(df)
+
 		if df > 0:
 			self.lyapunov['lsum'] = self.lyapunov['lsum'] + math.log(df)
 			self.lyapunov['nl']   = self.lyapunov['nl'] + 1
@@ -82,7 +90,7 @@ class attractor1D(object):
 				xmin, xmax = (min(xmin, xtmp), max(xmax, xtmp))
 				xtmp = xnew
 
-		print "Found in", n, "iterations:", a
+		print "Found in", n, "iterations:", a, "(Lyapunov exponent:", self.lyapunov['ly'], ")"
 		self.bound = (xmin, xmax)
 
 	def iterateMap(self):
@@ -146,7 +154,7 @@ screen_c = (0, 0, 800, 600)
 
 random.seed()
 #at = attractor1D({'coef': (0, 4, -1)})
-at = attractor1D()
+at = attractor1D({'order': 5})
 at.explore()
 l = at.iterateMap()
 window_c = scaleRatio((at.bound[0]-0.1*abs(at.bound[0]), at.bound[0]-0.1*abs(at.bound[0]), at.bound[1]+0.1*abs(at.bound[1]), at.bound[1]+0.1*abs(at.bound[1])), screen_c)
