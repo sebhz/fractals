@@ -115,6 +115,81 @@ class attractor1D(object):
 
 		return l
 
+class attractor2D(object):
+
+	def explore(self):
+		found = False
+		n = 0;
+		x = self.init
+
+		while not found:
+			n = n + 1
+			a = self.getRandom()
+			self.coef = a
+			found = True
+			xmin, xmax = (1000000, -1000000)
+			ymin, ymax = (1000000, -1000000)
+			lsum, nl = (0, 0)
+			xtmp = x
+			ytmp = y
+			xe = x + .000001
+			ye = y
+
+			for i in range(self.opt['iter']):
+				xnew = ax[0] + ax[1]*xtmp + ax[2]*xtmp*xtmp + ax[3]*xtmp*ytmp + ax[4]*ytmp + ax[5]*ytmp*ytmp
+				ynew = ay[0] + ay[1]*xtmp + ay[2]*xtmp*xtmp + ay[3]*xtmp*ytmp + ay[4]*ytmp + ay[5]*ytmp*ytmp
+				if abs(xnew) + abs(ynew) > 1000000: # Unbounded - not an SA
+					found = False
+					break
+				if abs(xnew-xtmp) + abs(ynew-ytmp) < 0.000001: # Fixed point - not an SA
+					found = False
+					break
+
+				# Compute Lyapunov exponent... sort of
+				xsave = xnew
+				ysave = ynew
+				xtmp = xe
+				ytmp = ye
+				xnew = ax[0] + ax[1]*xtmp + ax[2]*xtmp*xtmp + ax[3]*xtmp*ytmp + ax[4]*ytmp + ax[5]*ytmp*ytmp
+				ynew = ay[0] + ay[1]*xtmp + ay[2]*xtmp*xtmp + ay[3]*xtmp*ytmp + ay[4]*ytmp + ay[5]*ytmp*ytmp
+				dlx = xnew-xsave
+				dly = ynew-ysave
+				dl2 = dlx*dlx + dly*dly
+				if dl2 == 0:
+					print "Uh oh..."
+				df = 1000000000000*dl2
+				rs = 1/math.sqrt(df)
+				xe = xsave + rs * dlx
+				ye = ysave + rs * dly
+				xnew = xsave
+				ynew = ysave
+				lsum = lsum + math.log(df)/math.log(2)
+				nl = nl + 1
+				ly = .721347*lsum/nl
+
+				if ly < 0.005 and i > 128: # Lyapunov exponent too small - limit cycle
+					found = False
+					break
+				xmin, xmax = (min(xmin, xtmp), max(xmax, xtmp))
+				ymin, ymax = (min(ymin, ytmp), max(ymax, ytmp))
+				xtmp = xnew
+				ytmp = ynew
+		print "Found in", n, "iterations:", a, "(Lyapunov exponent:", self.lyapunov['ly'], ")"
+		self.bound = (xmin, xmax)
+
+	def iterateQuadraticMap(self):
+		l = list()
+		ax = self.coef[0]
+		ay = self.coef[1]
+		x, y = self.init
+
+		for i in range(self.opt['iter']):
+			xnew = ax[0] + ax[1]*x + ax[2]*x*x + ax[3]*x*y + ax[4]*y + ax[5]*y*y
+			ynew = ay[0] + ay[1]*x + ay[2]*x*x + ay[3]*x*y + ay[4]*y + ay[5]*y*y
+			l.append(xnew, ynew, i)
+			x, y = (xnew, ynew)
+
+		return l
 
 def w_to_s(wc, sc, x, y):
 
@@ -167,7 +242,7 @@ screen_c = (0, 0, 1024, 768)
 random.seed()
 #at = attractor1D({'coef': (0, 4, -4), 'depth': 1})
 #at.bound = (0, 1)
-at = attractor1D({'order': 9, 'iter' : 8192})
+at = attractor1D({'order': 5, 'iter' : 8192})
 at.explore()
 l = at.iterateMap()
 window_c = scaleRatio((at.bound[0], at.bound[0], at.bound[1], at.bound[1]), screen_c)
