@@ -10,7 +10,91 @@ except:
     print "available at http://www.pythonware.com/library/pil"
     raise SystemExit
 
-# Screens coordinate conversion - aspect ratio not respected
+class attractor1D(object):
+	def __init__(self, *opt):
+		if opt:
+			self.opt = opt[0]
+		else:
+			self.opt = dict()
+
+		if not self.opt.has_key('iter'):
+			self.opt['iter'] = 4096
+		
+		if not self.opt.has_key('depth'):
+			self.opt['depth'] = 5
+
+		if not self.opt.has_key('coef'):
+			self.coef = None
+		else:
+			self.coef = self.opt['coef']
+
+		if not self.opt.has_key('init'):
+			self.init = 0.1
+
+		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
+		self.bound     = [0]*2
+
+	def getRandom(self):
+		return (random.uniform(-4, 4), random.uniform(-4, 4), random.uniform(-4, 4))
+
+	def computeLyapunov(self, x):
+		a = self.coef
+		df = abs(a[1] + 2*a[2]*x)
+		if df > 0:
+			self.lyapunov['lsum'] = self.lyapunov['lsum'] + math.log(df)
+			self.lyapunov['nl']   = self.lyapunov['nl'] + 1
+	
+		self.lyapunov['ly'] = 0.721347 * self.lyapunov['lsum'] / self.lyapunov['nl']
+		return self.lyapunov['ly']
+
+	def explore(self):
+		found = False
+		n = 0;
+		x = self.init
+
+		while not found:
+			n = n + 1
+			a = self.getRandom()
+			self.coef = a
+			found = True
+			xmin, xmax = (1000000, -1000000)
+			self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
+			xtmp = x
+
+			for i in range(self.opt['iter']):
+				xnew = a[0] + a[1]*xtmp + a[2]*xtmp*xtmp
+				if abs(xnew) > 1000000: # Unbounded - not an SA
+					found = False
+					break	
+				if abs(xnew-x) < 0.000001: # Fixed point - not an SA
+					found = False
+					break
+				self.computeLyapunov(xnew)
+				if self.lyapunov['ly'] < 0.005 and i > 128: # Lyapunov exponent too small - limit cycle
+					found = False
+					break
+				xmin, xmax = (min(xmin, xtmp), max(xmax, xtmp))
+				xtmp = xnew
+
+		print "Found in", n, "iterations:", a
+		self.bound = (xmin, xmax)
+
+	def iterateMap(self):
+		l    = list()
+		a    = self.coef
+		x    = self.init
+		prev = self.opt['depth']	
+		mem = [x]*prev
+
+		for i in range(self.opt['iter']):
+			xnew = a[0] + a[1]*x + a[2]*x*x
+			if i >= prev-1:
+				l.append((mem[(i-prev)%prev], xnew, i))
+			mem[i%prev] = xnew;
+			x = xnew
+
+		return l
+
 def w_to_s(wc, sc, x, y):
 
 	if x < wc[0] or x > wc[2] or y < wc[1] or y > wc[3]:
@@ -38,87 +122,27 @@ def toRGB(r, g, b):
 	return r*65536 + g*256 + r
 
 # Creates an image and fill it with an array of RGB values
-def createImage(w, h, l):
+def createImage(wc, sc, l):
+	w = sc[2]-sc[0]
+	h = sc[3]-sc[1]
+	size = w*h
+	cv = [0]*size
+
 	im = Image.new("RGB", (w, h), None)
-	im.putdata(l) 
+	for pt in l:
+		xi, yi = w_to_s(wc, sc, pt[0], pt[1])
+		cv[yi*w + xi] = toRGB(255, 255, 255)
+
+	im.putdata(cv) 
 	return im
 
-def plotFloat(x, y, wc, sc, l):
-	xi, yi = w_to_s(wc, sc, x, y)
-	l[yi*(sc[2]-sc[0]) + xi] = toRGB(255, 255, 255)
-	
-def iterateLogistic(x, r, wc, sc, l, iter, prev):
-	if prev <= 0:
-		return
-		
-	mem = [x]*prev
-	for i in range(iter):
-		xnew = r*x*(1-x)
-		if i >= prev-1:
-			plotFloat(mem[(i-prev)%prev], xnew, wc, sc, l)
-		mem[i%prev] = xnew;
-		x = xnew
-
-def computeLyapunov(a, x, lsum, nl):
-	df = abs(a[1] + 2*a[2]*x)
-	if df > 0:
-		lsum = lsum + math.log(df)
-		nl = nl + 1
-	
-	return (0.721347 * lsum / nl, lsum, nl)
-	
-def explore1dQuadraticMap(x, iter):
-	a = getQuadraticRandom()
-	xmin, xmax = (1000000, -1000000)
-	lsum, nl = (0, 0)
-	for i in range(iter):
-		xnew = a[0] + a[1]*x + a[2]*x*x
-		if abs(xnew) > 1000000: # Unbounded - not an SA
-			return None
-		if abs(xnew-x) < 0.000001: # Fixed point - not an SA
-			return None
-		ly, lsum, nl = computeLyapunov(a, xnew, lsum, nl)
-		if ly < 0.005 and i > 128: # Lyapunov exponent too small - limit cycle
-			return None
-		xmin, xmax = (min(xmin, x),    max(xmax, x))
-		x = xnew
-	print "Lyapunov exponent:", ly
-	return a
-
-def getQuadraticRandom():
-	return (random.uniform(-4, 4), random.uniform(-4, 4), random.uniform(-4, 4))
-
-def iterate1dQuadraticMap(x, wc, sc, l, iter, a, prev):
-	if prev <= 0:
-		return
-		
-	mem = [x]*prev
-	for i in range(iter):
-		xnew = a[0] + a[1]*x + a[2]*x*x
-		if i >= prev-1:
-			plotFloat(mem[(i-prev)%prev], xnew, wc, sc, l)
-		mem[i%prev] = xnew;
-		x = xnew
-
-# Convert between real coordinates and screen coordinates
-window_c = (-.1, -.1, 1.1, 1.1)
 screen_c = (0, 0, 800, 600)
-iter = 1024
-xres = screen_c[2]-screen_c[0]
-yres = screen_c[3]-screen_c[1]
-size = xres*yres
-l = [0]*size
-n = 1
-#window_c = scaleRatio(window_c, screen_c)
-#iterateLogistic(.05, 4, window_c, screen_c, l, iter, 1)
 
 random.seed()
-a = explore1dQuadraticMap(0.1, iter)
-while not a:
-	n = n + 1
-	a = explore1dQuadraticMap(0.1, iter)
-print "Found after", n, "iterations:", a
-iterate1dQuadraticMap(.1, window_c, screen_c, l, iter, a, 5)
-
-im = createImage(xres, yres, l)
+#at = attractor1D({'coef': (0, 4, -1)})
+at = attractor1D()
+at.explore()
+l = at.iterateMap()
+window_c = scaleRatio((at.bound[0]-0.1*abs(at.bound[0]), at.bound[0]-0.1*abs(at.bound[0]), at.bound[1]+0.1*abs(at.bound[1]), at.bound[1]+0.1*abs(at.bound[1])), screen_c)
+im = createImage(window_c, screen_c, l)
 im.show()
