@@ -55,7 +55,7 @@ class attractor1D(object):
 		df = abs(df)
 
 		if df > 0:
-			self.lyapunov['lsum'] = self.lyapunov['lsum'] + math.log(df)
+			self.lyapunov['lsum'] = self.lyapunov['lsum'] + math.log(df)/math.log(2)
 			self.lyapunov['nl']   = self.lyapunov['nl'] + 1
 	
 		self.lyapunov['ly'] = 0.721347 * self.lyapunov['lsum'] / self.lyapunov['nl']
@@ -76,11 +76,14 @@ class attractor1D(object):
 			xtmp = x
 
 			for i in range(self.opt['iter']):
-				xnew = a[0] + a[1]*xtmp + a[2]*xtmp*xtmp
+				xnew = 0
+				for j in range(len(a)-1, 0, -1):
+					xnew = (xnew + a[j])*xtmp
+				xnew = xnew + a[0]
 				if abs(xnew) > 1000000: # Unbounded - not an SA
 					found = False
 					break	
-				if abs(xnew-x) < 0.000001: # Fixed point - not an SA
+				if abs(xnew-xtmp) < 0.000001: # Fixed point - not an SA
 					found = False
 					break
 				self.computeLyapunov(xnew)
@@ -101,13 +104,17 @@ class attractor1D(object):
 		mem = [x]*prev
 
 		for i in range(self.opt['iter']):
-			xnew = a[0] + a[1]*x + a[2]*x*x
+			xnew = 0
+			for j in range(len(a)-1, 0, -1):
+				xnew = (xnew + a[j])*x
+			xnew = xnew + a[0]
 			if i >= prev-1:
 				l.append((mem[(i-prev)%prev], xnew, i))
 			mem[i%prev] = xnew;
 			x = xnew
 
 		return l
+
 
 def w_to_s(wc, sc, x, y):
 
@@ -119,16 +126,21 @@ def w_to_s(wc, sc, x, y):
 
 # Enlarge window_c so that it has the same aspect ratio as screen_c 
 def scaleRatio(wc, sc):
-	wa = float(wc[3]-wc[1])/float(wc[2]-wc[0]) # Window aspect ratio
+	# Enlarge window by 5% in both directions
+	hoff = (wc[3]-wc[1])*0.025
+	woff = (wc[2]-wc[0])*0.025
+	nwc  = (wc[0]-woff, wc[1]-hoff, wc[2]+woff, wc[3]+hoff)
+	
+	wa = float(nwc[3]-nwc[1])/float(nwc[2]-nwc[0]) #New window aspect ratio
 	sa = float(sc[3]-sc[1])/float(sc[2]-sc[0]) # Screen aspect ratio
 	r = sa/wa
 	
 	if wa < sa: # Enlarge window height to get the right AR - keep it centered vertically
-		yoff = (wc[3]-wc[1])*(r-1)/2
-		return (wc[0], wc[1]-yoff, wc[2], wc[3]+yoff)
+		yoff = (nwc[3]-nwc[1])*(r-1)/2
+		return (nwc[0], nwc[1]-yoff, nwc[2], nwc[3]+yoff)
 	elif wa > sa: # Enlarge window width to get the right AR - keep it centered horizontally
-		xoff = (wc[2]-wc[0])*(1/r-1)/2
-		return (wc[0]-xoff, wc[1], wc[2]+xoff, wc[3])
+		xoff = (nwc[2]-nwc[0])*(1/r-1)/2
+		return (nwc[0]-xoff, nwc[1], nwc[2]+xoff, nwc[3])
 	
 	return wc
 
@@ -150,13 +162,14 @@ def createImage(wc, sc, l):
 	im.putdata(cv) 
 	return im
 
-screen_c = (0, 0, 800, 600)
+screen_c = (0, 0, 1024, 768)
 
 random.seed()
-#at = attractor1D({'coef': (0, 4, -1)})
-at = attractor1D({'order': 5})
+#at = attractor1D({'coef': (0, 4, -4), 'depth': 1})
+#at.bound = (0, 1)
+at = attractor1D({'order': 9, 'iter' : 8192})
 at.explore()
 l = at.iterateMap()
-window_c = scaleRatio((at.bound[0]-0.1*abs(at.bound[0]), at.bound[0]-0.1*abs(at.bound[0]), at.bound[1]+0.1*abs(at.bound[1]), at.bound[1]+0.1*abs(at.bound[1])), screen_c)
+window_c = scaleRatio((at.bound[0], at.bound[0], at.bound[1], at.bound[1]), screen_c)
 im = createImage(window_c, screen_c, l)
 im.show()
