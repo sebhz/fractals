@@ -31,11 +31,17 @@ class attractor1D(object):
 		if not self.opt.has_key('init'):
 			self.init = 0.1
 
+		if not self.opt.has_key('order'):
+			self.order = 2 # Quadratic by default
+
 		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
 		self.bound     = [0]*2
 
 	def getRandom(self):
-		return (random.uniform(-4, 4), random.uniform(-4, 4), random.uniform(-4, 4))
+		c = list()
+		for i in range(self.order+1):
+			c.append(random.uniform(-4, 4))
+		return c
 
 	def computeLyapunov(self, x):
 		a = self.coef
