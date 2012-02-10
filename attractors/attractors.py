@@ -24,19 +24,15 @@ def scaleRatio(wc, sc):
 	wa = float(wc[3]-wc[1])/float(wc[2]-wc[0]) # Window aspect ratio
 	sa = float(sc[3]-sc[1])/float(sc[2]-sc[0]) # Screen aspect ratio
 	r = sa/wa
-	wl = [0]*len(wc)
 	
-	for i in range(len(wc)): # = [0]*4
-		wl[i] = wc[i]
-
-	if wa < sa: # Enlarge window height to get the right AR
-		wl[1] = wc[1] * r
-		wl[3] = wc[3] * r
-	elif wa > sa: # Enlarge window width to get the right AR
-		wl[0] = wc[0] / r
-		wl[2] = wc[2] / r
+	if wa < sa: # Enlarge window height to get the right AR - keep it centered vertically
+		yoff = (wc[3]-wc[1])*(r-1)/2
+		return (wc[0], wc[1]-yoff, wc[2], wc[3]+yoff)
+	elif wa > sa: # Enlarge window width to get the right AR - keep it centered horizontally
+		xoff = (wc[2]-wc[0])*(1/r-1)/2
+		return (wc[0]-xoff, wc[1], wc[2]+xoff, wc[3])
 	
-	return (wl[0], wl[1], wl[2], wl[3])
+	return wc
 
 def toRGB(r, g, b):
 	return r*65536 + g*256 + r
@@ -105,7 +101,7 @@ def iterate1dQuadraticMap(x, wc, sc, l, iter, a, prev):
 		x = xnew
 
 # Convert between real coordinates and screen coordinates
-window_c = list((-6, -6, 6, 6))
+window_c = (-.1, -.1, 1.1, 1.1)
 screen_c = (0, 0, 800, 600)
 iter = 1024
 xres = screen_c[2]-screen_c[0]
@@ -113,8 +109,8 @@ yres = screen_c[3]-screen_c[1]
 size = xres*yres
 l = [0]*size
 n = 1
-
-#iterateLogistic(.05, 4, window_c, screen_c, l, iter, 6)
+#window_c = scaleRatio(window_c, screen_c)
+#iterateLogistic(.05, 4, window_c, screen_c, l, iter, 1)
 
 random.seed()
 a = explore1dQuadraticMap(0.1, iter)
