@@ -10,6 +10,20 @@ except:
     print "available at http://www.pythonware.com/library/pil"
     raise SystemExit
 
+class polynom(object):
+	def __init__(self, a):
+		self.a = a
+
+	def derive(self):
+		b = [i*c for i, c in enumerate(self.a)]
+		return polynom(b[1:])
+
+	def __call__(self, x):
+		result = 0
+		for c in reversed(self.a):
+			result = result*x + c
+		return result
+
 class attractor1D(object):
 	def __init__(self, *opt):
 		if opt:
@@ -26,7 +40,7 @@ class attractor1D(object):
 		if not self.opt.has_key('coef'):
 			self.coef = None
 		else:
-			self.coef = self.opt['coef']
+			self.coef = polynom(self.opt['coef'])
 
 		if not self.opt.has_key('init'):
 			self.init = 0.1
@@ -43,17 +57,10 @@ class attractor1D(object):
 		c = list()
 		for i in range(self.order+1):
 			c.append(random.uniform(-4, 4))
-		return c
+		return polynom(c)
 
 	def computeLyapunov(self, x):
-		a = self.coef
-
-		df = 0
-		for i in range(len(a)-1, 1, -1):
-			df = (df + i*a[i])*x
-		df = df + a[1]
-		df = abs(df)
-
+		df = abs(self.coef.derive()(x))
 		if df > 0:
 			self.lyapunov['lsum'] = self.lyapunov['lsum'] + math.log(df)/math.log(2)
 			self.lyapunov['nl']   = self.lyapunov['nl'] + 1
@@ -64,13 +71,9 @@ class attractor1D(object):
 	def checkConvergence(self):
 		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
 		x = self.init
-		a = self.coef
 		
 		for i in range(self.opt['iter']):
-			xnew = 0
-			for j in range(len(a)-1, 0, -1):
-				xnew = (xnew + a[j])*x
-			xnew = xnew + a[0]
+			xnew = self.coef(x)
 			if abs(xnew) > 1000000: # Unbounded - not an SA
 				return False
 			if abs(xnew-x) < 0.000001: # Fixed point - not an SA
@@ -93,18 +96,14 @@ class attractor1D(object):
 
 	def iterateMap(self):
 		l    = list()
-		a    = self.coef
 		x    = self.init
 		prev = self.opt['depth']	
 		mem  = [x]*prev
 		xmin, xmax = (x, x)
 
 		for i in range(self.opt['iter']):
-			xnew = 0
-			for j in range(len(a)-1, 0, -1):
-				xnew = (xnew + a[j])*x
-			xnew = xnew + a[0]
-			if i >= prev-1:
+			xnew = self.coef(x)
+			if i >= prev:
 				l.append((mem[(i-prev)%prev], xnew, i))
 			mem[i%prev] = xnew;
 			xmin, xmax = (min(xmin, xnew), max(xmax, xnew))
