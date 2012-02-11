@@ -82,13 +82,12 @@ class attractor1D(object):
 		return True
 		
 	def explore(self):
-		found = False
 		n = 0;
 
-		while not found:
+		self.coef = self.getRandom()
+		while not self.checkConvergence():
 			n = n + 1
 			self.coef = self.getRandom()
-			found     = self.checkConvergence()
 
 		print "Found in", n, "iterations:", self.coef, "(Lyapunov exponent:", self.lyapunov['ly'], ")"
 
@@ -97,8 +96,8 @@ class attractor1D(object):
 		a    = self.coef
 		x    = self.init
 		prev = self.opt['depth']	
-		mem = [x]*prev
-		xmin, xmax = (1000000, -1000000)
+		mem  = [x]*prev
+		xmin, xmax = (x, x)
 
 		for i in range(self.opt['iter']):
 			xnew = 0
@@ -108,7 +107,7 @@ class attractor1D(object):
 			if i >= prev-1:
 				l.append((mem[(i-prev)%prev], xnew, i))
 			mem[i%prev] = xnew;
-			xmin, xmax = (min(xmin, x), max(xmax, x))
+			xmin, xmax = (min(xmin, xnew), max(xmax, xnew))
 			x = xnew
 
 		self.bound = (xmin, xmin, xmax, xmax)
@@ -257,3 +256,12 @@ l = at.iterateMap()
 window_c = scaleRatio(at.bound, screen_c)
 im = createImage(window_c, screen_c, l)
 im.show()
+
+at = attractor1D({'coef': (0.8039188624587439, -0.37876686899740886, -0.9574724041631386, 3.225138240188614, 1.5110210899641894, -3.4420103998634604), 'iter' : 8192})
+if not at.checkConvergence():
+	print "Looks like this is not an attractor"
+else:
+	l = at.iterateMap()
+	window_c = scaleRatio(at.bound, screen_c)
+	im = createImage(window_c, screen_c, l)
+	im.show()
