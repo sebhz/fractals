@@ -64,7 +64,6 @@ class attractor1D(object):
 	def explore(self):
 		found = False
 		n = 0;
-		x = self.init
 
 		while not found:
 			n = n + 1
@@ -72,24 +71,24 @@ class attractor1D(object):
 			self.coef = a
 			found = True
 			self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
-			xtmp = x
+			x = self.init
 
 			for i in range(self.opt['iter']):
 				xnew = 0
 				for j in range(len(a)-1, 0, -1):
-					xnew = (xnew + a[j])*xtmp
+					xnew = (xnew + a[j])*x
 				xnew = xnew + a[0]
 				if abs(xnew) > 1000000: # Unbounded - not an SA
 					found = False
 					break	
-				if abs(xnew-xtmp) < 0.000001: # Fixed point - not an SA
+				if abs(xnew-x) < 0.000001: # Fixed point - not an SA
 					found = False
 					break
 				self.computeLyapunov(xnew)
 				if self.lyapunov['ly'] < 0.005 and i > 128: # Lyapunov exponent too small - limit cycle
 					found = False
 					break
-				xtmp = xnew
+				x = xnew
 
 		print "Found in", n, "iterations:", a, "(Lyapunov exponent:", self.lyapunov['ly'], ")"
 
