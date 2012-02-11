@@ -37,7 +37,7 @@ class attractor1D(object):
 			self.order = 2 # Quadratic by default
 
 		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
-		self.bound     = [0]*2
+		self.bound     = [0]*4
 
 	def getRandom(self):
 		c = list()
@@ -71,7 +71,6 @@ class attractor1D(object):
 			a = self.getRandom()
 			self.coef = a
 			found = True
-			xmin, xmax = (1000000, -1000000)
 			self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
 			xtmp = x
 
@@ -90,11 +89,9 @@ class attractor1D(object):
 				if self.lyapunov['ly'] < 0.005 and i > 128: # Lyapunov exponent too small - limit cycle
 					found = False
 					break
-				xmin, xmax = (min(xmin, xtmp), max(xmax, xtmp))
 				xtmp = xnew
 
 		print "Found in", n, "iterations:", a, "(Lyapunov exponent:", self.lyapunov['ly'], ")"
-		self.bound = (xmin, xmax)
 
 	def iterateMap(self):
 		l    = list()
@@ -102,6 +99,7 @@ class attractor1D(object):
 		x    = self.init
 		prev = self.opt['depth']	
 		mem = [x]*prev
+		xmin, xmax = (1000000, -1000000)
 
 		for i in range(self.opt['iter']):
 			xnew = 0
@@ -111,8 +109,10 @@ class attractor1D(object):
 			if i >= prev-1:
 				l.append((mem[(i-prev)%prev], xnew, i))
 			mem[i%prev] = xnew;
+			xmin, xmax = (min(xmin, x), max(xmax, x))
 			x = xnew
 
+		self.bound = (xmin, xmin, xmax, xmax)
 		return l
 
 class attractor2D(object):
@@ -245,6 +245,6 @@ random.seed()
 at = attractor1D({'order': 5, 'iter' : 8192})
 at.explore()
 l = at.iterateMap()
-window_c = scaleRatio((at.bound[0], at.bound[0], at.bound[1], at.bound[1]), screen_c)
+window_c = scaleRatio(at.bound, screen_c)
 im = createImage(window_c, screen_c, l)
 im.show()
