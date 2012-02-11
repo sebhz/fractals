@@ -39,8 +39,10 @@ class attractor1D(object):
 
 		if not self.opt.has_key('coef'):
 			self.coef = None
+			self.derive = None
 		else:
 			self.coef = polynom(self.opt['coef'])
+			self.derive = self.coef.derive()
 
 		if not self.opt.has_key('init'):
 			self.init = 0.1
@@ -60,7 +62,7 @@ class attractor1D(object):
 		return polynom(c)
 
 	def computeLyapunov(self, x):
-		df = abs(self.coef.derive()(x))
+		df = abs(self.derive(x))
 		if df > 0:
 			self.lyapunov['lsum'] = self.lyapunov['lsum'] + math.log(df)/math.log(2)
 			self.lyapunov['nl']   = self.lyapunov['nl'] + 1
@@ -88,6 +90,7 @@ class attractor1D(object):
 		n = 0;
 
 		self.coef = self.getRandom()
+		self.derive = self.coef.derive()
 		while not self.checkConvergence():
 			n = n + 1
 			self.coef = self.getRandom()
