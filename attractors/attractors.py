@@ -61,36 +61,36 @@ class attractor1D(object):
 		self.lyapunov['ly'] = 0.721347 * self.lyapunov['lsum'] / self.lyapunov['nl']
 		return self.lyapunov['ly']
 
+	def checkConvergence(self):
+		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
+		x = self.init
+		a = self.coef
+		
+		for i in range(self.opt['iter']):
+			xnew = 0
+			for j in range(len(a)-1, 0, -1):
+				xnew = (xnew + a[j])*x
+			xnew = xnew + a[0]
+			if abs(xnew) > 1000000: # Unbounded - not an SA
+				return False
+			if abs(xnew-x) < 0.000001: # Fixed point - not an SA
+				return False
+			if self.computeLyapunov(xnew) < 0.005 and i > 128: # Lyapunov exponent too small - limit cycle
+				return False
+			x = xnew
+			
+		return True
+		
 	def explore(self):
 		found = False
 		n = 0;
 
 		while not found:
 			n = n + 1
-			a = self.getRandom()
-			self.coef = a
-			found = True
-			self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
-			x = self.init
+			self.coef = self.getRandom()
+			found     = self.checkConvergence()
 
-			for i in range(self.opt['iter']):
-				xnew = 0
-				for j in range(len(a)-1, 0, -1):
-					xnew = (xnew + a[j])*x
-				xnew = xnew + a[0]
-				if abs(xnew) > 1000000: # Unbounded - not an SA
-					found = False
-					break
-				if abs(xnew-x) < 0.000001: # Fixed point - not an SA
-					found = False
-					break
-				self.computeLyapunov(xnew)
-				if self.lyapunov['ly'] < 0.005 and i > 128: # Lyapunov exponent too small - limit cycle
-					found = False
-					break
-				x = xnew
-
-		print "Found in", n, "iterations:", a, "(Lyapunov exponent:", self.lyapunov['ly'], ")"
+		print "Found in", n, "iterations:", self.coef, "(Lyapunov exponent:", self.lyapunov['ly'], ")"
 
 	def iterateMap(self):
 		l    = list()
@@ -242,10 +242,13 @@ random.seed()
 
 # The logistic parabola
 at = attractor1D({'coef': (0, 4, -4), 'depth': 1})
-l = at.iterateMap()
-window_c = scaleRatio(at.bound, screen_c)
-im = createImage(window_c, screen_c, l)
-im.show()
+if not at.checkConvergence():
+	print "Looks like this is not an attractor"
+else:
+	l = at.iterateMap()
+	window_c = scaleRatio(at.bound, screen_c)
+	im = createImage(window_c, screen_c, l)
+	im.show()
 
 # A random 1D attractor of order 5
 at = attractor1D({'order': 5, 'iter' : 8192})
