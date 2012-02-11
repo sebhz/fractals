@@ -80,7 +80,7 @@ class attractor1D(object):
 				xnew = xnew + a[0]
 				if abs(xnew) > 1000000: # Unbounded - not an SA
 					found = False
-					break	
+					break
 				if abs(xnew-x) < 0.000001: # Fixed point - not an SA
 					found = False
 					break
@@ -239,8 +239,15 @@ def createImage(wc, sc, l):
 screen_c = (0, 0, 1024, 768)
 
 random.seed()
-#at = attractor1D({'coef': (0, 4, -4), 'depth': 1})
-#at.bound = (0, 1)
+
+# The logistic parabola
+at = attractor1D({'coef': (0, 4, -4), 'depth': 1})
+l = at.iterateMap()
+window_c = scaleRatio(at.bound, screen_c)
+im = createImage(window_c, screen_c, l)
+im.show()
+
+# A random 1D attractor of order 5
 at = attractor1D({'order': 5, 'iter' : 8192})
 at.explore()
 l = at.iterateMap()
