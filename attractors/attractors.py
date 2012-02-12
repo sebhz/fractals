@@ -118,29 +118,64 @@ class attractor1D(object):
 
 		self.bound = (xmin, xmin, xmax, xmax)
 		return l
+		
 class attractor2D(object):
+	def __init__(self, *opt):
+		if opt:
+			self.opt = opt[0]
+		else:
+			self.opt = dict()
+
+		if not self.opt.has_key('iter'):
+			self.opt['iter'] = 4096
+		
+		if not self.opt.has_key('depth'):
+			self.opt['depth'] = 5
+
+		if not self.opt.has_key('coef'):
+			self.coef = None
+		else:
+			self.coef = self.opt['coef']
+
+		if not self.opt.has_key('init'):
+			self.init = (0.1, 0.1)
+
+		if self.opt.has_key('order'):
+			self.order = self.opt['order']
+		else:
+			self.order = 2 # Quadratic by default
+
+		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
+		self.bound     = [0]*4
+
+	def getRandom(self):
+		c = (list(), list())
+		for i in c:
+			for j in range((self.order+1)*(self.order+2)/2):
+				i.append(random.uniform(-2, 2))
+		return c
+
 	# Could have modified polynom class to support n-dimension polynoms... but this is simpler
 	def evalCoef(self, c, x, y):
-		# Two variables - fortunately, in Python 0**0 seems to return 1, so no need to test x and y are not 0
+	
+		result = 0
 		n = 0
-		for i in range(0, self.order):
-			for j in range(0, i+1):
+		for i in range(self.order+1):
+			for j in range(i+1):
 				result = result + c[n]*(x**j)*(y**(i-j))
-				n = n+1
-			return result
+				n = n + 1
+
+		return result
 
 	def explore(self):
 		found = False
 		n = 0;
-		x = self.init
-
+		x, y = self.init
 		while not found:
 			n = n + 1
-			a = self.getRandom()
-			self.coef = a
+			self.coef = self.getRandom()
+			ax, ay = self.coef
 			found = True
-			xmin, xmax = (1000000, -1000000)
-			ymin, ymax = (1000000, -1000000)
 			lsum, nl = (0, 0)
 			xtmp = x
 			ytmp = y
@@ -182,25 +217,26 @@ class attractor2D(object):
 				if ly < 0.005 and i > 128: # Lyapunov exponent too small - limit cycle
 					found = False
 					break
-				xmin, xmax = (min(xmin, xtmp), max(xmax, xtmp))
-				ymin, ymax = (min(ymin, ytmp), max(ymax, ytmp))
 				xtmp = xnew
 				ytmp = ynew
-		print "Found in", n, "iterations:", a, "(Lyapunov exponent:", self.lyapunov['ly'], ")"
-		self.bound = (xmin, xmax)
+				
+		print "Found in", n, "iterations:", ax, ay, "(Lyapunov exponent:", ly, ")"
 
 	def iterateMap(self):
 		l = list()
 		ax = self.coef[0]
 		ay = self.coef[1]
 		x, y = self.init
-
+		xmin, xmax, ymin, ymax = (x, x, y, y)
+		
 		for i in range(self.opt['iter']):
 			xnew = self.evalCoef(ax, x, y)
 			ynew = self.evalCoef(ay, x, y)
-			l.append(xnew, ynew, i)
+			l.append((xnew, ynew, i))
 			x, y = (xnew, ynew)
-
+			xmin, xmax, ymin, ymax = (min(x, xmin), max(x, xmax), 
+									  min(y, ymin), max(y, ymax))
+		self.bound = (xmin, ymin, xmax, ymax) 
 		return l
 
 def w_to_s(wc, sc, x, y):
@@ -249,33 +285,29 @@ def createImage(wc, sc, l):
 	im.putdata(cv) 
 	return im
 
+def showAttractor(at, screen_c):
+	l = at.iterateMap()
+	window_c = scaleRatio(at.bound, screen_c)
+	im = createImage(window_c, screen_c, l)
+	im.show()
+	
 screen_c = (0, 0, 1024, 768)
-
 random.seed()
+
+# A few 2D attractors
+for i in range(5):
+	at = attractor2D()
+	at.explore()
+	showAttractor(at, screen_c)
 
 # The logistic parabola
 at = attractor1D({'coef': (0, 4, -4), 'depth': 1})
 if not at.checkConvergence():
 	print "Looks like this is not an attractor"
 else:
-	l = at.iterateMap()
-	window_c = scaleRatio(at.bound, screen_c)
-	im = createImage(window_c, screen_c, l)
-	im.show()
+	showAttractor(at, screen_c)
 
 # A random 1D attractor of order 5
 at = attractor1D({'order': 5, 'iter' : 8192})
 at.explore()
-l = at.iterateMap()
-window_c = scaleRatio(at.bound, screen_c)
-im = createImage(window_c, screen_c, l)
-im.show()
-
-at = attractor1D({'coef': (0.8039188624587439, -0.37876686899740886, -0.9574724041631386, 3.225138240188614, 1.5110210899641894, -3.4420103998634604), 'iter' : 8192})
-if not at.checkConvergence():
-	print "Looks like this is not an attractor"
-else:
-	l = at.iterateMap()
-	window_c = scaleRatio(at.bound, screen_c)
-	im = createImage(window_c, screen_c, l)
-	im.show()
+showAttractor(at, screen_c)
