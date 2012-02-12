@@ -157,81 +157,67 @@ class attractor2D(object):
 
 	# Could have modified polynom class to support n-dimension polynoms... but this is simpler
 	def evalCoef(self, c, x, y):
-	
 		result = 0
 		n = 0
 		for i in range(self.order+1):
 			for j in range(i+1):
 				result = result + c[n]*(x**j)*(y**(i-j))
 				n = n + 1
-
 		return result
 
-	def explore(self):
-		found = False
-		n = 0;
+	def computeLyapunov(self, p, pe):
 		x, y = self.init
-		while not found:
+		# Compute Lyapunov exponent... sort of
+		x2,   y2   = (self.evalCoef(self.coef[0], pe[0], pe[1]),
+			          self.evalCoef(self.coef[1], pe[0], pe[1]))
+		dlx,  dly  = (x2-p[0], y2-p[1])
+		dl2 = dlx*dlx + dly*dly
+		if dl2 == 0:
+			print "Unable to compute Lyapunov exponent, but trying to go on..."
+			return pe
+		df = 1000000000000*dl2
+		rs = 1/math.sqrt(df)
+		pe = (p[0] + rs * dlx, p[1] + rs * dly)
+		self.lyapunov['lsum'] = self.lyapunov['lsum'] + math.log(df)/math.log(2)
+		self.lyapunov['nl']   = self.lyapunov['nl'] + 1
+		self.lyapunov['ly'] = 0.721347 * self.lyapunov['lsum'] / self.lyapunov['nl']
+		return pe
+
+	def checkConvergence(self):
+		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
+		x, y = self.init
+		pe = (x+.000001, y)
+
+		for i in range(self.opt['iter']):
+			xnew, ynew = (self.evalCoef(self.coef[0], x, y), self.evalCoef(self.coef[1], x, y))
+			if abs(xnew) + abs(ynew) > 1000000: # Unbounded - not an SA
+				return False
+			if abs(xnew-x) + abs(ynew-y) < 0.000001: # Fixed point - not an SA
+				return False
+			# Compute Lyapunov exponent... sort of
+			pe = self.computeLyapunov((xnew, ynew), pe)
+			if self.lyapunov['ly'] < 0.005 and i > 128: # Limit cycle
+				return False
+			x, y = (xnew, ynew)
+
+		return True
+
+	def explore(self):
+		n = 0;
+		self.coef = self.getRandom()
+		while not self.checkConvergence():
 			n = n + 1
 			self.coef = self.getRandom()
-			ax, ay = self.coef
-			found = True
-			lsum, nl = (0, 0)
-			xtmp = x
-			ytmp = y
-			xe = x + .000001
-			ye = y
-
-			for i in range(self.opt['iter']):
-				xnew = self.evalCoef(ax, xtmp, ytmp)
-				ynew = self.evalCoef(ay, xtmp, ytmp)
-				if abs(xnew) + abs(ynew) > 1000000: # Unbounded - not an SA
-					found = False
-					break
-				if abs(xnew-xtmp) + abs(ynew-ytmp) < 0.000001: # Fixed point - not an SA
-					found = False
-					break
-
-				# Compute Lyapunov exponent... sort of
-				xsave = xnew
-				ysave = ynew
-				xtmp = xe
-				ytmp = ye
-				xnew = self.evalCoef(ax, xtmp, ytmp)
-				ynew = self.evalCoef(ay, xtmp, ytmp)
-				dlx = xnew-xsave
-				dly = ynew-ysave
-				dl2 = dlx*dlx + dly*dly
-				if dl2 == 0:
-					print "Uh oh..."
-				df = 1000000000000*dl2
-				rs = 1/math.sqrt(df)
-				xe = xsave + rs * dlx
-				ye = ysave + rs * dly
-				xnew = xsave
-				ynew = ysave
-				lsum = lsum + math.log(df)/math.log(2)
-				nl = nl + 1
-				ly = .721347*lsum/nl
-
-				if ly < 0.005 and i > 128: # Lyapunov exponent too small - limit cycle
-					found = False
-					break
-				xtmp = xnew
-				ytmp = ynew
-				
-		print "Found in", n, "iterations:", ax, ay, "(Lyapunov exponent:", ly, ")"
+		print "Found in", n, "iterations:", self.coef[0], self.coef[1], "(Lyapunov exponent:", self.lyapunov['ly'], ")"
 
 	def iterateMap(self):
 		l = list()
-		ax = self.coef[0]
-		ay = self.coef[1]
+		ax, ay = (self.coef[0], self.coef[1])
 		x, y = self.init
 		xmin, xmax, ymin, ymax = (x, x, y, y)
 		
 		for i in range(self.opt['iter']):
-			xnew = self.evalCoef(ax, x, y)
-			ynew = self.evalCoef(ay, x, y)
+			xnew, ynew = (self.evalCoef(ax, x, y), self.evalCoef(ay, x, y))
 			l.append((xnew, ynew, i))
 			x, y = (xnew, ynew)
 			xmin, xmax, ymin, ymax = (min(x, xmin), max(x, xmax), 
