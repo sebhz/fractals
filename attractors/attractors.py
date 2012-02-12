@@ -24,6 +24,9 @@ class polynom(object):
 			result = result*x + c
 		return result
 
+	def __str__(self):
+		return self.a.__str__()
+
 class attractor1D(object):
 	def __init__(self, *opt):
 		if opt:
@@ -94,6 +97,7 @@ class attractor1D(object):
 		while not self.checkConvergence():
 			n = n + 1
 			self.coef = self.getRandom()
+			self.derive = self.coef.derive()
 
 		print "Found in", n, "iterations:", self.coef, "(Lyapunov exponent:", self.lyapunov['ly'], ")"
 
@@ -114,8 +118,16 @@ class attractor1D(object):
 
 		self.bound = (xmin, xmin, xmax, xmax)
 		return l
-
 class attractor2D(object):
+	# Could have modified polynom class to support n-dimension polynoms... but this is simpler
+	def evalCoef(self, c, x, y):
+		# Two variables - fortunately, in Python 0**0 seems to return 1, so no need to test x and y are not 0
+		n = 0
+		for i in range(0, self.order):
+			for j in range(0, i+1):
+				result = result + c[n]*(x**j)*(y**(i-j))
+				n = n+1
+			return result
 
 	def explore(self):
 		found = False
@@ -136,8 +148,8 @@ class attractor2D(object):
 			ye = y
 
 			for i in range(self.opt['iter']):
-				xnew = ax[0] + ax[1]*xtmp + ax[2]*xtmp*xtmp + ax[3]*xtmp*ytmp + ax[4]*ytmp + ax[5]*ytmp*ytmp
-				ynew = ay[0] + ay[1]*xtmp + ay[2]*xtmp*xtmp + ay[3]*xtmp*ytmp + ay[4]*ytmp + ay[5]*ytmp*ytmp
+				xnew = self.evalCoef(ax, xtmp, ytmp)
+				ynew = self.evalCoef(ay, xtmp, ytmp)
 				if abs(xnew) + abs(ynew) > 1000000: # Unbounded - not an SA
 					found = False
 					break
@@ -150,8 +162,8 @@ class attractor2D(object):
 				ysave = ynew
 				xtmp = xe
 				ytmp = ye
-				xnew = ax[0] + ax[1]*xtmp + ax[2]*xtmp*xtmp + ax[3]*xtmp*ytmp + ax[4]*ytmp + ax[5]*ytmp*ytmp
-				ynew = ay[0] + ay[1]*xtmp + ay[2]*xtmp*xtmp + ay[3]*xtmp*ytmp + ay[4]*ytmp + ay[5]*ytmp*ytmp
+				xnew = self.evalCoef(ax, xtmp, ytmp)
+				ynew = self.evalCoef(ay, xtmp, ytmp)
 				dlx = xnew-xsave
 				dly = ynew-ysave
 				dl2 = dlx*dlx + dly*dly
@@ -177,15 +189,15 @@ class attractor2D(object):
 		print "Found in", n, "iterations:", a, "(Lyapunov exponent:", self.lyapunov['ly'], ")"
 		self.bound = (xmin, xmax)
 
-	def iterateQuadraticMap(self):
+	def iterateMap(self):
 		l = list()
 		ax = self.coef[0]
 		ay = self.coef[1]
 		x, y = self.init
 
 		for i in range(self.opt['iter']):
-			xnew = ax[0] + ax[1]*x + ax[2]*x*x + ax[3]*x*y + ax[4]*y + ax[5]*y*y
-			ynew = ay[0] + ay[1]*x + ay[2]*x*x + ay[3]*x*y + ay[4]*y + ay[5]*y*y
+			xnew = self.evalCoef(ax, x, y)
+			ynew = self.evalCoef(ay, x, y)
 			l.append(xnew, ynew, i)
 			x, y = (xnew, ynew)
 
