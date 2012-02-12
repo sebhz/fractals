@@ -1,0 +1,406 @@
+# Quadratic Koch island 1
+~lsystem
+~title:Quadratic Koch island 1
+~axiom:F+F+F+F
+~angle:90
+~iterations:6
+F:F+F-F-FF+F+F-F
+
+# Quadratic Koch island 2
+~lsystem
+~title:Quadratic Koch island 2
+~axiom:F+F+F+F
+~angle:90
+~iterations:6
+F:F-FF+FF+F+F-F-FF+F+F-F-FF-FF+FF:F+F-F-FF+F+F-F
+
+# Island
+~lsystem
+~title:Island
+~axiom:F-F-F-F
+~angle:90
+~iterations:6
+F:F-f+FF-F-FF-Ff-FF+f-FF+F+FF+Ff+FFF
+f:ffffff
+
+# Koch curve 1
+~lsystem
+~title:Koch curve 1
+~axiom:F+F+F+F
+~angle:90
+~iterations:6
+F:FF+F+F+F+F+F-F
+
+# Koch curve 2
+~lsystem
+~title:Koch curve 2
+~axiom:F+F+F+F
+~angle:90
+~iterations:6
+F:FF+F+F+F+FF
+
+# Koch curve 3
+~lsystem
+~title:Koch curve 3
+~axiom:F+F+F+F
+~angle:90
+~iterations:6
+F:FF+F-F+F+FF
+
+# Koch curve 4
+~lsystem
+~title:Koch curve 4
+~axiom:F+F+F+F
+~angle:90
+~iterations:6
+F:FF+F++F+F
+
+# Koch curve 5
+~lsystem
+~title:Koch curve 5
+~axiom:F+F+F+F
+~angle:90
+~iterations:6
+F:F+FF++F+F
+
+# Koch curve 6
+~lsystem
+~title:Koch curve 6
+~axiom:F+F+F+F
+~angle:90
+~iterations:6
+F:F+F-F+F+F
+
+# Flake
+~lsystem
+~title:Flake
+~axiom:F
+~angle:90
+~iterations:6
+F:F-F+F+F-F
+
+# Quilt
+~lsystem
+~title:Quilt
+~axiom:F---F---F---F
+~angle:30
+~iterations:6
+F = -F+++F---+
+
+# Chain
+~lsystem
+~title:Chain
+~axiom:F
+~angle:45
+~iterations:6
+F = F+F-F-FF+F+F
+
+# Dragon maze
+~lsystem
+~title:Dragon maze
+~axiom:SU
+~angle:90
+~iterations:6
+S:FS+G-X
+T:++F--U+G-X
+U:++F--U-G+Z
+V:FS-G+Z
+W:GW+F-T
+X:++G--Y+F-T
+Y:++G--Y-F+V
+Z:GW-F+V
+F:
+G:
+
+# Dragon cross
+~lsystem
+~title:Dragon cross
+~axiom:FX
+~angle:90
+~iterations:6
+X:FX+FX+FXFY-FY-
+Y:+FX+FXFY-FY-FY
+F:
+
+# Dragon boundary
+~lsystem
+~title:Dragon boundary
+~axiom:OTUZ
+~angle:90
+~iterations:6
+O:FO+F-T
+P:++F--U+F-X
+Q:-F+V++F--Q
+R:-F+ZFS
+S:FW
+T:++F--U
+U:++F--Y
+V:FS
+W:FO+F-P
+X:++F--Y+F-X
+Y:-F+R++F--Q
+Z:-F+ZFW
+F:
+
+# Dragon curve
+~lsystem
+~title:Dragon curve
+~axiom:FX
+~angle:90
+~iterations:6
+X:X+YF
+Y:FX-Y
+
+# Peano curve 1
+~lsystem
+~title:Peano curve 1
+~axiom:X
+~angle:90
+~iterations:6
+X:XFYFX+F+YFXFY-F-XFYFX
+Y:YFXFY-F-XFYFX+F+YFXFY
+
+# Peano curve 2
+~lsystem
+~title:Peano curve 2
+~axiom:F-F-F-F
+~angle:90
+~iterations:6
+F:F-F+F+F+F-F-F-F+F
+
+# Peano Gosper
+~lsystem
+~title:Peano-Gosper curve
+~axiom:FL
+~angle:60
+~iterations:6
+L:FL-FR--FR+FL++FLFL+FR-
+R:+FL-FRFR--FR-FL++FL+FR
+F:
+
+# Lace
+~lsystem
+~title:Lace
+~axiom:W
+~angle:30
+~iterations:6
+W:+++X--F--ZFX+
+X:---W++F++YFW-
+Y:+ZFX--F--Z+++
+Z:-YFW++F++Y---
+
+# Sphinx
+~lsystem
+~title:Sphinx
+~axiom:X
+~iterations:6
+~angle:60
+X:+FF-YFF+FF--FFF|X|F--YFFFYFFF|
+Y:-FF+XFF-FF++FFF|Y|F++XFFFXFFF|
+F:GG
+G:GG
+
+# Dekking
+~lsystem
+~title:Dekking
+~axiom:X+X+X
+~iterations:6
+~angle:120
+X:FY+GX-FY
+Y:GX+FY-GX
+F:
+G:
+
+# Circular tile
+~lsystem
+~title:Circular tile
+~axiom:X+X+X+X+X+X+X+X+X+X+X+X+X+X+X+X+X+X+X+X+X+X+X+X
+~iterations:6
+~angle:15
+X:[F+F+F+F[---X-Y]+++++F++++++++F-F-F-F]
+Y:[F+F+F+F[---Y]+++++F++++++++F-F-F-F]
+
+# Double Penrose
+~lsystem
+~title:Double Penrose
+~axiom:[X][Y]++[X][Y]++[X][Y]++[X][Y]++[X][Y]
+~iterations:6
+~angle:36
+W:YF++ZF----XF[-YF----WF]++
+X:+YF--ZF[---WF--XF]+
+Y:-WF++XF[+++YF++ZF]-
+Z:--YF++++WF[+ZF++++XF]--XF
+F:
+
+# Penrose
+~lsystem
+~title:Penrose
+~axiom:+WF--XF---YF--ZF
+~iterations:6
+~angle:36
+W:YF++ZF----XF[-YF----WF]++
+X:+YF--ZF[---WF--XF]+
+Y:-WF++XF[+++YF++ZF]-
+Z:--YF++++WF[+ZF++++XF]--XF
+F:
+
+# Pentaplexity
+~lsystem
+~title:Pentaplexity
+~axiom:F++F++F++F++F
+~iterations:6
+~angle:36
+F:F++F++F|F-F++F
+
+# Von Koch island 2 
+~lsystem
+~title:Von Koch island 2
+~axiom:F++F++F
+~iterations:6
+~angle:60
+F:F++F--F
+
+# Von Kock island 1
+~lsystem
+~title:Von Koch island 1
+~axiom:F--F--F
+~iterations:6
+~angle:60
+F:F+F--F+F
+
+# Von Kock flake
+~lsystem
+~title:Von Koch flake
+~axiom:F--F--F
+~iterations:6
+~angle:60
+F:F-F++F-F
+
+# Sierpinski triangle 1
+~lsystem
+~title:Sierpinski triangle 1
+~axiom:A
+~angle:60
+~iterations:6
+A:B-A-B
+B:A+B+A
+
+# Sierpinski triangle 2
+~lsystem
+~title:Sierpinski triangle 2
+~axiom:F
+~angle:120
+~iterations:6
+F:FXF
+X:+FXF-FXF-FXF+
+
+# Cesaros's sweep
+~lsystem
+~title:Cesaros's sweep
+~axiom:FX
+~angle:10.58
+~iterations:6
+F:
+X:----F_X_++++++++F_X_----
+
+# Moore
+~lsystem
+~title:Moore
+~axiom:X
+~angle:90
+~iterations:6
+F:
+X:FX+FX+FXFYFX+FXFY-FY-FY-
+Y:+FX+FX+FXFY-FYFXFY-FY-FY
+
+# Maze triangle
+~lsystem
+~title:Maze triangle
+~axiom:X
+~angle:120
+~iterations:6
+F:
+X:FY+FYFY-FY
+Y:FX-FXFX+FX
+
+# Tree 2
+~lsystem
+~title:Tree 2
+~axiom:X
+~angle:25.7
+~iangl:90.0
+~iterations:6
+X:F[+X][-X]FX
+F:FF
+
+# Root
+~lsystem
+~title:Root
+~axiom:FX
+~angle:30
+~iangl:90
+~iterations:6
+X:[-FY]+FX
+Y:FX+FY-FX
+
+# Plant 5
+~lsystem
+~title:Plant 5
+~axiom:X
+~angle:25
+~iangl:90
+~iterations:6
+X:F-[[X]+X]+F[+FX]-X
+F:FF
+
+# Plant 4
+~lsystem
+~title:Plant 4
+~axiom:SLFFF
+~angle:18
+~iangl:90
+~iterations:6
+S:[+++Z][---Z]TS
+Z:+H[-Z]L
+H:-Z[+H]L
+T:TL
+L:[-FFF][+FFF]F
+
+# Plant 3
+~lsystem
+~title:Plant 3
+~axiom:Z
+~angle:25.7
+~iangl:90
+~iterations:6
+Z:ZFX[+Z][-Z]
+X:X[-FFF][+FFF]FX
+
+# Plant 2
+~lsystem
+~title:Plant 2
+~axiom:F
+~angle:20
+~iangl:90
+~iterations:6
+F:F[+F]F[-F][F]
+
+# Plant 1
+~lsystem
+~title:Plant 1
+~axiom:F
+~angle:25.7
+~iangl:90
+~iterations:6
+F:F[+F]F[-F]F
+
+# Bush
+~lsystem
+~title:Bush
+~axiom:F
+~angle:22.5
+~iangl:90
+~iterations:6
+F:FF-[-F+F+F]+[+F-F-F]
+
+~end
