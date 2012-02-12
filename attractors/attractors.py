@@ -261,12 +261,12 @@ def createImage(wc, sc, l):
 	w = sc[2]-sc[0]
 	h = sc[3]-sc[1]
 	size = w*h
-	cv = [0]*size
+	cv = [toRGB(255,255,255)]*size
 
 	im = Image.new("RGB", (w, h), None)
 	for pt in l:
 		xi, yi = w_to_s(wc, sc, pt[0], pt[1])
-		cv[yi*w + xi] = toRGB(255, 255, 255)
+		cv[yi*w + xi] = toRGB(0, 0, 0)
 
 	im.putdata(cv) 
 	return im
@@ -275,16 +275,19 @@ def showAttractor(at, screen_c):
 	l = at.iterateMap()
 	window_c = scaleRatio(at.bound, screen_c)
 	im = createImage(window_c, screen_c, l)
-	im.show()
+	#im.show()
+	return im
+	im.save("fractal.png", "PNG")
 	
 screen_c = (0, 0, 1024, 768)
 random.seed()
 
 # A few 2D attractors
-for i in range(5):
-	at = attractor2D()
+for i in range(64):
+	at = attractor2D({'order':3, 'iter':16384})
 	at.explore()
-	showAttractor(at, screen_c)
+	im = showAttractor(at, screen_c)
+	im.save("png/fractal"+str(i)+".png", "PNG")
 
 # The logistic parabola
 at = attractor1D({'coef': (0, 4, -4), 'depth': 1})
