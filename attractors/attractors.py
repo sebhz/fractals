@@ -196,7 +196,8 @@ class attractor2D(object):
 		x, y = self.init
 		pe = (x+.000001, y)
 
-		for i in range(self.opt['iter']):
+		# 16384 iterations should be more than enough to check for convergence !
+		for i in range(16384):
 			xnew, ynew = (self.evalCoef(self.coef[0], x, y), self.evalCoef(self.coef[1], x, y))
 			if abs(xnew) + abs(ynew) > 1000000: # Unbounded - not an SA
 				return False
@@ -292,7 +293,7 @@ random.seed()
 
 # A few 2D attractors
 for i in range(64):
-	at = attractor2D({'order':3, 'iter':16384})
+	at = attractor2D({'order':2, 'iter':256000})
 	at.explore()
 	print at
 	im = showAttractor(at, screen_c)
