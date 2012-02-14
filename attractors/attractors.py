@@ -86,7 +86,7 @@ class attractor1D(object):
 			if self.computeLyapunov(xnew) < 0.005 and i > 128: # Lyapunov exponent too small - limit cycle
 				return False
 			x = xnew
-			
+
 		return True
 		
 	def explore(self):
@@ -98,8 +98,6 @@ class attractor1D(object):
 			n = n + 1
 			self.coef = self.getRandom()
 			self.derive = self.coef.derive()
-
-		print "Found in", n, "iterations:", self.coef, "(Lyapunov exponent:", self.lyapunov['ly'], ")"
 
 	def iterateMap(self):
 		l    = list()
@@ -146,7 +144,17 @@ class attractor2D(object):
 			self.order = 2 # Quadratic by default
 
 		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
+		self.fdim      = 0
 		self.bound     = [0]*4
+
+	def __str__(self):
+		st = ""
+		for p in self.coef:
+			st = st + "coef: " + p.__str__() + "\n"
+		st = st + "Lyapunov exponent: " + str(self.lyapunov['ly']) + "\n"
+		st = st + "Fractal dimension: " + str(self.fdim) + "\n"
+		st = st + "Computed on " + str(self.opt['iter']) +  " points.\n"
+		return st
 
 	def getRandom(self):
 		c = (list(), list())
@@ -208,20 +216,21 @@ class attractor2D(object):
 		while not self.checkConvergence():
 			n = n + 1
 			self.coef = self.getRandom()
-		print "Found in", n, "iterations:", self.coef[0], self.coef[1], "(Lyapunov exponent:", self.lyapunov['ly'], ")"
 
 	def iterateMap(self):
 		l = list()
 		ax, ay = (self.coef[0], self.coef[1])
 		x, y = self.init
-		xmin, xmax, ymin, ymax = (x, x, y, y)
+		xmin, xmax, ymin, ymax = (1000000, -1000000, 1000000, -1000000)
 		
 		for i in range(self.opt['iter']):
 			xnew, ynew = (self.evalCoef(ax, x, y), self.evalCoef(ay, x, y))
-			l.append((xnew, ynew, i))
 			x, y = (xnew, ynew)
-			xmin, xmax, ymin, ymax = (min(x, xmin), max(x, xmax), 
-									  min(y, ymin), max(y, ymax))
+			# Ignore the first 128 points to get a proper convergence
+			if i >= 128:
+				l.append((xnew, ynew, i))
+				xmin, xmax, ymin, ymax = (min(x, xmin), max(x, xmax),
+										  min(y, ymin), max(y, ymax))
 		self.bound = (xmin, ymin, xmax, ymax) 
 		return l
 
@@ -261,7 +270,7 @@ def createImage(wc, sc, l):
 	w = sc[2]-sc[0]
 	h = sc[3]-sc[1]
 	size = w*h
-	cv = [toRGB(255,255,255)]*size
+	cv = [toRGB(255,250,205)]*size # Lemon chiffon RGB code
 
 	im = Image.new("RGB", (w, h), None)
 	for pt in l:
@@ -277,7 +286,6 @@ def showAttractor(at, screen_c):
 	im = createImage(window_c, screen_c, l)
 	#im.show()
 	return im
-	im.save("fractal.png", "PNG")
 	
 screen_c = (0, 0, 1024, 768)
 random.seed()
@@ -286,6 +294,7 @@ random.seed()
 for i in range(64):
 	at = attractor2D({'order':3, 'iter':16384})
 	at.explore()
+	print at
 	im = showAttractor(at, screen_c)
 	im.save("png/fractal"+str(i)+".png", "PNG")
 
