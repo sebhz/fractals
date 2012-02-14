@@ -124,6 +124,9 @@ class attractor2D(object):
 		else:
 			self.opt = dict()
 
+		if not self.opt.has_key('dim'):
+			self.opt['dim'] = 2
+
 		if not self.opt.has_key('iter'):
 			self.opt['iter'] = 4096
 		
@@ -157,27 +160,30 @@ class attractor2D(object):
 		return st
 
 	def getRandom(self):
-		c = (list(), list())
-		for i in c:
-			for j in range((self.order+1)*(self.order+2)/2):
-				i.append(random.uniform(-2, 2))
+		l = self.order + 1
+		for i in range(2, self.opt['dim']+1):
+			l = l * (self.order+i)
+		l = l / self.opt['dim']
+
+		c = [[random.uniform(-2, 2) for _ in range(l)] for __ in range(self.opt['dim'])]
+
 		return c
 
 	# Could have modified polynom class to support n-dimension polynoms... but this is simpler
-	def evalCoef(self, c, x, y):
+	def evalCoef(self, c, p):
 		result = 0
 		n = 0
 		for i in range(self.order+1):
 			for j in range(i+1):
-				result = result + c[n]*(x**j)*(y**(i-j))
+				result = result + c[n]*(p[0]**j)*(p[1]**(i-j))
 				n = n + 1
 		return result
 
 	def computeLyapunov(self, p, pe):
 		x, y = self.init
 		# Compute Lyapunov exponent... sort of
-		x2,   y2   = (self.evalCoef(self.coef[0], pe[0], pe[1]),
-			          self.evalCoef(self.coef[1], pe[0], pe[1]))
+		x2,   y2   = (self.evalCoef(self.coef[0], pe),
+			          self.evalCoef(self.coef[1], pe))
 		dlx,  dly  = (x2-p[0], y2-p[1])
 		dl2 = dlx*dlx + dly*dly
 		if dl2 == 0:
@@ -193,21 +199,22 @@ class attractor2D(object):
 
 	def checkConvergence(self):
 		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
-		x, y = self.init
-		pe = (x+.000001, y)
+		p = self.init
+		pe = [x + 0.000001 if i==0 else x for i,x in enumerate(p)]
+		modulus = lambda x, y: abs(x) + abs(y)
 
 		# 16384 iterations should be more than enough to check for convergence !
 		for i in range(16384):
-			xnew, ynew = (self.evalCoef(self.coef[0], x, y), self.evalCoef(self.coef[1], x, y))
-			if abs(xnew) + abs(ynew) > 1000000: # Unbounded - not an SA
+			pnew = map (lambda x: self.evalCoef(x, p), self.coef)
+			if reduce(modulus, pnew) > 1000000: # Unbounded - not an SA
 				return False
-			if abs(xnew-x) + abs(ynew-y) < 0.000001: # Fixed point - not an SA
+			if reduce(modulus, [c-p[index] for index,c in enumerate(pnew)]) < 0.000001:
 				return False
 			# Compute Lyapunov exponent... sort of
-			pe = self.computeLyapunov((xnew, ynew), pe)
+			pe = self.computeLyapunov(pnew, pe)
 			if self.lyapunov['ly'] < 0.005 and i > 128: # Limit cycle
 				return False
-			x, y = (xnew, ynew)
+			p = pnew
 
 		return True
 
@@ -220,18 +227,17 @@ class attractor2D(object):
 
 	def iterateMap(self):
 		l = list()
-		ax, ay = (self.coef[0], self.coef[1])
-		x, y = self.init
+		p = self.init
 		xmin, xmax, ymin, ymax = (1000000, -1000000, 1000000, -1000000)
 		
 		for i in range(self.opt['iter']):
-			xnew, ynew = (self.evalCoef(ax, x, y), self.evalCoef(ay, x, y))
-			x, y = (xnew, ynew)
+			pnew = map(lambda x: self.evalCoef(x, p), self.coef)
+			p    = pnew
 			# Ignore the first 128 points to get a proper convergence
 			if i >= 128:
-				l.append((xnew, ynew, i))
-				xmin, xmax, ymin, ymax = (min(x, xmin), max(x, xmax),
-										  min(y, ymin), max(y, ymax))
+				l.append((pnew[0], pnew[1], i))
+				xmin, xmax, ymin, ymax = (min(p[0], xmin), max(p[0], xmax),
+										  min(p[1], ymin), max(p[1], ymax))
 		self.bound = (xmin, ymin, xmax, ymax) 
 		return l
 
@@ -292,8 +298,8 @@ screen_c = (0, 0, 1024, 768)
 random.seed()
 
 # A few 2D attractors
-for i in range(64):
-	at = attractor2D({'order':2, 'iter':256000})
+for i in range(32):
+	at = attractor2D({'order':2, 'iter':64000})
 	at.explore()
 	print at
 	im = showAttractor(at, screen_c)
