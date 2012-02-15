@@ -27,97 +27,7 @@ class polynom(object):
 	def __str__(self):
 		return self.a.__str__()
 
-class attractor1D(object):
-	def __init__(self, *opt):
-		if opt:
-			self.opt = opt[0]
-		else:
-			self.opt = dict()
-
-		if not self.opt.has_key('iter'):
-			self.opt['iter'] = 4096
-		
-		if not self.opt.has_key('depth'):
-			self.opt['depth'] = 5
-
-		if not self.opt.has_key('coef'):
-			self.coef = None
-			self.derive = None
-		else:
-			self.coef = polynom(self.opt['coef'])
-			self.derive = self.coef.derive()
-
-		if not self.opt.has_key('init'):
-			self.init = 0.1
-
-		if self.opt.has_key('order'):
-			self.order = self.opt['order']
-		else:
-			self.order = 2 # Quadratic by default
-
-		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
-		self.bound     = [0]*4
-
-	def getRandom(self):
-		c = list()
-		for i in range(self.order+1):
-			c.append(random.uniform(-4, 4))
-		return polynom(c)
-
-	def computeLyapunov(self, x):
-		df = abs(self.derive(x))
-		if df > 0:
-			self.lyapunov['lsum'] = self.lyapunov['lsum'] + math.log(df)/math.log(2)
-			self.lyapunov['nl']   = self.lyapunov['nl'] + 1
-	
-		self.lyapunov['ly'] = 0.721347 * self.lyapunov['lsum'] / self.lyapunov['nl']
-		return self.lyapunov['ly']
-
-	def checkConvergence(self):
-		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
-		x = self.init
-		
-		for i in range(self.opt['iter']):
-			xnew = self.coef(x)
-			if abs(xnew) > 1000000: # Unbounded - not an SA
-				return False
-			if abs(xnew-x) < 0.000001: # Fixed point - not an SA
-				return False
-			if self.computeLyapunov(xnew) < 0.005 and i > 128: # Lyapunov exponent too small - limit cycle
-				return False
-			x = xnew
-
-		return True
-		
-	def explore(self):
-		n = 0;
-
-		self.coef = self.getRandom()
-		self.derive = self.coef.derive()
-		while not self.checkConvergence():
-			n = n + 1
-			self.coef = self.getRandom()
-			self.derive = self.coef.derive()
-
-	def iterateMap(self):
-		l    = list()
-		x    = self.init
-		prev = self.opt['depth']	
-		mem  = [x]*prev
-		xmin, xmax = (x, x)
-
-		for i in range(self.opt['iter']):
-			xnew = self.coef(x)
-			if i >= prev:
-				l.append((mem[(i-prev)%prev], xnew, i))
-			mem[i%prev] = xnew;
-			xmin, xmax = (min(xmin, xnew), max(xmax, xnew))
-			x = xnew
-
-		self.bound = (xmin, xmin, xmax, xmax)
-		return l
-		
-class attractor2D(object):
+class polynomialAttractor(object):
 	def __init__(self, *opt):
 		if opt:
 			self.opt = opt[0]
@@ -135,8 +45,10 @@ class attractor2D(object):
 
 		if not self.opt.has_key('coef'):
 			self.coef = None
+			self.derive = None
 		else:
 			self.coef = self.opt['coef']
+			self.derive = polynom(self.coef[0]).derive()
 
 		if not self.opt.has_key('init'):
 			self.init = [0.1]*self.opt['dim']
@@ -214,9 +126,9 @@ class attractor2D(object):
 				pnew = [polynom(self.coef[0])(p[0])]
 			else:
 				pnew = self.evalCoef(p)
-			if reduce(modulus, pnew) > 1000000: # Unbounded - not an SA
+			if reduce(modulus, pnew, 0) > 1000000: # Unbounded - not an SA
 				return False
-			if reduce(modulus, [c-p[index] for index,c in enumerate(pnew)]) < 0.000001:
+			if reduce(modulus, [c-p[index] for index,c in enumerate(pnew)], 0) < 0.00000001:
 				return False
 			# Compute Lyapunov exponent... sort of
 			pe = self.computeLyapunov(pnew, pe)
@@ -237,18 +149,29 @@ class attractor2D(object):
 		l = list()
 		p = self.init
 		pmin, pmax = ([1000000]*self.opt['dim'], [-1000000]*self.opt['dim'])
+		if self.opt['dim'] == 1:
+			prev = self.opt['depth']
+			mem  = [p]*prev
 
 		for i in range(self.opt['iter']):
 			if self.opt['dim'] == 1:
 				pnew = [polynom(self.coef[0])(p[0])]
 			else:
 				pnew = self.evalCoef(p)
-			p    = pnew
 			# Ignore the first 128 points to get a proper convergence
 			if i >= 128:
-				l.append(pnew)
-				pmin = [min(p[i], pm) for i,pm in enumerate(pmin)]
-				pmax = [max(p[i], pm) for i,pm in enumerate(pmax)]
+				if self.opt['dim'] == 1:
+					if i >= prev:
+						l.append((mem[(i-prev)%prev][0], pnew[0]))
+				else:
+					l.append(pnew)
+				pmin = [min(pnew[j], pm) for j,pm in enumerate(pmin)]
+				pmax = [max(pnew[j], pm) for j,pm in enumerate(pmax)]
+
+			if self.opt['dim'] == 1:
+				mem[i%prev] = pnew
+			p = pnew
+
 		self.bound = (pmin, pmax)
 		return l
 
@@ -300,34 +223,37 @@ def createImage(wc, sc, l):
 	return im
 
 def projectBound(at):
-	return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
+	if at.opt['dim'] == 1:
+		return (at.bound[0][0], at.bound[0][0], at.bound[1][0], at.bound[1][0])
+	elif at.opt['dim'] == 2:
+		return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
 
 def showAttractor(at, screen_c):
 	l = at.iterateMap()
 	window_c = scaleRatio(projectBound(at), screen_c)
 	im = createImage(window_c, screen_c, l)
-	#im.show()
+	im.show()
 	return im
 	
 screen_c = (0, 0, 1024, 768)
 random.seed()
 
-# A few 2D attractors
-for i in range(32):
-	at = attractor2D({'dim':2, 'iter':64000})
-	at.explore()
-	print at
-	im = showAttractor(at, screen_c)
-	im.save("png/fractal"+str(i)+".png", "PNG")
-
 # The logistic parabola
-at = attractor1D({'coef': (0, 4, -4), 'depth': 1})
+at = polynomialAttractor({'coef': [(0, 4, -4)], 'dim': 1, 'depth': 1})
+print at
 if not at.checkConvergence():
 	print "Looks like this is not an attractor"
 else:
 	showAttractor(at, screen_c)
 
-# A random 1D attractor of order 5
-at = attractor1D({'order': 5, 'iter' : 8192})
-at.explore()
-showAttractor(at, screen_c)
+# A few 1D and 2D attractors
+for i in range(32):
+	at = polynomialAttractor({'dim':1,'iter':16384})
+	at.explore()
+	print at
+	im = showAttractor(at, screen_c)
+	at = polynomialAttractor({'dim':2,'iter':16384})
+	at.explore()
+	print at
+	im = showAttractor(at, screen_c)
+	#im.save("png/fractal"+str(i)+".png", "PNG")
