@@ -209,11 +209,12 @@ def toRGB(r, g, b):
 
 def countStackedPixels(lc):
 	d = dict()
+
 	for p in lc:
 		if d.has_key(p):
 			d[p] = d[p]+1
 		else:
-			d[p] = 0
+			d[p] = 1
 	
 	return d
 			
@@ -261,11 +262,11 @@ else:
 
 # A few 1D and 2D attractors
 for i in range(32):
-	at = polynomialAttractor({'dim':1,'iter':16384})
+	at = polynomialAttractor({'dim':1,'iter':163840})
 	at.explore()
 	print at
 	im = showAttractor(at, screen_c)
-	at = polynomialAttractor({'dim':2,'iter':16384})
+	at = polynomialAttractor({'dim':2,'iter':163840})
 	at.explore()
 	print at
 	im = showAttractor(at, screen_c)
