@@ -207,6 +207,16 @@ def scaleRatio(wc, sc):
 def toRGB(r, g, b):
 	return r*65536 + g*256 + r
 
+def countStackedPixels(lc):
+	d = dict()
+	for p in lc:
+		if d.has_key(p):
+			d[p] = d[p]+1
+		else:
+			d[p] = 0
+	
+	return d
+			
 # Creates an image and fill it with an array of RGB values
 def createImage(wc, sc, l):
 	w = sc[2]-sc[0]
@@ -215,9 +225,12 @@ def createImage(wc, sc, l):
 	cv = [toRGB(255,250,205)]*size # Lemon chiffon RGB code
 
 	im = Image.new("RGB", (w, h), None)
-	for pt in l:
-		xi, yi = w_to_s(wc, sc, pt)
-		cv[yi*w + xi] = toRGB(0, 0, 0)
+	lc = [w_to_s(wc, sc, pt) for pt in l]
+	d  = countStackedPixels(lc)
+	
+	for pt in lc:
+		xi, yi = pt
+		cv[yi*w + xi] = toRGB((d[pt]*125)%255, 0, 0)
 
 	im.putdata(cv) 
 	return im
