@@ -234,7 +234,7 @@ class attractor2D(object):
 			p    = pnew
 			# Ignore the first 128 points to get a proper convergence
 			if i >= 128:
-				l.append((pnew, i))
+				l.append(pnew)
 				pmin = [min(p[i], pm) for i,pm in enumerate(pmin)]
 				pmax = [max(p[i], pm) for i,pm in enumerate(pmax)]
 		self.bound = (pmin, pmax)
@@ -281,7 +281,7 @@ def createImage(wc, sc, l):
 
 	im = Image.new("RGB", (w, h), None)
 	for pt in l:
-		xi, yi = w_to_s(wc, sc, pt[0])
+		xi, yi = w_to_s(wc, sc, pt)
 		cv[yi*w + xi] = toRGB(0, 0, 0)
 
 	im.putdata(cv) 
