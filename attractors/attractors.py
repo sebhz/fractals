@@ -170,20 +170,22 @@ class attractor2D(object):
 		return c
 
 	# Could have modified polynom class to support n-dimension polynoms... but this is simpler
-	def evalCoef(self, c, p):
-		result = 0
-		n = 0
-		for i in range(self.order+1):
-			for j in range(i+1):
-				result = result + c[n]*(p[0]**j)*(p[1]**(i-j))
-				n = n + 1
-		return result
+	def evalCoef(self, p):
+		l = list()
+		for c in self.coef:
+			result = 0
+			n = 0
+			for i in range(self.order+1):
+					for j in range(i+1):
+						result = result + c[n]*(p[0]**j)*(p[1]**(i-j))
+						n = n + 1
+			l.append(result)
+		return l
 
 	def computeLyapunov(self, p, pe):
 		x, y = self.init
 		# Compute Lyapunov exponent... sort of
-		x2,   y2   = (self.evalCoef(self.coef[0], pe),
-			          self.evalCoef(self.coef[1], pe))
+		x2,   y2   = self.evalCoef(pe)
 		dlx,  dly  = (x2-p[0], y2-p[1])
 		dl2 = dlx*dlx + dly*dly
 		if dl2 == 0:
@@ -205,7 +207,7 @@ class attractor2D(object):
 
 		# 16384 iterations should be more than enough to check for convergence !
 		for i in range(16384):
-			pnew = map (lambda x: self.evalCoef(x, p), self.coef)
+			pnew = self.evalCoef(p)
 			if reduce(modulus, pnew) > 1000000: # Unbounded - not an SA
 				return False
 			if reduce(modulus, [c-p[index] for index,c in enumerate(pnew)]) < 0.000001:
@@ -231,7 +233,7 @@ class attractor2D(object):
 		xmin, xmax, ymin, ymax = (1000000, -1000000, 1000000, -1000000)
 		
 		for i in range(self.opt['iter']):
-			pnew = map(lambda x: self.evalCoef(x, p), self.coef)
+			pnew = self.evalCoef(p)
 			p    = pnew
 			# Ignore the first 128 points to get a proper convergence
 			if i >= 128:
