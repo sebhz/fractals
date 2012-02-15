@@ -100,7 +100,7 @@ class polynomialAttractor(object):
 			df = abs(self.derive(p[0]))
 		else:
 			p2   = self.evalCoef(pe)
-			dl   = [p2[i]-x for i,x in enumerate(p)]
+			dl   = [d-x for d,x in zip(p2, p)]
 			dl2  = reduce(lambda x,y: x*x + y*y, dl)
 			if dl2 == 0:
 				print "Unable to compute Lyapunov exponent, but trying to go on..."
@@ -128,7 +128,7 @@ class polynomialAttractor(object):
 				pnew = self.evalCoef(p)
 			if reduce(modulus, pnew, 0) > 1000000: # Unbounded - not an SA
 				return False
-			if reduce(modulus, [c-p[index] for index,c in enumerate(pnew)], 0) < 0.00000001:
+			if reduce(modulus, [pn-pc for pn, pc in zip(pnew, p)], 0) < 0.00000001:
 				return False
 			# Compute Lyapunov exponent... sort of
 			pe = self.computeLyapunov(pnew, pe)
@@ -165,8 +165,8 @@ class polynomialAttractor(object):
 						l.append((mem[(i-prev)%prev][0], pnew[0]))
 				else:
 					l.append(pnew)
-				pmin = [min(pnew[j], pm) for j,pm in enumerate(pmin)]
-				pmax = [max(pnew[j], pm) for j,pm in enumerate(pmax)]
+				pmin = [min(pn, pm) for pn,pm in zip(pnew, pmin)]
+				pmax = [max(pn, pm) for pn,pm in zip(pnew, pmax)]
 
 			if self.opt['dim'] == 1:
 				mem[i%prev] = pnew
