@@ -183,21 +183,18 @@ class attractor2D(object):
 		return l
 
 	def computeLyapunov(self, p, pe):
-		x, y = self.init
-		# Compute Lyapunov exponent... sort of
-		x2,   y2   = self.evalCoef(pe)
-		dlx,  dly  = (x2-p[0], y2-p[1])
-		dl2 = dlx*dlx + dly*dly
+		p2   = self.evalCoef(pe)
+		dl   = [p2[i]-x for i,x in enumerate(p)]
+		dl2  = reduce(lambda x,y: x*x + y*y, dl)
 		if dl2 == 0:
 			print "Unable to compute Lyapunov exponent, but trying to go on..."
 			return pe
 		df = 1000000000000*dl2
 		rs = 1/math.sqrt(df)
-		pe = (p[0] + rs * dlx, p[1] + rs * dly)
 		self.lyapunov['lsum'] = self.lyapunov['lsum'] + math.log(df)/math.log(2)
 		self.lyapunov['nl']   = self.lyapunov['nl'] + 1
 		self.lyapunov['ly'] = 0.721347 * self.lyapunov['lsum'] / self.lyapunov['nl']
-		return pe
+		return [p[i]-rs*x for i,x in enumerate(dl)]
 
 	def checkConvergence(self):
 		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
