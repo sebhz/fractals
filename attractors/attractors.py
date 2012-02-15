@@ -139,7 +139,7 @@ class attractor2D(object):
 			self.coef = self.opt['coef']
 
 		if not self.opt.has_key('init'):
-			self.init = (0.1, 0.1)
+			self.init = [0.1]*self.opt['dim']
 
 		if self.opt.has_key('order'):
 			self.order = self.opt['order']
@@ -167,9 +167,10 @@ class attractor2D(object):
 
 		c = [[random.uniform(-2, 2) for _ in range(l)] for __ in range(self.opt['dim'])]
 
+		if self.opt['dim'] == 1: self.derive = polynom(c[0]).derive()
+
 		return c
 
-	# Could have modified polynom class to support n-dimension polynoms... but this is simpler
 	def evalCoef(self, p):
 		l = list()
 		for c in self.coef:
@@ -183,18 +184,23 @@ class attractor2D(object):
 		return l
 
 	def computeLyapunov(self, p, pe):
-		p2   = self.evalCoef(pe)
-		dl   = [p2[i]-x for i,x in enumerate(p)]
-		dl2  = reduce(lambda x,y: x*x + y*y, dl)
-		if dl2 == 0:
-			print "Unable to compute Lyapunov exponent, but trying to go on..."
-			return pe
-		df = 1000000000000*dl2
-		rs = 1/math.sqrt(df)
+		if self.opt['dim'] == 1:
+			df = abs(self.derive(p[0]))
+		else:
+			p2   = self.evalCoef(pe)
+			dl   = [p2[i]-x for i,x in enumerate(p)]
+			dl2  = reduce(lambda x,y: x*x + y*y, dl)
+			if dl2 == 0:
+				print "Unable to compute Lyapunov exponent, but trying to go on..."
+				return pe
+			df = 1000000000000*dl2
+			rs = 1/math.sqrt(df)
+
 		self.lyapunov['lsum'] = self.lyapunov['lsum'] + math.log(df)/math.log(2)
 		self.lyapunov['nl']   = self.lyapunov['nl'] + 1
 		self.lyapunov['ly'] = 0.721347 * self.lyapunov['lsum'] / self.lyapunov['nl']
-		return [p[i]-rs*x for i,x in enumerate(dl)]
+		if self.opt['dim'] != 1:
+			return [p[i]-rs*x for i,x in enumerate(dl)]
 
 	def checkConvergence(self):
 		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
@@ -204,7 +210,10 @@ class attractor2D(object):
 
 		# 16384 iterations should be more than enough to check for convergence !
 		for i in range(16384):
-			pnew = self.evalCoef(p)
+			if self.opt['dim'] == 1:
+				pnew = [polynom(self.coef[0])(p[0])]
+			else:
+				pnew = self.evalCoef(p)
 			if reduce(modulus, pnew) > 1000000: # Unbounded - not an SA
 				return False
 			if reduce(modulus, [c-p[index] for index,c in enumerate(pnew)]) < 0.000001:
@@ -230,7 +239,10 @@ class attractor2D(object):
 		pmin, pmax = ([1000000]*self.opt['dim'], [-1000000]*self.opt['dim'])
 
 		for i in range(self.opt['iter']):
-			pnew = self.evalCoef(p)
+			if self.opt['dim'] == 1:
+				pnew = [polynom(self.coef[0])(p[0])]
+			else:
+				pnew = self.evalCoef(p)
 			p    = pnew
 			# Ignore the first 128 points to get a proper convergence
 			if i >= 128:
@@ -302,7 +314,7 @@ random.seed()
 
 # A few 2D attractors
 for i in range(32):
-	at = attractor2D({'order':2, 'iter':64000})
+	at = attractor2D({'dim':2, 'iter':64000})
 	at.explore()
 	print at
 	im = showAttractor(at, screen_c)
