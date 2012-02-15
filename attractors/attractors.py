@@ -148,7 +148,7 @@ class attractor2D(object):
 
 		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
 		self.fdim      = 0
-		self.bound     = [0]*4
+		self.bound     = None
 
 	def __str__(self):
 		st = ""
@@ -227,20 +227,21 @@ class attractor2D(object):
 	def iterateMap(self):
 		l = list()
 		p = self.init
-		xmin, xmax, ymin, ymax = (1000000, -1000000, 1000000, -1000000)
-		
+		pmin, pmax = ([1000000]*self.opt['dim'], [-1000000]*self.opt['dim'])
+
 		for i in range(self.opt['iter']):
 			pnew = self.evalCoef(p)
 			p    = pnew
 			# Ignore the first 128 points to get a proper convergence
 			if i >= 128:
-				l.append((pnew[0], pnew[1], i))
-				xmin, xmax, ymin, ymax = (min(p[0], xmin), max(p[0], xmax),
-										  min(p[1], ymin), max(p[1], ymax))
-		self.bound = (xmin, ymin, xmax, ymax) 
+				l.append((pnew, i))
+				pmin = [min(p[i], pm) for i,pm in enumerate(pmin)]
+				pmax = [max(p[i], pm) for i,pm in enumerate(pmax)]
+		self.bound = (pmin, pmax)
 		return l
 
-def w_to_s(wc, sc, x, y):
+def w_to_s(wc, sc, p):
+	x, y = p
 
 	if x < wc[0] or x > wc[2] or y < wc[1] or y > wc[3]:
 		return None
@@ -280,15 +281,18 @@ def createImage(wc, sc, l):
 
 	im = Image.new("RGB", (w, h), None)
 	for pt in l:
-		xi, yi = w_to_s(wc, sc, pt[0], pt[1])
+		xi, yi = w_to_s(wc, sc, pt[0])
 		cv[yi*w + xi] = toRGB(0, 0, 0)
 
 	im.putdata(cv) 
 	return im
 
+def projectBound(at):
+	return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
+
 def showAttractor(at, screen_c):
 	l = at.iterateMap()
-	window_c = scaleRatio(at.bound, screen_c)
+	window_c = scaleRatio(projectBound(at), screen_c)
 	im = createImage(window_c, screen_c, l)
 	#im.show()
 	return im
