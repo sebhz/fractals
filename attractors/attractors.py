@@ -1,5 +1,11 @@
 #!/usr/bin/python
 
+# Generate and colorize various dimension strange attractors
+# Algo taken from Julian Sprott's book: http://sprott.physics.wisc.edu/sa.htm
+# Some coloring ideas (histogram equalization, gradient mapping) taken from
+# Ian Whitham's blog
+# http://ianwitham.wordpress.com/category/graphics/strange-attractors-graphics/
+
 import random
 import math
 
@@ -43,20 +49,21 @@ class polynomialAttractor(object):
 		if not self.opt.has_key('depth'):
 			self.opt['depth'] = 5
 
+		if self.opt.has_key('order'):
+			self.order = self.opt['order']
+		else:
+			self.order = 2 # Quadratic by default
+
 		if not self.opt.has_key('coef'):
 			self.coef = None
 			self.derive = None
 		else:
 			self.coef = self.opt['coef']
 			self.derive = polynom(self.coef[0]).derive()
+			# Need to override order here, or throw an error if not coherent
 
 		if not self.opt.has_key('init'):
 			self.init = [0.1]*self.opt['dim']
-
-		if self.opt.has_key('order'):
-			self.order = self.opt['order']
-		else:
-			self.order = 2 # Quadratic by default
 
 		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
 		self.fdim      = 0
@@ -168,8 +175,7 @@ class polynomialAttractor(object):
 				pmin = [min(pn, pm) for pn,pm in zip(pnew, pmin)]
 				pmax = [max(pn, pm) for pn,pm in zip(pnew, pmax)]
 
-			if self.opt['dim'] == 1:
-				mem[i%prev] = pnew
+			if self.opt['dim'] == 1: mem[i%prev] = pnew
 			p = pnew
 
 		self.bound = (pmin, pmax)
@@ -207,31 +213,55 @@ def scaleRatio(wc, sc):
 def toRGB(r, g, b):
 	return r*65536 + g*256 + r
 
-def countStackedPixels(lc):
+def colorizeAttractor(lc):
 	d = dict()
 
+	# Number of time a pixel is redrawn
 	for p in lc:
 		if d.has_key(p):
 			d[p] = d[p]+1
 		else:
 			d[p] = 1
 	
+	# Now convert this to an histogram of the image...
+	h = [0]*(max(d.values())+1)
+	for v in d.values():
+		h[v] = h[v]+1
+
+	# Equalize histogram:
+	# First compute the cumulative distribution function
+	cdf = [0]*len(h)
+	for i in range(0, len(cdf)):
+		cdf[i] = cdf[i-1]+h[i]
+
+	# Then use the equalizing formula (http://en.wikipedia.org/wiki/Histogram_equalization)
+	b = 2**8-1
+	m  = cdf[i]
+	mm = cdf[1]
+	equalize = lambda x: int(math.floor(b*(cdf[x] - mm)/(m-mm)))
+	h[1:]  = [equalize(x) for x in range(1, len(h))]
+	h[1]   = int(h[2]/2) # Formula above makes first value black - make it only darker
+
+	# Move back the equalized/normalized values into the original dict
+	for k, v in d.iteritems():
+		d[k] = h[v]
+
 	return d
-			
+
 # Creates an image and fill it with an array of RGB values
 def createImage(wc, sc, l):
 	w = sc[2]-sc[0]
 	h = sc[3]-sc[1]
 	size = w*h
-	cv = [toRGB(255,250,205)]*size # Lemon chiffon RGB code
+	cv = [toRGB(0, 0, 0)]*size
 
 	im = Image.new("RGB", (w, h), None)
 	lc = [w_to_s(wc, sc, pt) for pt in l]
-	d  = countStackedPixels(lc)
+	d  = colorizeAttractor(lc)
 	
 	for pt in lc:
 		xi, yi = pt
-		cv[yi*w + xi] = toRGB((d[pt]*125)%255, 0, 0)
+		cv[yi*w + xi] = toRGB(d[pt], d[pt], d[pt])
 
 	im.putdata(cv) 
 	return im
@@ -246,10 +276,10 @@ def showAttractor(at, screen_c):
 	l = at.iterateMap()
 	window_c = scaleRatio(projectBound(at), screen_c)
 	im = createImage(window_c, screen_c, l)
-	im.show()
+	#im.show()
 	return im
 	
-screen_c = (0, 0, 1024, 768)
+screen_c = (0, 0, 1600, 1200)
 random.seed()
 
 # The logistic parabola
@@ -261,13 +291,13 @@ else:
 	showAttractor(at, screen_c)
 
 # A few 1D and 2D attractors
-for i in range(32):
-	at = polynomialAttractor({'dim':1,'iter':163840})
+for i in range(16):
+#	at = polynomialAttractor({'dim':1,'iter':163840})
+#	at.explore()
+#	print at
+#	im = showAttractor(at, screen_c)
+	at = polynomialAttractor({'dim':2, 'order':3, 'iter':1600*1200 })
 	at.explore()
 	print at
 	im = showAttractor(at, screen_c)
-	at = polynomialAttractor({'dim':2,'iter':163840})
-	at.explore()
-	print at
-	im = showAttractor(at, screen_c)
-	#im.save("png/fractal"+str(i)+".png", "PNG")
+	im.save("png/fractal"+str(i)+".png", "PNG")
