@@ -246,6 +246,8 @@ def colorizeAttractor(lc):
 	for k, v in d.iteritems():
 		d[k] = h[v]
 
+	print len(d.keys()), "unique points in the display window."
+
 	return d
 
 # Creates an image and fill it with an array of RGB values
@@ -259,9 +261,9 @@ def createImage(wc, sc, l):
 	lc = [w_to_s(wc, sc, pt) for pt in l]
 	d  = colorizeAttractor(lc)
 	
-	for pt in lc:
+	for pt,v in d.iteritems():
 		xi, yi = pt
-		cv[yi*w + xi] = toRGB(d[pt], d[pt], d[pt])
+		cv[yi*w + xi] = toRGB(v, v, v)
 
 	im.putdata(cv) 
 	return im
