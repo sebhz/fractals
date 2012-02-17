@@ -122,7 +122,7 @@ class polynomialAttractor(object):
 			df = 1000000000000*dl2
 			rs = 1/math.sqrt(df)
 
-		self.lyapunov['lsum'] = self.lyapunov['lsum'] + math.log(df)/math.log(2)
+		self.lyapunov['lsum'] = self.lyapunov['lsum'] + math.log(df)
 		self.lyapunov['nl']   = self.lyapunov['nl'] + 1
 		self.lyapunov['ly'] = 0.721347 * self.lyapunov['lsum'] / self.lyapunov['nl']
 		if self.opt['dim'] != 1:
