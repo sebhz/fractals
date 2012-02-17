@@ -55,11 +55,13 @@ class polynomialAttractor(object):
 			self.order = 2 # Quadratic by default
 
 		if not self.opt.has_key('coef'):
-			self.coef = None
+			self.coef   = None
 			self.derive = None
+			self.code   = None
 		else:
 			self.coef = self.opt['coef']
 			self.derive = polynom(self.coef[0]).derive()
+			self.code   = self.createCode()
 			# Need to override order here, or throw an error if not coherent
 
 		if not self.opt.has_key('init'):
@@ -73,10 +75,17 @@ class polynomialAttractor(object):
 		st = ""
 		for p in self.coef:
 			st = st + "coef: " + p.__str__() + "\n"
+		st += "Code:" + self.code + "\n"
 		st = st + "Lyapunov exponent: " + str(self.lyapunov['ly']) + "\n"
 		st = st + "Fractal dimension: " + str(self.fdim) + "\n"
 		st = st + "Computed on " + str(self.opt['iter']) +  " points.\n"
 		return st
+
+	def createCode(self):
+		# ASCII codes of digits and letters
+		codelist = range(48,58) + range(65,91) + range(97,123)
+		self.code = [codelist[int(x/0.08+25)] for c in self.coef for x in c]
+		self.code = "".join(map(chr,self.code))
 
 	def getRandom(self):
 		l = self.order + 1
@@ -84,11 +93,9 @@ class polynomialAttractor(object):
 			l = l * (self.order+i)
 		l = l / self.opt['dim']
 
-		c = [[random.uniform(-2, 2) for _ in range(l)] for __ in range(self.opt['dim'])]
+		self.coef = [[random.randint(-25, 25)*0.08 for _ in range(l)] for __ in range(self.opt['dim'])]
 
 		if self.opt['dim'] == 1: self.derive = polynom(c[0]).derive()
-
-		return c
 
 	def evalCoef(self, p):
 		l = list()
@@ -147,10 +154,12 @@ class polynomialAttractor(object):
 
 	def explore(self):
 		n = 0;
-		self.coef = self.getRandom()
+		self.getRandom()
 		while not self.checkConvergence():
 			n = n + 1
-			self.coef = self.getRandom()
+			self.getRandom()
+		# Found one -> create corresponding code
+		self.createCode()
 
 	def iterateMap(self):
 		l = list()
@@ -263,7 +272,7 @@ def createImage(wc, sc, l):
 	
 	for pt,v in d.iteritems():
 		xi, yi = pt
-		cv[yi*w + xi] = toRGB(v, v, v)
+		cv[yi*w + xi] = toRGB(0, v, 0)
 
 	im.putdata(cv) 
 	return im
@@ -285,12 +294,12 @@ screen_c = (0, 0, 1600, 1200)
 random.seed()
 
 # The logistic parabola
-at = polynomialAttractor({'coef': [(0, 4, -4)], 'dim': 1, 'depth': 1})
-print at
-if not at.checkConvergence():
-	print "Looks like this is not an attractor"
-else:
-	showAttractor(at, screen_c)
+#at = polynomialAttractor({'coef': [(0, 4, -4)], 'dim': 1, 'depth': 1})
+#print at
+#if not at.checkConvergence():
+#	print "Looks like this is not an attractor"
+#else:
+#	showAttractor(at, screen_c)
 
 # A few 1D and 2D attractors
 for i in range(16):
