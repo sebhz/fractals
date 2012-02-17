@@ -74,11 +74,11 @@ class polynomialAttractor(object):
 	def __str__(self):
 		st = ""
 		for p in self.coef:
-			st = st + "coef: " + p.__str__() + "\n"
-		st += "Code:" + self.code + "\n"
-		st = st + "Lyapunov exponent: " + str(self.lyapunov['ly']) + "\n"
-		st = st + "Fractal dimension: " + str(self.fdim) + "\n"
-		st = st + "Computed on " + str(self.opt['iter']) +  " points.\n"
+			st += "coef: " + p.__str__() + "\n"
+		st += "code: " + self.code + "\n"
+		st += "Lyapunov exponent: " + str(self.lyapunov['ly']) + "\n"
+		st += "Fractal dimension: " + str(self.fdim) + "\n"
+		st += "Computed on " + str(self.opt['iter']) +  " points.\n"
 		return st
 
 	def createCode(self):
@@ -90,8 +90,8 @@ class polynomialAttractor(object):
 	def getRandom(self):
 		l = self.order + 1
 		for i in range(2, self.opt['dim']+1):
-			l = l * (self.order+i)
-		l = l / self.opt['dim']
+			l *= self.order+i
+		l /= self.opt['dim']
 
 		self.coef = [[random.randint(-25, 25)*0.08 for _ in range(l)] for __ in range(self.opt['dim'])]
 
@@ -104,7 +104,7 @@ class polynomialAttractor(object):
 			n = 0
 			for i in range(self.order+1):
 					for j in range(i+1):
-						result = result + c[n]*(p[0]**j)*(p[1]**(i-j))
+						result += c[n]*(p[0]**j)*(p[1]**(i-j))
 						n = n + 1
 			l.append(result)
 		return l
@@ -235,7 +235,7 @@ def colorizeAttractor(lc):
 	# Now convert this to an histogram of the image...
 	h = [0]*(max(d.values())+1)
 	for v in d.values():
-		h[v] = h[v]+1
+		h[v] += 1
 
 	# Equalize histogram:
 	# First compute the cumulative distribution function
@@ -311,4 +311,4 @@ for i in range(16):
 	at.explore()
 	print at
 	im = showAttractor(at, screen_c)
-	im.save("png/fractal"+str(i)+".png", "PNG")
+	im.save("png/" + at.code + ".png", "PNG")
