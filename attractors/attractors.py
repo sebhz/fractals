@@ -78,7 +78,7 @@ class polynomialAttractor(object):
 		st += "code: " + self.code + "\n"
 		st += "Lyapunov exponent: " + str(self.lyapunov['ly']) + "\n"
 		st += "Fractal dimension: " + str(self.fdim) + "\n"
-		st += "Computed on " + str(self.opt['iter']) +  " points.\n"
+		st += "Computed on " + str(self.opt['iter']) +  " points."
 		return st
 
 	def createCode(self):
@@ -188,7 +188,29 @@ class polynomialAttractor(object):
 			p = pnew
 
 		self.bound = (pmin, pmax)
+		self.computeDimension(l)
+
 		return l
+
+	def computeDimension(self, l):
+		if not self.bound: return None
+		if len(l) <= 1024: return None
+
+		n1, n2 = (0, 0)
+		twod   = 2**self.opt['dim']
+		dist = lambda x,y: x*x+y*y
+		d2max = reduce(dist, [mx - mn for mn, mx in zip(self.bound[1], self.bound[0])], 0)
+
+		for i in range(1024, len(l)): # Give 1000 iterations to avoid transients
+			j  = random.randint(1004, i-20) # Ignore 20 previous points (presumably highly correlated)
+			d2 = reduce(dist, [x-y for x, y in zip(l[i], l[j])])
+			if d2 < .001*twod*d2max:
+				n2 += 1
+			if d2 > .00001*twod*d2max:
+				continue
+			n1 += 1
+
+		self.fdim = .434294 * math.log(n2/(n1-.5))
 
 def w_to_s(wc, sc, p):
 	x, y = p
@@ -255,7 +277,7 @@ def colorizeAttractor(lc):
 	for k, v in d.iteritems():
 		d[k] = h[v]
 
-	print len(d.keys()), "unique points in the display window."
+	print len(d.keys()), "unique points in the display window.\n"
 
 	return d
 
@@ -284,13 +306,12 @@ def projectBound(at):
 		return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
 
 def showAttractor(at, screen_c):
-	l = at.iterateMap()
 	window_c = scaleRatio(projectBound(at), screen_c)
 	im = createImage(window_c, screen_c, l)
-	#im.show()
+	im.show()
 	return im
 	
-screen_c = (0, 0, 1600, 1200)
+screen_c = (0, 0, 1024, 768)
 random.seed()
 
 # The logistic parabola
@@ -307,8 +328,9 @@ for i in range(16):
 #	at.explore()
 #	print at
 #	im = showAttractor(at, screen_c)
-	at = polynomialAttractor({'dim':2, 'order':3, 'iter':1600*1200 })
+	at = polynomialAttractor({'dim':2, 'order':3, 'iter':1024*768 })
 	at.explore()
+	l = at.iterateMap()
 	print at
 	im = showAttractor(at, screen_c)
 	im.save("png/" + at.code + ".png", "PNG")
