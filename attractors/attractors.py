@@ -242,7 +242,7 @@ def scaleRatio(wc, sc):
 	return wc
 
 def toRGB(r, g, b):
-	return r*65536 + g*256 + r
+	return b*65536 + g*256 + r
 
 def colorizeAttractor(lc):
 	d = dict()
@@ -253,7 +253,7 @@ def colorizeAttractor(lc):
 			d[p] = d[p]+1
 		else:
 			d[p] = 1
-	
+
 	# Now convert this to an histogram of the image...
 	h = [0]*(max(d.values())+1)
 	for v in d.values():
@@ -266,20 +266,31 @@ def colorizeAttractor(lc):
 		cdf[i] = cdf[i-1]+h[i]
 
 	# Then use the equalizing formula (http://en.wikipedia.org/wiki/Histogram_equalization)
-	b = 2**8-1
+	b = 2**8-1 # 8 bits per color
+	# Create a color gradient - from dark green to lemon chiffon
+	cg = createColorGradient((0, 100, 0), (255, 250, 205), b+1)
 	m  = cdf[i]
 	mm = cdf[1]
 	equalize = lambda x: int(math.floor(b*(cdf[x] - mm)/(m-mm)))
 	h[1:]  = [equalize(x) for x in range(1, len(h))]
-	h[1]   = int(h[2]/2) # Formula above makes first value black - make it only darker
 
-	# Move back the equalized/normalized values into the original dict
+	# Move back the equalized/normalized values into the original dict, after lookup
 	for k, v in d.iteritems():
-		d[k] = h[v]
+		d[k] = cg[h[v]]
 
 	print len(d.keys()), "unique points in the display window.\n"
 
 	return d
+
+def createColorGradient(start_color, end_color, length):
+	l = list()
+
+	step    = [float(e-s)/(length-1) for e, s in zip(end_color, start_color)]
+	for i in range(length):
+		r, g, b = [int(start + i*s) for start, s in zip(start_color, step)]
+		l.append(toRGB(r, g, b))
+
+	return l
 
 # Creates an image and fill it with an array of RGB values
 def createImage(wc, sc, l):
@@ -294,7 +305,7 @@ def createImage(wc, sc, l):
 	
 	for pt,v in d.iteritems():
 		xi, yi = pt
-		cv[yi*w + xi] = toRGB(v, v, v)
+		cv[yi*w + xi] = v #toRGB(v, v, v)
 
 	im.putdata(cv) 
 	return im
@@ -311,7 +322,7 @@ def showAttractor(at, screen_c):
 	#im.show()
 	return im
 	
-screen_c = (0, 0, 1280, 1024)
+screen_c = (0, 0, 800, 600)
 random.seed()
 
 # The logistic parabola
@@ -328,7 +339,7 @@ for i in range(64):
 #	at.explore()
 #	print at
 #	im = showAttractor(at, screen_c)
-	at = polynomialAttractor({'dim':2, 'order':4, 'iter':1280*1024 })
+	at = polynomialAttractor({'dim':2, 'order':4, 'iter':800*600 })
 	at.explore()
 	l = at.iterateMap()
 	print at
