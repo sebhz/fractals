@@ -84,7 +84,7 @@ class polynomialAttractor(object):
 	def createCode(self):
 		# ASCII codes of digits and letters
 		codelist = range(48,58) + range(65,91) + range(97,123)
-		self.code = [codelist[int(x/0.08+25)] for c in self.coef for x in c]
+		self.code = [codelist[int(x/0.08+30)] for c in self.coef for x in c]
 		self.code = "".join(map(chr,self.code))
 
 	def getRandom(self):
@@ -93,7 +93,7 @@ class polynomialAttractor(object):
 			l *= self.order+i
 		l /= self.opt['dim']
 
-		self.coef = [[random.randint(-25, 25)*0.08 for _ in range(l)] for __ in range(self.opt['dim'])]
+		self.coef = [[random.randint(-30, 31)*0.08 for _ in range(l)] for __ in range(self.opt['dim'])]
 
 		if self.opt['dim'] == 1: self.derive = polynom(c[0]).derive()
 
@@ -294,7 +294,7 @@ def createImage(wc, sc, l):
 	
 	for pt,v in d.iteritems():
 		xi, yi = pt
-		cv[yi*w + xi] = toRGB(0, v, 0)
+		cv[yi*w + xi] = toRGB(v, v, v)
 
 	im.putdata(cv) 
 	return im
@@ -308,10 +308,10 @@ def projectBound(at):
 def showAttractor(at, screen_c):
 	window_c = scaleRatio(projectBound(at), screen_c)
 	im = createImage(window_c, screen_c, l)
-	im.show()
+	#im.show()
 	return im
 	
-screen_c = (0, 0, 1024, 768)
+screen_c = (0, 0, 1280, 1024)
 random.seed()
 
 # The logistic parabola
@@ -323,12 +323,12 @@ random.seed()
 #	showAttractor(at, screen_c)
 
 # A few 1D and 2D attractors
-for i in range(16):
+for i in range(64):
 #	at = polynomialAttractor({'dim':1,'iter':163840})
 #	at.explore()
 #	print at
 #	im = showAttractor(at, screen_c)
-	at = polynomialAttractor({'dim':2, 'order':3, 'iter':1024*768 })
+	at = polynomialAttractor({'dim':2, 'order':4, 'iter':1280*1024 })
 	at.explore()
 	l = at.iterateMap()
 	print at
