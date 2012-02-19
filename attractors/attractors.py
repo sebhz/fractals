@@ -59,10 +59,12 @@ class polynomialAttractor(object):
 			self.coef   = None
 			self.derive = None
 			self.code   = None
+			self.getPolynomLength()
 		else:
 			self.coef = self.opt['coef']
 			self.derive = polynom(self.coef[0]).derive()
 			self.code   = self.createCode()
+			self.pl     = len(self.coef[0])
 			# Need to override order here, or throw an error if not coherent
 
 		if not 'init' in self.opt:
@@ -88,13 +90,12 @@ class polynomialAttractor(object):
 		self.code = [codelist[int(x/0.08+30)] for c in self.coef for x in c]
 		self.code = "".join(map(chr,self.code))
 
-	def getRandom(self):
-		l = 1
-		for i in range(1, self.opt['dim']+1):
-			l *= self.order+i
-		l /= self.opt['dim']
+	def getPolynomLength(self):
+		self.pl = math.factorial(self.opt['order']+self.opt['dim'])/(
+				  math.factorial(self.opt['order'])*math.factorial(self.opt['dim']))
 
-		self.coef = [[random.randint(-30, 31)*0.08 for _ in range(l)] for __ in range(self.opt['dim'])]
+	def getRandom(self):
+		self.coef = [[random.randint(-30, 31)*0.08 for _ in range(0, self.pl)] for __ in range(self.opt['dim'])]
 		if self.opt['dim'] == 1: self.derive = polynom(self.coef[0]).derive()
 
 	def evalCoef(self, p):
@@ -103,15 +104,16 @@ class polynomialAttractor(object):
 			result = 0
 			n = 0
 			for i in range(self.order+1):
-				for j in range(i+1):
+				for j in range(self.order-i+1):
 					if self.opt['dim'] == 2:
-						result += c[n]*(p[0]**j)*(p[1]**(i-j))
+						result += c[n]*(p[0]**j)*(p[1]**i)
 						n = n + 1
 					elif self.opt['dim'] == 3:
-						for k in range(j+1):
-							result += c[n]*(p[0]**j)*(p[1]**(i-j))*(p[2]**(i-j-k))
+						for k in range(self.order-i-j+1):
+							result += c[n]*(p[0]**k)*(p[1]**j)*(p[2]**i)
 							n = n + 1
 			l.append(result)
+
 		return l
 
 	def computeLyapunov(self, p, pe):
@@ -306,7 +308,7 @@ def createImage(wc, sc, l):
 	cv = [toRGB(0, 0, 0)]*size
 
 	im = Image.new("RGB", (w, h), None)
-	lc = [w_to_s(wc, sc, pt) for pt in l]
+	lc = [w_to_s(wc, sc, projectPoint(pt)) for pt in l]
 	d  = colorizeAttractor(lc)
 	
 	for pt,v in d.iteritems():
@@ -333,7 +335,7 @@ def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
 	parser.add_argument('-d', '--dimension', help='attractor dimension', default=2, type=int)
 	parser.add_argument('-D', '--depth',     help='attractor depth (for 1D only)', default=5, type=int)
-	parser.add_argument('-g', '--geometry',  help='image geometry (XxY form)', default='1600x1200')
+	parser.add_argument('-g', '--geometry',  help='image geometry (XxY form)', default='800x600')
 	parser.add_argument('-i', '--iter',      help='attractor number of iterations', default=480000, type=int)
 	parser.add_argument('-n', '--number',    help='number of attractors to generate', default=16, type=int)
 	parser.add_argument('-o', '--order',     help='attractor order', default=2, type=int)
