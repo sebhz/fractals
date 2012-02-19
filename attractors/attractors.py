@@ -8,6 +8,7 @@
 
 import random
 import math
+import argparse
 
 try:
     import Image
@@ -88,13 +89,12 @@ class polynomialAttractor(object):
 		self.code = "".join(map(chr,self.code))
 
 	def getRandom(self):
-		l = self.order + 1
-		for i in range(2, self.opt['dim']+1):
+		l = 1
+		for i in range(1, self.opt['dim']+1):
 			l *= self.order+i
 		l /= self.opt['dim']
 
 		self.coef = [[random.randint(-30, 31)*0.08 for _ in range(l)] for __ in range(self.opt['dim'])]
-
 		if self.opt['dim'] == 1: self.derive = polynom(c[0]).derive()
 
 	def evalCoef(self, p):
@@ -103,9 +103,14 @@ class polynomialAttractor(object):
 			result = 0
 			n = 0
 			for i in range(self.order+1):
-					for j in range(i+1):
+				for j in range(i+1):
+					if self.opt['dim'] == 2:
 						result += c[n]*(p[0]**j)*(p[1]**(i-j))
 						n = n + 1
+					elif self.opt['dim'] == 3:
+						for k in range(j+1):
+							result += c[n]*(p[0]**j)*(p[1]**(i-j))*(p[2]**(i-j-k))
+							n = n + 1
 			l.append(result)
 		return l
 
@@ -266,9 +271,9 @@ def colorizeAttractor(lc):
 		cdf[i] = cdf[i-1]+h[i]
 
 	# Then use the equalizing formula (http://en.wikipedia.org/wiki/Histogram_equalization)
-	b = 2**8-1 # 8 bits per color
-	# Create a color gradient - from dark green to lemon chiffon
-	cg = createColorGradient((0, 100, 0), (255, 250, 205), b+1)
+	b = 2**8-1
+	# Create a color gradient
+	cg = createColorGradient((10, 10, 10), (255, 255, 255), b+1)
 	m  = cdf[i]
 	mm = cdf[1]
 	equalize = lambda x: int(math.floor(b*(cdf[x] - mm)/(m-mm)))
@@ -305,7 +310,7 @@ def createImage(wc, sc, l):
 	
 	for pt,v in d.iteritems():
 		xi, yi = pt
-		cv[yi*w + xi] = v #toRGB(v, v, v)
+		cv[yi*w + xi] = v
 
 	im.putdata(cv) 
 	return im
@@ -319,27 +324,14 @@ def projectBound(at):
 def showAttractor(at, screen_c):
 	window_c = scaleRatio(projectBound(at), screen_c)
 	im = createImage(window_c, screen_c, l)
-	#im.show()
 	return im
 	
-screen_c = (0, 0, 800, 600)
+screen_c = (0, 0, 1600, 1200)
 random.seed()
 
-# The logistic parabola
-#at = polynomialAttractor({'coef': [(0, 4, -4)], 'dim': 1, 'depth': 1})
-#print at
-#if not at.checkConvergence():
-#	print "Looks like this is not an attractor"
-#else:
-#	showAttractor(at, screen_c)
-
-# A few 1D and 2D attractors
-for i in range(64):
-#	at = polynomialAttractor({'dim':1,'iter':163840})
-#	at.explore()
-#	print at
-#	im = showAttractor(at, screen_c)
-	at = polynomialAttractor({'dim':2, 'order':4, 'iter':800*600 })
+# A few attractors
+for i in range(16):
+	at = polynomialAttractor({'dim':2, 'order':3, 'iter':800*600 })
 	at.explore()
 	l = at.iterateMap()
 	print at
