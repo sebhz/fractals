@@ -95,7 +95,7 @@ class polynomialAttractor(object):
 		l /= self.opt['dim']
 
 		self.coef = [[random.randint(-30, 31)*0.08 for _ in range(l)] for __ in range(self.opt['dim'])]
-		if self.opt['dim'] == 1: self.derive = polynom(c[0]).derive()
+		if self.opt['dim'] == 1: self.derive = polynom(self.coef[0]).derive()
 
 	def evalCoef(self, p):
 		l = list()
@@ -283,8 +283,6 @@ def colorizeAttractor(lc):
 	for k, v in d.iteritems():
 		d[k] = cg[h[v]]
 
-	print len(d.keys()), "unique points in the display window.\n"
-
 	return d
 
 def createColorGradient(start_color, end_color, length):
@@ -321,19 +319,37 @@ def projectBound(at):
 	elif at.opt['dim'] == 2:
 		return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
 
-def showAttractor(at, screen_c):
+def renderAttractor(at, screen_c):
 	window_c = scaleRatio(projectBound(at), screen_c)
 	im = createImage(window_c, screen_c, l)
 	return im
-	
-screen_c = (0, 0, 1600, 1200)
-random.seed()
 
-# A few attractors
-for i in range(16):
-	at = polynomialAttractor({'dim':2, 'order':3, 'iter':800*600 })
+def parseArgs():
+	parser = argparse.ArgumentParser(description='Playing with strange attractors')
+	parser.add_argument('-d', '--dimension', help='attractor dimension', default=2, type=int)
+	parser.add_argument('-D', '--depth',     help='attractor depth (for 1D only)', default=5, type=int)
+	parser.add_argument('-g', '--geometry',  help='image geometry (XxY form)', default='1600x1200')
+	parser.add_argument('-i', '--iter',      help='attractor number of iterations', default=480000, type=int)
+	parser.add_argument('-n', '--number',    help='number of attractors to generate', default=16, type=int)
+	parser.add_argument('-o', '--order',     help='attractor order', default=2, type=int)
+	parser.add_argument('-p', '--display',   help='print attractor(s) info', action='store_true', default=False)
+	args = parser.parse_args()
+	return args
+
+# ----------------------------- Main loop ----------------------------- #
+args = parseArgs()
+screen_c = [0, 0] + [int(x) for x in args.geometry.split('x')]
+random.seed()
+n = 0
+while True: # args.number = 0 -> infinite loop
+	at = polynomialAttractor({'dim':args.dimension,
+                              'order':args.order,
+							  'iter':args.iter,
+							  'depth': args.depth })
 	at.explore()
 	l = at.iterateMap()
-	print at
-	im = showAttractor(at, screen_c)
+	if args.display: print at
+	im = renderAttractor(at, screen_c)
 	im.save("png/" + at.code + ".png", "PNG")
+	n = n + 1
+	if n == args.number: break
