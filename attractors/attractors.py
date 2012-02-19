@@ -41,21 +41,21 @@ class polynomialAttractor(object):
 		else:
 			self.opt = dict()
 
-		if not self.opt.has_key('dim'):
+		if not 'dim' in self.opt:
 			self.opt['dim'] = 2
 
-		if not self.opt.has_key('iter'):
+		if not 'iter' in self.opt:
 			self.opt['iter'] = 4096
 		
-		if not self.opt.has_key('depth'):
+		if not 'depth' in self.opt:
 			self.opt['depth'] = 5
 
-		if self.opt.has_key('order'):
+		if 'order' in self.opt:
 			self.order = self.opt['order']
 		else:
 			self.order = 2 # Quadratic by default
 
-		if not self.opt.has_key('coef'):
+		if not 'coef' in self.opt:
 			self.coef   = None
 			self.derive = None
 			self.code   = None
@@ -65,7 +65,7 @@ class polynomialAttractor(object):
 			self.code   = self.createCode()
 			# Need to override order here, or throw an error if not coherent
 
-		if not self.opt.has_key('init'):
+		if not 'init' in self.opt:
 			self.init = [0.1]*self.opt['dim']
 
 		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
