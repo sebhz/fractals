@@ -267,19 +267,19 @@ def colorizeAttractor(lc):
 	# Equalize histogram:
 	# First compute the cumulative distribution function
 	cdf = [0]*len(h)
-	for i in range(0, len(cdf)):
+	for i in range(1, len(cdf)):
 		cdf[i] = cdf[i-1]+h[i]
 
 	# Then use the equalizing formula (http://en.wikipedia.org/wiki/Histogram_equalization)
 	b = 2**8-1
-	# Create a color gradient
-	cg = createColorGradient((10, 10, 10), (255, 255, 255), b+1)
 	m  = cdf[i]
 	mm = cdf[1]
 	equalize = lambda x: int(math.floor(b*(cdf[x] - mm)/(m-mm)))
 	h[1:]  = [equalize(x) for x in range(1, len(h))]
 
 	# Move back the equalized/normalized values into the original dict, after lookup
+	# Create a color gradient
+	cg = createColorGradient((10, 10, 10), (255, 255, 255), b+1)
 	for k, v in d.iteritems():
 		d[k] = cg[h[v]]
 
@@ -295,6 +295,9 @@ def createColorGradient(start_color, end_color, length):
 
 	return l
 
+def projectPoint(pt, *direction):
+	return (pt[0], pt[1]) #Ignore Z for now
+
 # Creates an image and fill it with an array of RGB values
 def createImage(wc, sc, l):
 	w = sc[2]-sc[0]
@@ -307,7 +310,7 @@ def createImage(wc, sc, l):
 	d  = colorizeAttractor(lc)
 	
 	for pt,v in d.iteritems():
-		xi, yi = pt
+		xi, yi = projectPoint(pt)
 		cv[yi*w + xi] = v
 
 	im.putdata(cv) 
@@ -317,6 +320,8 @@ def projectBound(at):
 	if at.opt['dim'] == 1:
 		return (at.bound[0][0], at.bound[0][0], at.bound[1][0], at.bound[1][0])
 	elif at.opt['dim'] == 2:
+		return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
+	elif at.opt['dim'] == 3: #For now, ignore the Z part
 		return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
 
 def renderAttractor(at, screen_c):
