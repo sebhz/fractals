@@ -41,11 +41,23 @@ class polynomialAttractor(object):
 		else:
 			self.opt = dict()
 
-		if not 'dim' in self.opt:
-			self.opt['dim'] = 2
+		if not 'init' in self.opt:
+			self.init = [0.1]*self.opt['dim']
 
 		if not 'iter' in self.opt:
 			self.opt['iter'] = 4096
+
+		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
+		self.fdim      = 0
+		self.bound     = None
+
+		if 'code' in self.opt and self.opt['code']:
+			self.code = self.opt['code']
+			self.decodeCode()
+			return
+
+		if not 'dim' in self.opt:
+			self.opt['dim'] = 2
 		
 		if not 'depth' in self.opt:
 			self.opt['depth'] = 5
@@ -67,13 +79,6 @@ class polynomialAttractor(object):
 			self.pl     = len(self.coef[0])
 			# Need to override order here, or throw an error if not coherent
 
-		if not 'init' in self.opt:
-			self.init = [0.1]*self.opt['dim']
-
-		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
-		self.fdim      = 0
-		self.bound     = None
-
 	def __str__(self):
 		st = ""
 		for p in self.coef:
@@ -84,15 +89,31 @@ class polynomialAttractor(object):
 		st += "Computed on " + str(self.opt['iter']) +  " points."
 		return st
 
+	def decodeCode(self):
+		self.opt['dim'] = int(self.code[0])
+		self.order = int(self.code[1])
+		if self.opt['dim'] == 1: self.opt['depth'] = int(self.code[2])
+		self.getPolynomLength()
+
+		codelist = range(48,58) + range(65,91) + range(97,123)
+		d = dict([(codelist[i], i) for i in range(0, len(codelist))])
+		self.coef = [[(d[ord(_)]-30)*.08 for _ in self.code[3+__*self.pl:3+(__+1)*self.pl]] for __ in range(self.opt['dim'])]	
+		self.derive = polynom(self.coef[0]).derive()
+
 	def createCode(self):
+		self.code = str(self.opt['dim'])+str(self.order)
+		if self.opt['dim'] == 1:
+			 self.code += str(self.opt['depth'])
+		else:
+			self.code += "_"
 		# ASCII codes of digits and letters
 		codelist = range(48,58) + range(65,91) + range(97,123)
-		self.code = [codelist[int(x/0.08+30)] for c in self.coef for x in c]
-		self.code = "".join(map(chr,self.code))
+		c = [codelist[int(x/0.08+30)] for c in self.coef for x in c]
+		self.code +="".join(map(chr,c))
 
 	def getPolynomLength(self):
-		self.pl = math.factorial(self.opt['order']+self.opt['dim'])/(
-				  math.factorial(self.opt['order'])*math.factorial(self.opt['dim']))
+		self.pl = math.factorial(self.order+self.opt['dim'])/(
+				  math.factorial(self.order)*math.factorial(self.opt['dim']))
 
 	def getRandom(self):
 		self.coef = [[random.randint(-30, 31)*0.08 for _ in range(0, self.pl)] for __ in range(self.opt['dim'])]
@@ -335,6 +356,7 @@ def renderAttractor(at, screen_c):
 
 def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
+	parser.add_argument('-c', '--code', help='attractor code')
 	parser.add_argument('-d', '--dimension', help='attractor dimension', default=2, type=int, choices=range(1,4))
 	parser.add_argument('-D', '--depth',     help='attractor depth (for 1D only)', default=5, type=int)
 	parser.add_argument('-g', '--geometry',  help='image geometry (XxY form)', default='800x600')
@@ -354,11 +376,16 @@ while True: # args.number = 0 -> infinite loop
 	at = polynomialAttractor({'dim':args.dimension,
                               'order':args.order,
 							  'iter':args.iter,
-							  'depth': args.depth })
-	at.explore()
+							  'depth': args.depth,
+							  'code' : args.code })
+	if args.code:
+		if not at.checkConvergence():
+			print "Not an  attractor it seems... but trying to display it anyway."
+	else:
+		at.explore()
 	l = at.iterateMap()
 	if args.display: print at
 	im = renderAttractor(at, screen_c)
 	im.save("png/" + at.code + ".png", "PNG")
 	n = n + 1
-	if n == args.number: break
+	if n == args.number or args.code: break
