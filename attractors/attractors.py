@@ -206,7 +206,7 @@ class polynomialAttractor(object):
 		n1, n2 = (0, 0)
 		twod   = 2**self.opt['dim']
 		dist = lambda x,y: x*x+y*y
-		d2max = reduce(dist, [mx - mn for mn, mx in zip(self.bound[1], self.bound[0])], 0)
+		d2max = reduce(dist, [mx - mn for mn, mx in zip(*self.bound)], 0)
 
 		for i in range(1024, len(l)): # Give 1000 iterations to avoid transients
 			j  = random.randint(1004, i-20) # Ignore 20 previous points (presumably highly correlated)
