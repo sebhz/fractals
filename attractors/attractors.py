@@ -80,7 +80,7 @@ class polynomialAttractor(object):
 			st += "coef: " + p.__str__() + "\n"
 		st += "code: " + self.code + "\n"
 		st += "Lyapunov exponent: " + str(self.lyapunov['ly']) + "\n"
-		st += "Fractal dimension: " + str(self.fdim) + "\n"
+		st += "Correlation dimension: " + str(self.fdim) + "\n"
 		st += "Computed on " + str(self.opt['iter']) +  " points."
 		return st
 
@@ -129,9 +129,9 @@ class polynomialAttractor(object):
 			df = 1000000000000*dl2
 			rs = 1/math.sqrt(df)
 
-		self.lyapunov['lsum'] = self.lyapunov['lsum'] + math.log(df)
+		self.lyapunov['lsum'] = self.lyapunov['lsum'] + math.log(df, 2)
 		self.lyapunov['nl']   = self.lyapunov['nl'] + 1
-		self.lyapunov['ly'] = 0.721347 * self.lyapunov['lsum'] / self.lyapunov['nl']
+		self.lyapunov['ly'] = self.lyapunov['lsum'] / self.lyapunov['nl']
 		if self.opt['dim'] != 1:
 			return [p[i]-rs*x for i,x in enumerate(dl)]
 
@@ -200,6 +200,8 @@ class polynomialAttractor(object):
 		return l
 
 	def computeDimension(self, l):
+	# An estimate of the correlation dimension: accumulate the values of the distances between
+	# point p and one of its 480 predecessors, ignoring the 20 points right before p
 		if not self.bound: return None
 		if len(l) <= 1024: return None
 
@@ -208,8 +210,8 @@ class polynomialAttractor(object):
 		dist = lambda x,y: x*x+y*y
 		d2max = reduce(dist, [mx - mn for mn, mx in zip(*self.bound)], 0)
 
-		for i in range(1024, len(l)): # Give 1000 iterations to avoid transients
-			j  = random.randint(1004, i-20) # Ignore 20 previous points (presumably highly correlated)
+		for i in range(1524, len(l)): # Give 1024 iterations to avoid transients
+			j  = random.randint(i-500, i-20) # Ignore 20 previous points (presumably highly correlated)
 			d2 = reduce(dist, [x-y for x, y in zip(l[i], l[j])])
 			if d2 < .001*twod*d2max:
 				n2 += 1
@@ -217,7 +219,7 @@ class polynomialAttractor(object):
 				continue
 			n1 += 1
 
-		self.fdim = .434294 * math.log(n2/(n1-.5))
+		self.fdim = math.log10(n2/n1)
 
 def w_to_s(wc, sc, p):
 	x, y = p
