@@ -335,7 +335,7 @@ def renderAttractor(at, screen_c):
 
 def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
-	parser.add_argument('-d', '--dimension', help='attractor dimension', default=2, type=int)
+	parser.add_argument('-d', '--dimension', help='attractor dimension', default=2, type=int, choices=range(1,4))
 	parser.add_argument('-D', '--depth',     help='attractor depth (for 1D only)', default=5, type=int)
 	parser.add_argument('-g', '--geometry',  help='image geometry (XxY form)', default='800x600')
 	parser.add_argument('-i', '--iter',      help='attractor number of iterations', default=480000, type=int)
