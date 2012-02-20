@@ -129,8 +129,8 @@ class polynomialAttractor(object):
 			df = 1000000000000*dl2
 			rs = 1/math.sqrt(df)
 
-		self.lyapunov['lsum'] = self.lyapunov['lsum'] + math.log(df, 2)
-		self.lyapunov['nl']   = self.lyapunov['nl'] + 1
+		self.lyapunov['lsum'] += math.log(df, 2)
+		self.lyapunov['nl']   += 1
 		self.lyapunov['ly'] = self.lyapunov['lsum'] / self.lyapunov['nl']
 		if self.opt['dim'] != 1:
 			return [p[i]-rs*x for i,x in enumerate(dl)]
