@@ -363,7 +363,7 @@ def parseArgs():
 	parser.add_argument('-i', '--iter',      help='attractor number of iterations', default=480000, type=int)
 	parser.add_argument('-n', '--number',    help='number of attractors to generate', default=16, type=int)
 	parser.add_argument('-o', '--order',     help='attractor order', default=2, type=int)
-	parser.add_argument('-p', '--display',   help='print attractor(s) info', action='store_true', default=False)
+	parser.add_argument('-q', '--quiet',     help='shut up !', action='store_true', default=False)
 	args = parser.parse_args()
 	return args
 
@@ -384,7 +384,7 @@ while True: # args.number = 0 -> infinite loop
 	else:
 		at.explore()
 	l = at.iterateMap()
-	if args.display: print at
+	if not args.quiet: print at
 	im = renderAttractor(at, screen_c)
 	im.save("png/" + at.code + ".png", "PNG")
 	n = n + 1
