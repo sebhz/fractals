@@ -121,19 +121,24 @@ class polynomialAttractor(object):
 
 	def evalCoef(self, p):
 		l = list()
-		for c in self.coef:
-			result = 0
-			n = 0
-			for i in range(self.order+1):
-				for j in range(self.order-i+1):
-					if self.opt['dim'] == 2:
-						result += c[n]*(p[0]**j)*(p[1]**i)
-						n = n + 1
-					elif self.opt['dim'] == 3:
-						for k in range(self.order-i-j+1):
-							result += c[n]*(p[0]**k)*(p[1]**j)*(p[2]**i)
+		try:
+			for c in self.coef:
+				result = 0
+				n = 0
+				for i in range(self.order+1):
+					for j in range(self.order-i+1):
+						if self.opt['dim'] == 2:
+							result += c[n]*(p[0]**j)*(p[1]**i)
 							n = n + 1
-			l.append(result)
+						elif self.opt['dim'] == 3:
+							for k in range(self.order-i-j+1):
+								result += c[n]*(p[0]**k)*(p[1]**j)*(p[2]**i)
+								n = n + 1
+				l.append(result)
+		except OverflowError:
+			print "Overflow during attractor computation."
+			print "Either this is a very slowly diverging attractor, or you used a wrong code"
+			return None
 
 		return l
 
@@ -142,6 +147,7 @@ class polynomialAttractor(object):
 			df = abs(self.derive(p[0]))
 		else:
 			p2   = self.evalCoef(pe)
+			if not p2: return pe
 			dl   = [d-x for d,x in zip(p2, p)]
 			dl2  = reduce(lambda x,y: x*x + y*y, dl)
 			if dl2 == 0:
@@ -168,6 +174,7 @@ class polynomialAttractor(object):
 				pnew = [polynom(self.coef[0])(p[0])]
 			else:
 				pnew = self.evalCoef(p)
+				if not pnew: return False
 			if reduce(modulus, pnew, 0) > 1000000: # Unbounded - not an SA
 				return False
 			if reduce(modulus, [pn-pc for pn, pc in zip(pnew, p)], 0) < 0.00000001:
@@ -202,6 +209,8 @@ class polynomialAttractor(object):
 				pnew = [polynom(self.coef[0])(p[0])]
 			else:
 				pnew = self.evalCoef(p)
+				if not pnew: return None
+
 			# Ignore the first 128 points to get a proper convergence
 			if i >= 128:
 				if self.opt['dim'] == 1:
@@ -384,6 +393,10 @@ while True: # args.number = 0 -> infinite loop
 	else:
 		at.explore()
 	l = at.iterateMap()
+	if not l:
+		n = n + 1
+		if n == args.number or args.code: break
+		continue
 	if not args.quiet: print at
 	im = renderAttractor(at, screen_c)
 	im.save("png/" + at.code + ".png", "PNG")
