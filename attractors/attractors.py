@@ -129,11 +129,11 @@ class polynomialAttractor(object):
 					for j in range(self.order-i+1):
 						if self.opt['dim'] == 2:
 							result += c[n]*(p[0]**j)*(p[1]**i)
-							n = n + 1
+							n += 1
 						elif self.opt['dim'] == 3:
 							for k in range(self.order-i-j+1):
 								result += c[n]*(p[0]**k)*(p[1]**j)*(p[2]**i)
-								n = n + 1
+								n += 1
 				l.append(result)
 		except OverflowError:
 			print "Overflow during attractor computation."
@@ -191,7 +191,7 @@ class polynomialAttractor(object):
 		n = 0;
 		self.getRandom()
 		while not self.checkConvergence():
-			n = n + 1
+			n += 1
 			self.getRandom()
 		# Found one -> create corresponding code
 		self.createCode()
@@ -394,11 +394,11 @@ while True: # args.number = 0 -> infinite loop
 		at.explore()
 	l = at.iterateMap()
 	if not l:
-		n = n + 1
+		n += 1
 		if n == args.number or args.code: break
 		continue
 	if not args.quiet: print at
 	im = renderAttractor(at, screen_c)
 	im.save("png/" + at.code + ".png", "PNG")
-	n = n + 1
+	n += 1
 	if n == args.number or args.code: break
