@@ -35,6 +35,14 @@ class polynom(object):
 		return self.a.__str__()
 
 class polynomialAttractor(object):
+
+	convDelay    = 128   # Number of points to ignore before checking convergence
+	convMaxIter  = 16384 # Check convergence on convMaxIter points only
+	initVal      = 0.1   # Starting coordinate to use to check convergence
+	dimTransient = 1024  # Ignore the first dimTransient points when computing dimension
+	dimDepth     = 500   # Use the dimDepth predecessors of each point to compute the dimension
+	dimIgnore    = 20    # but ignore dimIgnore predecessors (presumably too correlated)
+
 	def __init__(self, *opt):
 		if opt:
 			self.opt = opt[0]
@@ -42,7 +50,7 @@ class polynomialAttractor(object):
 			self.opt = dict()
 
 		if not 'init' in self.opt:
-			self.init = [0.1]*self.opt['dim']
+			self.init = [self.initVal]*self.opt['dim']
 
 		if not 'iter' in self.opt:
 			self.opt['iter'] = 4096
@@ -80,14 +88,7 @@ class polynomialAttractor(object):
 			# Need to override order here, or throw an error if not coherent
 
 	def __str__(self):
-		st = ""
-		for p in self.coef:
-			st += "coef: " + p.__str__() + "\n"
-		st += "code: " + self.code + "\n"
-		st += "Lyapunov exponent: " + str(self.lyapunov['ly']) + "\n"
-		st += "Correlation dimension: " + str(self.fdim) + "\n"
-		st += "Computed on " + str(self.opt['iter']) +  " points."
-		return st
+		return self.code
 
 	def decodeCode(self):
 		self.opt['dim'] = int(self.code[0])
@@ -168,8 +169,7 @@ class polynomialAttractor(object):
 		pe = [x + 0.000001 if i==0 else x for i,x in enumerate(p)]
 		modulus = lambda x, y: abs(x) + abs(y)
 
-		# 16384 iterations should be more than enough to check for convergence !
-		for i in range(16384):
+		for i in range(self.convMaxIter):
 			if self.opt['dim'] == 1:
 				pnew = [polynom(self.coef[0])(p[0])]
 			else:
@@ -181,7 +181,7 @@ class polynomialAttractor(object):
 				return False
 			# Compute Lyapunov exponent... sort of
 			pe = self.computeLyapunov(pnew, pe)
-			if self.lyapunov['ly'] < 0.005 and i > 128: # Limit cycle
+			if self.lyapunov['ly'] < 0.005 and i > self.convDelay: # Limit cycle
 				return False
 			p = pnew
 
@@ -211,8 +211,8 @@ class polynomialAttractor(object):
 				pnew = self.evalCoef(p)
 				if not pnew: return None
 
-			# Ignore the first 128 points to get a proper convergence
-			if i >= 128:
+			# Ignore the first points to get a proper convergence
+			if i >= self.convDelay:
 				if self.opt['dim'] == 1:
 					if i >= prev:
 						l.append((mem[(i-prev)%prev][0], pnew[0]))
@@ -231,17 +231,17 @@ class polynomialAttractor(object):
 
 	def computeDimension(self, l):
 	# An estimate of the correlation dimension: accumulate the values of the distances between
-	# point p and one of its 480 predecessors, ignoring the 20 points right before p
+	# point p and one of its predecessors, ignoring the points right before p
 		if not self.bound: return None
-		if len(l) <= 1024: return None
+		if len(l) <= self.dimTransient+self.dimDepth: return None
 
 		n1, n2 = (0, 0)
 		twod   = 2**self.opt['dim']
 		dist = lambda x,y: x*x+y*y
 		d2max = reduce(dist, [mx - mn for mn, mx in zip(*self.bound)], 0)
 
-		for i in range(1524, len(l)): # Give 1024 iterations to avoid transients
-			j  = random.randint(i-500, i-20) # Ignore 20 previous points (presumably highly correlated)
+		for i in range(self.dimTransient + self.dimDepth, len(l)):
+			j  = random.randint(i-self.dimDepth, i-self.dimIgnore)
 			d2 = reduce(dist, [x-y for x, y in zip(l[i], l[j])])
 			if d2 < .001*twod*d2max:
 				n2 += 1
