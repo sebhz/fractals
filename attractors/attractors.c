@@ -103,7 +103,7 @@ void displayPoint(point p) {
 	fprintf(stdout, "0x%08x : (%.10Lf,%.10Lf,%.10Lf)\n", (int)p, p[0], p[1], p[2]);
 }
 
-point computeLyapunov(point p, point pe, struct lyapu lyapu, struct polynom *polynom) {
+point computeLyapunov(point p, point pe, struct lyapu *lyapu, struct polynom *polynom) {
 	point p2, dl, np;
 	long double dl2, df, rs;
 
@@ -121,9 +121,9 @@ point computeLyapunov(point p, point pe, struct lyapu lyapu, struct polynom *pol
 	df = 1000000000000*dl2;
     rs = 1/sqrt(df);
  
-	lyapu.lsum += log(df);
-	lyapu.n++;
-	lyapu.ly = lyapu.lsum/lyapu.n/log(2);
+	lyapu->lsum += log(df);
+	lyapu->n++;
+	lyapu->ly = lyapu->lsum/lyapu->n/log(2);
 
 	np = _sub(p, _scalar_mul(dl, rs));
 
@@ -154,7 +154,7 @@ int checkConvergence(struct polynom *polynom, int maxiter) {
 			break;
 		}
 		free(ptmp);
-		ptmp = computeLyapunov(pnew, pe, lyapu, polynom);
+		ptmp = computeLyapunov(pnew, pe, &lyapu, polynom);
 		free(pe);
 		pe = ptmp;
 		if (lyapu.ly < 0.005 && i > 128) { /* Limit cycle - not an SA */
