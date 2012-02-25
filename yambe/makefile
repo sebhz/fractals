@@ -2,7 +2,7 @@ CC=gcc
 TAR=tar 
 INDENT=indent 
 CFLAGS=-Wall -O3
-CPPFLAGS=-I/usr/include/SDL 
+CPPFLAGS=-I/usr/include 
 LDFLAGS=-lSDL -lSDL_gfx -lm
 OBJS=yambe.o 
 INC=prec.h
@@ -19,7 +19,7 @@ $(TARGET): $(OBJS)
 	$(CC) -o $@ $(OBJS) $(CFLAGS) $(LDFLAGS) 
 
 windows : CPPFLAGS += -D__MINGW__
-windows : LDFLAGS = -lmingw32 -lSDLmain -lSDL -lSDL_image -lSDL_ttf -lSDL_gfx
+windows : LDFLAGS = -lmingw32 -lSDLmain -lSDL -lSDL_gfx
 windows : $(TARGET)
 
 indent: $(SRC) $(INC)

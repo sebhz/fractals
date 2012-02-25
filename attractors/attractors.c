@@ -2,32 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
-
-typedef long double *point;
-
-struct lyapu
-{
-    long double lsum;
-    int n;
-    long double ly;
-};
-
-struct polynom
-{
-    long double *p[MDIM];
-    int length;
-    int order;
-};
-
-struct attractor
-{
-    struct polynom *polynom;
-    struct lyapu *lyapunov;
-    point *array;
-    int niter;
-    int maxiter;
-    point bound[2];
-};
+#include "attractors.h"
 
 inline long double
 power (long double x, unsigned int exp)
@@ -302,7 +277,7 @@ explore (struct attractor *at, int order)
 void
 iterateMap (struct attractor *at)
 {
-    point p, pmin, pmax;
+    point p, pnew, pmin, pmax;
     int i, j;
 
     if ((at->array = malloc (at->maxiter * (sizeof *(at->array)))) == NULL) {
@@ -321,9 +296,9 @@ iterateMap (struct attractor *at)
     }
 
     for (i = 0; i < at->maxiter; i++) {
-        at->array[i] = eval (p, at->polynom);
-        free (p);
-        p = at->array[i];
+        pnew = eval (p, at->polynom);
+        at->array[i] = pnew;
+        p = pnew;
         if (i > 128) {
             for (j = 0; j < MDIM; j++) {
                 pmin[j] = min (p[j], pmin[j]);
@@ -336,23 +311,39 @@ iterateMap (struct attractor *at)
     at->bound[1] = pmax;
 }
 
-int
-main (int argc, char **argv)
+void
+freeAttractor (struct attractor *at)
 {
-    struct attractor at;
-    struct lyapu l;
+    int i;
 
-#ifdef __MINGW__
-    freopen ("CON", "w", stdout);
-    freopen ("CON", "w", stderr);
-#endif
+    free (at->lyapunov);
+    for (i = 0; i < at->maxiter; i++) {
+        free (at->array[i]);
+    }
+    free (at->array);
+    free (at);
+}
 
-    srand (time (NULL));
-    at.niter = 16384;
-    at.maxiter = 1000000;
-    at.lyapunov = &l;
-    explore (&at, 2);
-    displayPolynom (at.polynom);
-    iterateMap (&at);
-    return EXIT_SUCCESS;
+struct attractor *
+newAttractor (void)
+{
+    struct attractor *at;
+
+    if ((at = malloc (sizeof *at)) == NULL) {
+        fprintf (stderr,
+                 "Unable to allocate memory for attractor. Exiting\n");
+        exit (EXIT_FAILURE);
+    }
+
+    if ((at->lyapunov = malloc (sizeof *(at->lyapunov))) == NULL) {
+        fprintf (stderr,
+                 "Unable to allocate memory for lyapunov structure. Exiting\n");
+        exit (EXIT_FAILURE);
+    }
+
+    at->niter = 16384;
+    at->maxiter = 1000000;
+    explore (at, 2);
+    iterateMap (at);
+    return at;
 }
