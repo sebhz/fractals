@@ -611,21 +611,20 @@ parametrize (mpfr_t * x, mpfr_t * y)
     switch (fset.para) {
     case INV_MU:
         {
-            mpfr_t a, b, m, n;
+            mpfr_t a, b, m;
 
 #ifdef HAS_MPFR
-            mpfr_inits2 (fset.prec, a, b, n, m, NULL);
+            mpfr_inits2 (fset.prec, a, b, m, NULL);
 #endif
             mpfr_set (a, *x, fset.round);
             mpfr_set (b, *y, fset.round);
             mpfr_sqr (*x, *x, fset.round);
             mpfr_sqr (*y, *y, fset.round);
             mpfr_add (m, *x, *y, fset.round);
-            mpfr_neg (n, b, fset.round);
             mpfr_div (*x, a, m, fset.round);
             mpfr_div (*y, b, m, fset.round);
 #ifdef HAS_MPFR
-            mpfr_clears (a, b, n, m, NULL);
+            mpfr_clears (a, b, m, NULL);
 #endif
         }
         break;

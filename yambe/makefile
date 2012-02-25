@@ -18,7 +18,7 @@ endif
 $(TARGET): $(OBJS)
 	$(CC) -o $@ $(OBJS) $(CFLAGS) $(LDFLAGS) 
 
-windows : CPPFLAGS += -D__MINGW__
+windows : CPPFLAGS += -D__MINGW__ -D__USE_MINGW_ANSI_STDIO
 windows : LDFLAGS = -lmingw32 -lSDLmain -lSDL -lSDL_gfx
 windows : $(TARGET)
 
