@@ -29,12 +29,15 @@ myinit ()
     glColor4f (1.0f, 1.0f, 1.0f, 0.02f);
 
     // set up the viewport
-    glViewport (0, 0, 1280, 1024);
+    glViewport (0, 0, 800, 600);
 
     // set up the projection matrix (the camera)
     glMatrixMode (GL_PROJECTION);
     glLoadIdentity ();
-    gluOrtho2D (-2.0f, 2.0f, -2.0f, 2.0f);
+    float woff = abs (at->bound[1][0] - at->bound[0][0]) * 0.05;
+    float hoff = abs (at->bound[1][1] - at->bound[0][1]) * 0.05;
+    gluOrtho2D (at->bound[0][0] - woff, at->bound[1][0] + woff,
+                at->bound[0][1] - hoff, at->bound[1][1] + hoff);
 
     // set up the modelview matrix (the objects)
     glMatrixMode (GL_MODELVIEW);
@@ -102,8 +105,8 @@ main (int argc, char **argv)
     glutInitDisplayMode (GLUT_RGBA | GLUT_DOUBLE);
 
     // create a 400px x 400px window
-    glutInitWindowSize (1280, 1024);
-    glutCreateWindow ("Strange Attractors in C++ and OpenGL Tutorial");
+    glutInitWindowSize (800, 600);
+    glutCreateWindow ("Strange Attractors in C and OpenGL");
 
     // register our callback functions
     glutDisplayFunc (mydisplay);

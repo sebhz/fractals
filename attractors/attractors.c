@@ -31,7 +31,6 @@ newPoint (void)
 inline point
 _scalar_mul (point p, long double m)
 {
-
     int i;
 
     for (i = 0; i < MDIM; i++)
@@ -277,7 +276,7 @@ explore (struct attractor *at, int order)
 void
 iterateMap (struct attractor *at)
 {
-    point p, pnew, pmin, pmax;
+    point p, pnew, pmin, pmax, ptmp;
     int i, j;
 
     if ((at->array = malloc (at->maxiter * (sizeof *(at->array)))) == NULL) {
@@ -289,6 +288,7 @@ iterateMap (struct attractor *at)
     p = newPoint ();
     pmin = newPoint ();
     pmax = newPoint ();
+    ptmp = p;
     for (i = 0; i < MDIM; i++) {
         p[i] = 0.1;
         pmin[i] = 1000000.0;
@@ -306,7 +306,7 @@ iterateMap (struct attractor *at)
             }
         }
     }
-
+    free (ptmp);
     at->bound[0] = pmin;
     at->bound[1] = pmax;
 }
@@ -321,6 +321,9 @@ freeAttractor (struct attractor *at)
         free (at->array[i]);
     }
     free (at->array);
+    for (i = 0; i < 2; i++) {
+        free (at->bound[i]);
+    }
     free (at);
 }
 
@@ -342,7 +345,7 @@ newAttractor (void)
     }
 
     at->niter = 16384;
-    at->maxiter = 1000000;
+    at->maxiter = 5000000;
     explore (at, 2);
     iterateMap (at);
     return at;
