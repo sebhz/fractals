@@ -75,6 +75,18 @@ _sub (point a, point b)
     return c;
 }
 
+inline point
+_middle (point a, point b)
+{
+    point c = newPoint ();
+    int i;
+
+    for (i = 0; i < MDIM; i++)
+        c[i] = (a[i] + b[i]) / 2;
+
+    return c;
+}
+
 point
 eval (point p, struct polynom * polynom)
 {
@@ -109,7 +121,7 @@ eval (point p, struct polynom * polynom)
 void
 displayPoint (point p)
 {
-    fprintf (stdout, "0x%08x : (%.10Lf,%.10Lf,%.10Lf)\n", (int) p, p[0], p[1],
+    fprintf (stdout, "0x%08x : [%.10Lf,%.10Lf,%.10Lf]\n", (int) p, p[0], p[1],
              p[2]);
 }
 
@@ -227,7 +239,7 @@ displayPolynom (struct polynom *p)
     for (i = 0; i < MDIM; i++) {
         fprintf (stdout, "[ ");
         for (j = 0; j < p->length; j++) {
-            fprintf (stdout, "%.2Lf ", (p->p[i])[j]);
+            fprintf (stdout, "%+.2Lf ", (p->p[i])[j]);
         }
         fprintf (stdout, "]\n");
     }
@@ -327,6 +339,25 @@ freeAttractor (struct attractor *at)
     free (at);
 }
 
+void
+centerAttractor (struct attractor *at)
+{
+    int i, j;
+
+    point m = _middle (at->bound[0], at->bound[1]);
+    for (i = 0; i < at->maxiter; i++) {
+        for (j = 0; j < MDIM; j++) {
+            at->array[i][j] -= m[j];
+        }
+    }
+    for (i = 0; i < 2; i++) {
+        for (j = 0; j < MDIM; j++) {
+            at->bound[i][j] -= m[j];
+        }
+    }
+    free (m);
+}
+
 struct attractor *
 newAttractor (void)
 {
@@ -345,8 +376,11 @@ newAttractor (void)
     }
 
     at->niter = 16384;
-    at->maxiter = 5000000;
+    at->maxiter = 50000;
     explore (at, 2);
+    fprintf (stdout, "Found polynom\n");
+    displayPolynom (at->polynom);
     iterateMap (at);
+    centerAttractor (at);
     return at;
 }
