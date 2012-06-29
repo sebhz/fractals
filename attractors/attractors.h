@@ -19,8 +19,8 @@ struct attractor
     struct polynom *polynom;
     struct lyapu *lyapunov;
     point *array;
-    int niter;
-    int maxiter;
+    int convergenceIterations;
+    int numPoints;
     point bound[2];
 };
 

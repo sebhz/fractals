@@ -4,14 +4,19 @@
 #include <time.h>
 #include "attractors.h"
 
+#define NUM_CONVERGENCE_POINTS 128
+#define AT_INFINITY 1000000
+
+/* Probably best algo as we are dealing with low exponents here (typically < 5)
+     so no need to bother with exponentation by squaring */
 inline long double
-power (long double x, unsigned int exp)
+power (long double base, unsigned int exp)
 {
     int i;
     long double result = 1.0;
 
     for (i = 0; i < exp; i++)
-        result *= x;
+        result *= base;
     return result;
 }
 
@@ -144,7 +149,7 @@ computeLyapunov (point p, point pe, struct attractor *at)
         return pe;
     }
 
-    df = 1000000000000.0 * dl2;
+    df = 1000000000000 * dl2;
     rs = 1 / sqrt (df);
 
     lyapu->lsum += log (df);
@@ -172,14 +177,14 @@ checkConvergence (struct attractor *at)
     pe[0] += 0.000001;
     at->lyapunov->lsum = at->lyapunov->ly = at->lyapunov->n = 0;
 
-    for (i = 0; i < at->niter; i++) {
+    for (i = 0; i < at->convergenceIterations; i++) {
         pnew = eval (p, at->polynom);
 
-        if (_abs (pnew) > 1000000) {    /* Diverging - not an SA */
+        if (_abs (pnew) > AT_INFINITY) {        /* Diverging - not an SA */
             break;
         }
         point ptmp = _sub (pnew, p);
-        if (_abs (ptmp) < 0.00000001) { /* Fixed point - not an SA */
+        if (_abs (ptmp) < 1 / AT_INFINITY) {    /* Fixed point - not an SA */
             free (ptmp);
             break;
         }
@@ -187,17 +192,17 @@ checkConvergence (struct attractor *at)
         ptmp = computeLyapunov (pnew, pe, at);
         free (pe);
         pe = ptmp;
-        if (at->lyapunov->ly < 0.005 && i > 128) {      /* Limit cycle - not an SA */
+        if (at->lyapunov->ly < 0.005 && i >= NUM_CONVERGENCE_POINTS) {  /* Limit cycle - not an SA */
             break;
         }
         free (p);
         p = pnew;
     }
-    if (i == at->niter)
+    if (i == at->convergenceIterations)
         result = 1;
     free (pnew);
     free (pe);
-    free (p);
+    free (p);                   // FIXME:  p=pnew -> multiple  free here... Will this ever compile on Linux ?
     return result;
 }
 
@@ -235,7 +240,6 @@ displayPolynom (struct polynom *p)
 {
     int i, j;
 
-    fprintf (stdout, "length: %d\n", p->length);
     for (i = 0; i < MDIM; i++) {
         fprintf (stdout, "[ ");
         for (j = 0; j < p->length; j++) {
@@ -262,6 +266,7 @@ getRandom (int order)
         if ((p->p[i] = malloc (p->length * (sizeof *(p->p[i])))) == NULL) {
             fprintf (stderr,
                      "Unable to allocate memory for polynom. Exiting\n");
+            exit (EXIT_FAILURE);
         }
         for (j = 0; j < p->length; j++) {
             (p->p[i])[j] = (double) ((rand () % 61) - 30) * 0.08;
@@ -291,7 +296,7 @@ iterateMap (struct attractor *at)
     point p, pnew, pmin, pmax, ptmp;
     int i, j;
 
-    if ((at->array = malloc (at->maxiter * (sizeof *(at->array)))) == NULL) {
+    if ((at->array = malloc (at->numPoints * (sizeof *(at->array)))) == NULL) {
         fprintf (stderr,
                  "Unable to allocate memory for point array. Exiting\n");
         exit (EXIT_FAILURE);
@@ -303,15 +308,15 @@ iterateMap (struct attractor *at)
     ptmp = p;
     for (i = 0; i < MDIM; i++) {
         p[i] = 0.1;
-        pmin[i] = 1000000.0;
-        pmax[i] = -1000000.0;
+        pmin[i] = AT_INFINITY;
+        pmax[i] = -AT_INFINITY;
     }
 
-    for (i = 0; i < at->maxiter; i++) {
+    for (i = 0; i < at->numPoints; i++) {
         pnew = eval (p, at->polynom);
-        at->array[i] = pnew;
         p = pnew;
-        if (i > 128) {
+        if (i >= NUM_CONVERGENCE_POINTS) {
+            at->array[i - NUM_CONVERGENCE_POINTS] = pnew;
             for (j = 0; j < MDIM; j++) {
                 pmin[j] = min (p[j], pmin[j]);
                 pmax[j] = max (p[j], pmax[j]);
@@ -321,6 +326,7 @@ iterateMap (struct attractor *at)
     free (ptmp);
     at->bound[0] = pmin;
     at->bound[1] = pmax;
+    at->numPoints -= NUM_CONVERGENCE_POINTS;
 }
 
 void
@@ -329,7 +335,7 @@ freeAttractor (struct attractor *at)
     int i;
 
     free (at->lyapunov);
-    for (i = 0; i < at->maxiter; i++) {
+    for (i = 0; i < at->numPoints; i++) {
         free (at->array[i]);
     }
     free (at->array);
@@ -345,7 +351,7 @@ centerAttractor (struct attractor *at)
     int i, j;
 
     point m = _middle (at->bound[0], at->bound[1]);
-    for (i = 0; i < at->maxiter; i++) {
+    for (i = 0; i < at->numPoints; i++) {
         for (j = 0; j < MDIM; j++) {
             at->array[i][j] -= m[j];
         }
@@ -375,11 +381,11 @@ newAttractor (void)
         exit (EXIT_FAILURE);
     }
 
-    at->niter = 16384;
-    at->maxiter = 50000;
+    at->convergenceIterations = 8192;
+    at->numPoints = 250000;
     explore (at, 2);
-    fprintf (stdout, "Found polynom\n");
     displayPolynom (at->polynom);
+    fprintf (stdout, "Lyapunov exponent: %.6Lf\n", at->lyapunov->ly);
     iterateMap (at);
     centerAttractor (at);
     return at;
