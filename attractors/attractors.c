@@ -45,7 +45,7 @@ struct lyapu
 
 struct polynom
 {
-    long double *p[MDIM];
+    long double **p;
     int length;
     int order;
 };
@@ -60,24 +60,24 @@ struct attractor
     point bound[2];
 };
 
-typedef struct
+struct fractal_settings
 {
     unsigned int numPoints;
     unsigned int convergenceIterations;
     unsigned int order;
     unsigned int dimension;
-} fractal_settings_t;
+};
 
-typedef struct
+struct display_settings
 {
     unsigned long int w;        /* width of current window (in pixels) */
     unsigned long int h;        /* height of current window (in pixels) */
     int fullscreen;
-} display_settings_t;
+};
 
 const char *WINDOW_TITLE = "Strange Attractors";
-static fractal_settings_t fset;
-static display_settings_t dset;
+static struct fractal_settings fset;
+static struct display_settings dset;
 static struct attractor *at;
 static float angle = 3.0;
 static double r = 0;
@@ -100,7 +100,7 @@ newPoint (void)
 {
     point p;
 
-    if ((p = malloc (MDIM * (sizeof *p))) == NULL) {
+    if ((p = malloc (fset.dimension * (sizeof *p))) == NULL) {
         fprintf (stderr, "Unable to allocate memory for point.\n");
         fprintf (stderr,
                  "I'm trying to go on, but expect a crash pretty soon :-)\n");
@@ -113,7 +113,7 @@ _scalar_mul (point p, long double m)
 {
     int i;
 
-    for (i = 0; i < MDIM; i++)
+    for (i = 0; i < fset.dimension; i++)
         p[i] *= m;
 
     return p;
@@ -125,7 +125,7 @@ _modulus (point p)
     long double m = 0;
     int i;
 
-    for (i = 0; i < MDIM; i++)
+    for (i = 0; i < fset.dimension; i++)
         m += p[i] * p[i];
 
     return m;
@@ -137,7 +137,7 @@ _abs (point p)
     long double a = 0;
     int i;
 
-    for (i = 0; i < MDIM; i++)
+    for (i = 0; i < fset.dimension; i++)
         a += fabsl (p[i]);
 
     return a;
@@ -149,7 +149,7 @@ _sub (point a, point b)
     point c = newPoint ();
     int i;
 
-    for (i = 0; i < MDIM; i++)
+    for (i = 0; i < fset.dimension; i++)
         c[i] = a[i] - b[i];
 
     return c;
@@ -161,7 +161,7 @@ _middle (point a, point b)
     point c = newPoint ();
     int i;
 
-    for (i = 0; i < MDIM; i++)
+    for (i = 0; i < fset.dimension; i++)
         c[i] = (a[i] + b[i]) / 2;
 
     return c;
@@ -174,23 +174,23 @@ eval (point p, struct polynom * polynom)
     long double result, *c;
     point pe = newPoint ();
 
-    for (coef = 0; coef < MDIM; coef++) {
+    for (coef = 0; coef < fset.dimension; coef++) {
         n = 0;
         result = 0;
         c = (long double *) polynom->p[coef];
         for (i = 0; i <= polynom->order; i++) {
             for (j = 0; j <= polynom->order - i; j++) {
-#if (MDIM == 2)
-                result += c[n++] * power (p[0], j) * power (p[1], i);
-#else
-                int k;
-                for (k = 0; k <= polynom->order - i - j; k++) {
-                    result +=
-                        c[n++] * power (p[0], k) * power (p[1],
-                                                          j) * power (p[2],
-                                                                      i);
+                if (fset.dimension == 2)
+                    result += c[n++] * power (p[0], j) * power (p[1], i);
+                else {
+                    int k;
+                    for (k = 0; k <= polynom->order - i - j; k++) {
+                        result +=
+                            c[n++] * power (p[0], k) * power (p[1],
+                                                              j) *
+                            power (p[2], i);
+                    }
                 }
-#endif
             }
         }
         pe[coef] = result;
@@ -247,7 +247,7 @@ checkConvergence (struct attractor *at)
 
     p = newPoint ();
     pe = newPoint ();
-    for (i = 0; i < MDIM; i++)
+    for (i = 0; i < fset.dimension; i++)
         p[i] = pe[i] = 0.1;
     pe[0] += 0.000001;
     at->lyapunov->lsum = at->lyapunov->ly = at->lyapunov->n = 0;
@@ -304,9 +304,10 @@ freePolynom (struct polynom *p)
 {
     int i;
 
-    for (i = 0; i < MDIM; i++) {
+    for (i = 0; i < fset.dimension; i++) {
         free (p->p[i]);
     }
+    free (p->p);
     free (p);
 }
 
@@ -315,7 +316,7 @@ displayPolynom (struct polynom *p)
 {
     int i, j;
 
-    for (i = 0; i < MDIM; i++) {
+    for (i = 0; i < fset.dimension; i++) {
         fprintf (stdout, "[ ");
         for (j = 0; j < p->length; j++) {
             fprintf (stdout, "%+.2Lf ", (p->p[i])[j]);
@@ -324,41 +325,26 @@ displayPolynom (struct polynom *p)
     }
 }
 
-struct polynom *
-getRandom (int order)
+void
+getRandom (int order, struct polynom *p)
 {
-    struct polynom *p;
     int i, j;
 
-    if ((p = malloc (sizeof *p)) == NULL) {
-        fprintf (stderr, "Unable to allocate memory for polynom. Exiting\n");
-        exit (EXIT_FAILURE);
-    }
-
-    p->order = order;
-    p->length = getPolynomLength (MDIM, order);
-    for (i = 0; i < MDIM; i++) {
-        if ((p->p[i] = malloc (p->length * (sizeof *(p->p[i])))) == NULL) {
-            fprintf (stderr,
-                     "Unable to allocate memory for polynom. Exiting\n");
-            exit (EXIT_FAILURE);
-        }
+    for (i = 0; i < fset.dimension; i++) {
         for (j = 0; j < p->length; j++) {
             (p->p[i])[j] = (double) ((rand () % 61) - 30) * 0.08;
         }
     }
-    return p;
 }
 
 void
 explore (struct attractor *at, int order)
 {
     while (1) {
-        at->polynom = getRandom (order);
+        getRandom (order, at->polynom);
         if (checkConvergence (at)) {
             break;
         }
-        freePolynom (at->polynom);
     }
 }
 
@@ -378,7 +364,7 @@ iterateMap (struct attractor *at)
     pmin = newPoint ();
     pmax = newPoint ();
     ptmp = p;
-    for (i = 0; i < MDIM; i++) {
+    for (i = 0; i < fset.dimension; i++) {
         p[i] = 0.1;
         pmin[i] = AT_INFINITY;
         pmax[i] = -AT_INFINITY;
@@ -389,7 +375,7 @@ iterateMap (struct attractor *at)
         p = pnew;
         if (i >= NUM_CONVERGENCE_POINTS) {
             at->array[i - NUM_CONVERGENCE_POINTS] = pnew;
-            for (j = 0; j < MDIM; j++) {
+            for (j = 0; j < fset.dimension; j++) {
                 pmin[j] = min (p[j], pmin[j]);
                 pmax[j] = max (p[j], pmax[j]);
             }
@@ -414,6 +400,8 @@ freeAttractor (struct attractor *at)
     for (i = 0; i < 2; i++) {
         free (at->bound[i]);
     }
+
+    freePolynom (at->polynom);
     free (at);
 }
 
@@ -424,12 +412,12 @@ centerAttractor (struct attractor *at)
 
     point m = _middle (at->bound[0], at->bound[1]);
     for (i = 0; i < at->numPoints; i++) {
-        for (j = 0; j < MDIM; j++) {
+        for (j = 0; j < fset.dimension; j++) {
             at->array[i][j] -= m[j];
         }
     }
     for (i = 0; i < 2; i++) {
-        for (j = 0; j < MDIM; j++) {
+        for (j = 0; j < fset.dimension; j++) {
             at->bound[i][j] -= m[j];
         }
     }
@@ -439,6 +427,8 @@ centerAttractor (struct attractor *at)
 struct attractor *
 newAttractor (void)
 {
+    int i;
+	
     if ((at = malloc (sizeof *at)) == NULL) {
         fprintf (stderr,
                  "Unable to allocate memory for attractor. Exiting\n");
@@ -451,9 +441,31 @@ newAttractor (void)
         exit (EXIT_FAILURE);
     }
 
-    at->convergenceIterations = 8192;
-    at->numPoints = 250000;
-    explore (at, 2);
+    if ((at->polynom = malloc (sizeof *(at->polynom))) == NULL) {
+        fprintf (stderr, "Unable to allocate memory for polynom. Exiting\n");
+        exit (EXIT_FAILURE);
+    }
+
+    if ((at->polynom->p =
+         malloc (fset.dimension * sizeof *(at->polynom->p))) == NULL) {
+        fprintf (stderr, "Unable to allocate memory for polynom. Exiting\n");
+        exit (EXIT_FAILURE);
+    }
+    at->polynom->order = fset.order;
+    at->polynom->length = getPolynomLength (fset.dimension, fset.order);
+    for (i = 0; i < fset.dimension; i++) {
+        if ((at->polynom->p[i] =
+             malloc (at->polynom->length * (sizeof *(at->polynom->p[i])))) ==
+            NULL) {
+            fprintf (stderr,
+                     "Unable to allocate memory for polynom. Exiting\n");
+            exit (EXIT_FAILURE);
+        }
+    }
+
+    at->convergenceIterations = fset.convergenceIterations;
+    at->numPoints = fset.numPoints;
+    explore (at, fset.order);
     displayPolynom (at->polynom);
     fprintf (stdout, "Lyapunov exponent: %.6Lf\n", at->lyapunov->ly);
     iterateMap (at);
@@ -516,7 +528,19 @@ parse_options (int argc, char **argv)
         switch (c) {
         case 0:
             break;
-        case 'g':{
+        case 'c':
+            fset.convergenceIterations = strtol (optarg, NULL, 0);
+            break;
+        case 'd':
+            fset.dimension = strtol (optarg, NULL, 0);
+            if (fset.dimension < 2) {
+                fprintf (stderr, "Specified dimension out of bound\n");
+                usage (argv[0], stderr);
+                exit (EXIT_FAILURE);
+            }
+            break;
+        case 'g':
+            {
                 long n[2];
                 if (numbers_from_string (n, optarg, 'x', 2) == -1) {
                     fprintf (stderr, "Bad geometry string\n");
@@ -526,6 +550,14 @@ parse_options (int argc, char **argv)
                 dset.h = n[1];
                 break;
             }
+
+        case 'n':
+            fset.numPoints = strtol (optarg, NULL, 0);
+            break;
+
+        case 'o':
+            fset.order = strtol (optarg, NULL, 0);
+            break;
 
         case 'h':
             usage (argv[0], stdout);
@@ -580,7 +612,7 @@ initDisplay ()
     glLoadIdentity ();
 
     /* The square of the diagonal length */
-    for (i = 0; i < MDIM; i++) {
+    for (i = 0; i < fset.dimension; i++) {
         r += (at->bound[1][i] - at->bound[0][i]) * (at->bound[1][i] -
                                                     at->bound[0][i]);
     }
@@ -591,10 +623,10 @@ initDisplay ()
     glMatrixMode (GL_MODELVIEW);
     glLoadIdentity ();
 
-#if (MDIM == 2)
-    glEnable (GL_BLEND);
-    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-#endif
+    if (fset.dimension == 2) {
+        glEnable (GL_BLEND);
+        glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
 
     glEnable (GL_POINT_SMOOTH);
     glPointSize (1.0f);
@@ -612,11 +644,10 @@ display ()
 
     glBegin (GL_POINTS);
     for (i = 0; i < at->numPoints; i++) {
-#if (MDIM == 2)
-        glVertex2f (at->array[i][0], at->array[i][1]);
-#else
-        glVertex3f (at->array[i][0], at->array[i][1], at->array[i][2]);
-#endif
+        if (fset.dimension == 2)
+            glVertex2f (at->array[i][0], at->array[i][1]);
+        else
+            glVertex3f (at->array[i][0], at->array[i][1], at->array[i][2]);
     }
     glEnd ();
 

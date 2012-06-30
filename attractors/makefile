@@ -1,9 +1,7 @@
 CC=gcc 
 TAR=tar 
-MDIM?=3
 INDENT=indent 
 CFLAGS=-Wall -O3
-CPPFLAGS=-DMDIM=$(MDIM)
 LDFLAGS=-lm
 OBJS=attractors.o
 SRC=attractors.c
