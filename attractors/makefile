@@ -5,8 +5,8 @@ INDENT=indent
 CFLAGS=-Wall -O3
 CPPFLAGS=-DMDIM=$(MDIM)
 LDFLAGS=-lm
-OBJS=attractors.o main.o
-SRC=attractors.c main.c
+OBJS=attractors.o
+SRC=attractors.c
 TARGET=attractors
 
 $(TARGET): $(OBJS)
