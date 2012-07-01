@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include <sys/time.h>
 #include <getopt.h>
 
 #ifdef __MINGW__
@@ -33,6 +34,7 @@
 #define DEFAULT_DIM 3
 #define NUM_CONVERGENCE_POINTS 128
 #define AT_INFINITY 1000000
+#define LYAPU_DELTA 0.000001
 
 /* Looks like minGW defines min and max macros somewhere */
 #ifndef __MINGW__
@@ -87,6 +89,16 @@ static struct fractal_settings fset;
 static struct display_settings dset;
 static struct attractor *at;
 static float angle = 3.0;
+
+void
+diffTime (const char *caption, struct timeval *t1, struct timeval *t2)
+{
+    float td =
+        (float) (t2->tv_sec - t1->tv_sec) * 1000 + ((float) t2->tv_usec -
+                                                    (float) t1->tv_usec) /
+        1000;
+    fprintf (stdout, "%s took %.3f milliseconds\n", caption, td);
+}
 
 /* Probably best algo as we are dealing with low exponents here (typically < 5)
      so no need to bother with exponentation by squaring */
@@ -174,10 +186,58 @@ _middle (point a, point b)
 }
 
 point
+fastEval (point p, struct polynom * polynom)
+{                               /* For polynoms of order 2 */
+    point pe = newPoint ();
+    float x2 = p[0] * p[0];
+    float y2 = p[1] * p[1];
+    float xy = p[0] * p[1];
+
+    if (fset.dimension == 2) {
+        pe[0] =
+            polynom->p[0][0] + polynom->p[0][1] * p[0] +
+            polynom->p[0][2] * p[1] + polynom->p[0][3] * x2 +
+            polynom->p[0][4] * y2 + polynom->p[0][5] * xy;
+        pe[1] =
+            polynom->p[1][0] + polynom->p[1][1] * p[0] +
+            polynom->p[1][2] * p[1] + polynom->p[1][3] * x2 +
+            polynom->p[1][4] * y2 + polynom->p[1][5] * xy;
+    }
+    else {
+        float z2 = p[2] * p[2];
+        float xz = p[0] * p[2];
+        float yz = p[1] * p[2];
+        pe[0] =
+            polynom->p[0][0] + polynom->p[0][1] * p[0] +
+            polynom->p[0][2] * p[1] + polynom->p[0][3] * p[2] +
+            polynom->p[0][4] * x2 + polynom->p[0][5] * y2 +
+            polynom->p[0][6] * z2 + polynom->p[0][7] * xy +
+            polynom->p[0][8] * xz + polynom->p[0][9] * yz;
+        pe[1] =
+            polynom->p[1][0] + polynom->p[1][1] * p[0] +
+            polynom->p[1][2] * p[1] + polynom->p[1][3] * p[2] +
+            polynom->p[1][4] * x2 + polynom->p[1][5] * y2 +
+            polynom->p[1][6] * z2 + polynom->p[1][7] * xy +
+            polynom->p[1][8] * xz + polynom->p[1][9] * yz;
+        pe[2] =
+            polynom->p[2][0] + polynom->p[2][1] * p[0] +
+            polynom->p[2][2] * p[1] + polynom->p[2][3] * p[2] +
+            polynom->p[2][4] * x2 + polynom->p[2][5] * y2 +
+            polynom->p[2][6] * z2 + polynom->p[2][7] * xy +
+            polynom->p[2][8] * xz + polynom->p[2][9] * yz;
+    }
+    return pe;
+}
+
+point
 eval (point p, struct polynom * polynom)
 {
     int coef, i, j, n;
     long double result, *c;
+
+    if (polynom->order == 2)
+        return fastEval (p, polynom);
+
     point pe = newPoint ();
 
     for (coef = 0; coef < fset.dimension; coef++) {
@@ -203,6 +263,7 @@ eval (point p, struct polynom * polynom)
     }
     return pe;
 }
+
 
 void
 displayPoint (point p)
@@ -230,7 +291,7 @@ computeLyapunov (point p, point pe, struct attractor *at)
         return pe;
     }
 
-    df = 1000000000000.0 * dl2;
+    df = dl2 / (LYAPU_DELTA * LYAPU_DELTA);
     rs = 1 / sqrt (df);
 
     lyapu->lsum += log (df);
@@ -255,7 +316,7 @@ checkConvergence (struct attractor *at)
     pe = newPoint ();
     for (i = 0; i < fset.dimension; i++)
         p[i] = pe[i] = 0.1;
-    pe[0] += 0.000001;
+    pe[0] += LYAPU_DELTA;
     at->lyapunov->lsum = at->lyapunov->ly = at->lyapunov->n = 0;
 
     for (i = 0; i < at->convergenceIterations; i++) {
@@ -442,6 +503,7 @@ struct attractor *
 newAttractor (void)
 {
     int i;
+    struct timeval t1, t2;
 
     if ((at = malloc (sizeof *at)) == NULL) {
         fprintf (stderr,
@@ -482,7 +544,10 @@ newAttractor (void)
     explore (at, fset.order);
     displayPolynom (at->polynom);
     fprintf (stdout, "Lyapunov exponent: %.6Lf\n", at->lyapunov->ly);
+    gettimeofday (&t1, NULL);
     iterateMap (at);
+    gettimeofday (&t2, NULL);
+    diffTime ("Map iteration", &t1, &t2);
     at->r = getRadius (at);
     centerAttractor (at);
     return at;
@@ -548,7 +613,7 @@ parse_options (int argc, char **argv)
             break;
         case 'd':
             fset.dimension = strtol (optarg, NULL, 0);
-            if (fset.dimension < 2) {
+            if (fset.dimension < 2 || fset.dimension > 3) {
                 fprintf (stderr, "Specified dimension out of bound\n");
                 usage (argv[0], stderr);
                 exit (EXIT_FAILURE);
@@ -647,7 +712,7 @@ display ()
     glClear (GL_COLOR_BUFFER_BIT);
     glMatrixMode (GL_MODELVIEW);
     glLoadIdentity ();
-    glRotatef (angle, 1.0, 1.0, 1.0);
+    glRotatef (angle, 0.0, 0.0, 1.0);
 
     glBegin (GL_POINTS);
     for (i = 0; i < at->numPoints; i++) {
