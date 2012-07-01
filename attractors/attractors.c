@@ -34,6 +34,12 @@
 #define NUM_CONVERGENCE_POINTS 128
 #define AT_INFINITY 1000000
 
+/* Looks like minGW defines min and max macros somewhere */
+#ifndef __MINGW__
+#define min(x, y) (x)<(y)?(x):(y)
+#define max(x, y) (x)>(y)?(x):(y)
+#endif
+
 typedef long double *point;
 
 struct lyapu
@@ -224,7 +230,7 @@ computeLyapunov (point p, point pe, struct attractor *at)
         return pe;
     }
 
-    df = 1000000000000 * dl2;
+    df = 1000000000000.0 * dl2;
     rs = 1 / sqrt (df);
 
     lyapu->lsum += log (df);
@@ -277,7 +283,6 @@ checkConvergence (struct attractor *at)
         result = 1;
     free (pnew);
     free (pe);
-    free (p);                   // FIXME:  p=pnew -> multiple  free here... Will this ever compile on Linux ?
     return result;
 }
 
@@ -684,7 +689,7 @@ key (unsigned char mychar, int x, int y)
 {
     // exit the program when the Esc key is pressed
     if (mychar == 27) {
-        exit (0);
+        exit (EXIT_SUCCESS);
     }
 }
 

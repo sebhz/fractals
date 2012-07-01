@@ -10,6 +10,7 @@ TARGET=attractors
 $(TARGET): $(OBJS)
 	$(CC) -o $@ $(OBJS) $(CFLAGS) $(LDFLAGS) 
 
+LDFLAGS = -lglut -lGLU -lGL
 windows : CPPFLAGS += -D__MINGW__ -D__USE_MINGW_ANSI_STDIO
 windows : LDFLAGS = -lmingw32 -lopengl32 -lglu32 -lglut32
 windows : $(TARGET)
