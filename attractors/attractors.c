@@ -57,6 +57,7 @@ struct attractor
     point *array;
     int convergenceIterations;
     int numPoints;
+    long double r;
     point bound[2];
 };
 
@@ -80,7 +81,6 @@ static struct fractal_settings fset;
 static struct display_settings dset;
 static struct attractor *at;
 static float angle = 3.0;
-static double r = 0;
 
 /* Probably best algo as we are dealing with low exponents here (typically < 5)
      so no need to bother with exponentation by squaring */
@@ -405,6 +405,15 @@ freeAttractor (struct attractor *at)
     free (at);
 }
 
+long double
+getRadius (struct attractor *at)
+{
+    point p = _sub (at->bound[1], at->bound[0]);
+    long double r = 0.5 * sqrt (_modulus (p));
+    free (p);
+    return r;
+}
+
 void
 centerAttractor (struct attractor *at)
 {
@@ -428,7 +437,7 @@ struct attractor *
 newAttractor (void)
 {
     int i;
-	
+
     if ((at = malloc (sizeof *at)) == NULL) {
         fprintf (stderr,
                  "Unable to allocate memory for attractor. Exiting\n");
@@ -469,6 +478,7 @@ newAttractor (void)
     displayPolynom (at->polynom);
     fprintf (stdout, "Lyapunov exponent: %.6Lf\n", at->lyapunov->ly);
     iterateMap (at);
+    at->r = getRadius (at);
     centerAttractor (at);
     return at;
 }
@@ -602,8 +612,6 @@ default_settings (void)
 void
 initDisplay ()
 {
-    int i;
-
     glClearColor (0.0f, 0.0f, 0.0f, 1.0f);
     glColor4f (1.0f, 1.0f, 1.0f, 0.02f);
     glViewport (0, 0, dset.w, dset.h);
@@ -611,14 +619,8 @@ initDisplay ()
     glMatrixMode (GL_PROJECTION);
     glLoadIdentity ();
 
-    /* The square of the diagonal length */
-    for (i = 0; i < fset.dimension; i++) {
-        r += (at->bound[1][i] - at->bound[0][i]) * (at->bound[1][i] -
-                                                    at->bound[0][i]);
-    }
     /* Add 2% to move the clipping planes a bit further */
-    r = 0.51 * sqrt (r);
-    glOrtho (-r, r, -r, r, -r, r);
+    glOrtho (-at->r, at->r, -at->r, at->r, -at->r, at->r);
 
     glMatrixMode (GL_MODELVIEW);
     glLoadIdentity ();
@@ -668,10 +670,10 @@ reshape (int w, int h)
     glLoadIdentity ();
 
     if (ar < 1.0) {
-        glOrtho (-r, r, -r / ar, r / ar, -r, r);
+        glOrtho (-at->r, at->r, -at->r / ar, at->r / ar, -at->r, at->r);
     }
     else {
-        glOrtho (-r * ar, r * ar, -r, r, -r, r);
+        glOrtho (-at->r * ar, at->r * ar, -at->r, at->r, -at->r, at->r);
     }
     glMatrixMode (GL_MODELVIEW);
     glLoadIdentity ();
