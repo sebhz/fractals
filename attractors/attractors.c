@@ -42,18 +42,18 @@
 #define max(x, y) (x)>(y)?(x):(y)
 #endif
 
-typedef long double *point;
+typedef GLdouble *point;
 
 struct lyapu
 {
-    long double lsum;
+    GLdouble lsum;
     int n;
-    long double ly;
+    GLdouble ly;
 };
 
 struct polynom
 {
-    long double **p;
+    GLdouble **p;
     int length;
     int order;
 };
@@ -65,7 +65,7 @@ struct attractor
     point *array;
     int convergenceIterations;
     int numPoints;
-    long double r;
+    GLdouble r;
     point bound[2];
 };
 
@@ -79,8 +79,8 @@ struct fractal_settings
 
 struct display_settings
 {
-    unsigned long int w;        /* width of current window (in pixels) */
-    unsigned long int h;        /* height of current window (in pixels) */
+    unsigned long int w;      /* width of current window (in pixels) */
+    unsigned long int h;      /* height of current window (in pixels) */
     int fullscreen;
 };
 
@@ -88,25 +88,25 @@ const char *WINDOW_TITLE = "Strange Attractors";
 static struct fractal_settings fset;
 static struct display_settings dset;
 static struct attractor *at;
-static float angle = 3.0;
+static GLfloat angle = 3.0;
 
 void
 diffTime (const char *caption, struct timeval *t1, struct timeval *t2)
 {
-    float td =
-        (float) (t2->tv_sec - t1->tv_sec) * 1000 + ((float) t2->tv_usec -
-                                                    (float) t1->tv_usec) /
+    GLfloat td =
+        (GLfloat) (t2->tv_sec - t1->tv_sec) * 1000 + ((GLfloat) t2->tv_usec -
+                                                      (GLfloat) t1->tv_usec) /
         1000;
     fprintf (stdout, "%s took %.3f milliseconds\n", caption, td);
 }
 
 /* Probably best algo as we are dealing with low exponents here (typically < 5)
      so no need to bother with exponentation by squaring */
-inline long double
-power (long double base, unsigned int exp)
+inline GLdouble
+power (GLdouble base, unsigned int exp)
 {
     int i;
-    long double result = 1.0;
+    GLdouble result = 1.0;
 
     for (i = 0; i < exp; i++)
         result *= base;
@@ -127,7 +127,7 @@ newPoint (void)
 }
 
 inline point
-_scalar_mul (point p, long double m)
+_scalar_mul (point p, GLdouble m)
 {
     int i;
 
@@ -137,10 +137,10 @@ _scalar_mul (point p, long double m)
     return p;
 }
 
-inline long double
+inline GLdouble
 _modulus (point p)
 {
-    long double m = 0;
+    GLdouble m = 0;
     int i;
 
     for (i = 0; i < fset.dimension; i++)
@@ -149,10 +149,10 @@ _modulus (point p)
     return m;
 }
 
-inline long double
+inline GLdouble
 _abs (point p)
 {
-    long double a = 0;
+    GLdouble a = 0;
     int i;
 
     for (i = 0; i < fset.dimension; i++)
@@ -189,9 +189,9 @@ point
 fastEval (point p, struct polynom * polynom)
 {                               /* For polynoms of order 2 */
     point pe = newPoint ();
-    float x2 = p[0] * p[0];
-    float y2 = p[1] * p[1];
-    float xy = p[0] * p[1];
+    GLfloat x2 = p[0] * p[0];
+    GLfloat y2 = p[1] * p[1];
+    GLfloat xy = p[0] * p[1];
 
     if (fset.dimension == 2) {
         pe[0] =
@@ -204,9 +204,9 @@ fastEval (point p, struct polynom * polynom)
             polynom->p[1][4] * y2 + polynom->p[1][5] * xy;
     }
     else {
-        float z2 = p[2] * p[2];
-        float xz = p[0] * p[2];
-        float yz = p[1] * p[2];
+        GLfloat z2 = p[2] * p[2];
+        GLfloat xz = p[0] * p[2];
+        GLfloat yz = p[1] * p[2];
         pe[0] =
             polynom->p[0][0] + polynom->p[0][1] * p[0] +
             polynom->p[0][2] * p[1] + polynom->p[0][3] * p[2] +
@@ -233,7 +233,7 @@ point
 eval (point p, struct polynom * polynom)
 {
     int coef, i, j, n;
-    long double result, *c;
+    GLdouble result, *c;
 
     if (polynom->order == 2)
         return fastEval (p, polynom);
@@ -243,7 +243,7 @@ eval (point p, struct polynom * polynom)
     for (coef = 0; coef < fset.dimension; coef++) {
         n = 0;
         result = 0;
-        c = (long double *) polynom->p[coef];
+        c = (GLdouble *) polynom->p[coef];
         for (i = 0; i <= polynom->order; i++) {
             for (j = 0; j <= polynom->order - i; j++) {
                 if (fset.dimension == 2)
@@ -276,7 +276,7 @@ point
 computeLyapunov (point p, point pe, struct attractor *at)
 {
     point p2, dl, np;
-    long double dl2, df, rs;
+    GLdouble dl2, df, rs;
     struct lyapu *lyapu = at->lyapunov;
 
     p2 = eval (pe, at->polynom);
@@ -471,11 +471,11 @@ freeAttractor (struct attractor *at)
     free (at);
 }
 
-long double
+GLdouble
 getRadius (struct attractor *at)
 {
     point p = _sub (at->bound[1], at->bound[0]);
-    long double r = 0.5 * sqrt (_modulus (p));
+    GLdouble r = 0.5 * sqrt (_modulus (p));
     free (p);
     return r;
 }
@@ -712,14 +712,21 @@ display ()
     glClear (GL_COLOR_BUFFER_BIT);
     glMatrixMode (GL_MODELVIEW);
     glLoadIdentity ();
-    glRotatef (angle, 0.0, 0.0, 1.0);
-
+    if (fset.dimension == 2) {
+        glRotatef (angle, 0.0, 0.0, 1.0);
+    }
+    else {
+        glRotatef (angle, 0.0, -1.0, 1.0);
+    }
     glBegin (GL_POINTS);
     for (i = 0; i < at->numPoints; i++) {
         if (fset.dimension == 2)
-            glVertex2f (at->array[i][0], at->array[i][1]);
-        else
-            glVertex3f (at->array[i][0], at->array[i][1], at->array[i][2]);
+            glVertex2d (at->array[i][0], at->array[i][1]);
+        else {
+            glVertex3d (at->array[i][0], at->array[i][1], at->array[i][2]);
+            /* Normal equal to the vector -> vertex redirects light in the same direction */
+            glNormal3d (at->array[i][0], at->array[i][1], at->array[i][2]);
+        }
     }
     glEnd ();
 
