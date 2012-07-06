@@ -53,7 +53,7 @@ struct lyapu
 
 struct polynom
 {
-    GLdouble **p;
+    double **p;
     int length;
     int order;
 };
@@ -79,8 +79,8 @@ struct fractal_settings
 
 struct display_settings
 {
-    unsigned long int w;      /* width of current window (in pixels) */
-    unsigned long int h;      /* height of current window (in pixels) */
+    unsigned long int w;        /* width of current window (in pixels) */
+    unsigned long int h;        /* height of current window (in pixels) */
     int fullscreen;
 };
 
@@ -385,7 +385,7 @@ displayPolynom (struct polynom *p)
     for (i = 0; i < fset.dimension; i++) {
         fprintf (stdout, "[ ");
         for (j = 0; j < p->length; j++) {
-            fprintf (stdout, "%+.2Lf ", (p->p[i])[j]);
+            fprintf (stdout, "%+.2f ", (p->p[i])[j]);
         }
         fprintf (stdout, "]\n");
     }
@@ -543,7 +543,7 @@ newAttractor (void)
     at->numPoints = fset.numPoints;
     explore (at, fset.order);
     displayPolynom (at->polynom);
-    fprintf (stdout, "Lyapunov exponent: %.6Lf\n", at->lyapunov->ly);
+    fprintf (stdout, "Lyapunov exponent: %.6f\n", at->lyapunov->ly);
     gettimeofday (&t1, NULL);
     iterateMap (at);
     gettimeofday (&t2, NULL);
@@ -680,10 +680,29 @@ default_settings (void)
 }
 
 void
+initLight ()
+{
+    GLfloat global_ambient[] = { 0.5f, 0.5f, 0.5f, 1.0f };
+    GLfloat specular1[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    GLfloat specular2[] = { 0.0f, 1.0f, 0.0f, 1.0f };
+    GLfloat position1[] = { -1.5f, 1.0f, -4.0f, 1.0f };
+    GLfloat position2[] = { 1.5f, 1.0f, 4.0f, 1.0f };
+    glEnable (GL_LIGHTING);
+    glDisable (GL_COLOR_MATERIAL);
+    glLightModelfv (GL_LIGHT_MODEL_AMBIENT, global_ambient);
+    glLightfv (GL_LIGHT0, GL_SPECULAR, specular1);
+    glLightfv (GL_LIGHT0, GL_POSITION, position1);
+    glEnable (GL_LIGHT0);
+    glLightfv (GL_LIGHT1, GL_SPECULAR, specular2);
+    glLightfv (GL_LIGHT1, GL_POSITION, position2);
+    glEnable (GL_LIGHT1);
+}
+
+void
 initDisplay ()
 {
     glClearColor (0.0f, 0.0f, 0.0f, 1.0f);
-    glColor4f (1.0f, 1.0f, 1.0f, 0.02f);
+    glColor4f (1.0f, 1.0f, 1.0f, 0.5f);
     glViewport (0, 0, dset.w, dset.h);
 
     glMatrixMode (GL_PROJECTION);
@@ -701,6 +720,7 @@ initDisplay ()
     }
 
     glEnable (GL_POINT_SMOOTH);
+    initLight ();
     glPointSize (1.0f);
 }
 
@@ -721,11 +741,11 @@ display ()
     glBegin (GL_POINTS);
     for (i = 0; i < at->numPoints; i++) {
         if (fset.dimension == 2)
-            glVertex2d (at->array[i][0], at->array[i][1]);
+            glVertex2dv (at->array[i]);
         else {
-            glVertex3d (at->array[i][0], at->array[i][1], at->array[i][2]);
+            glVertex3dv (at->array[i]);
             /* Normal equal to the vector -> vertex redirects light in the same direction */
-            glNormal3d (at->array[i][0], at->array[i][1], at->array[i][2]);
+            glNormal3dv (at->array[i]);
         }
     }
     glEnd ();
