@@ -680,29 +680,46 @@ default_settings (void)
 }
 
 void
-initLight ()
+positionLight ()
 {
-    GLfloat global_ambient[] = { 0.5f, 0.5f, 0.5f, 1.0f };
-    GLfloat specular1[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    GLfloat ambient[] = { 0.1f, 0.1f, 0.1f };
+    GLfloat diffuse1[] = { 0.5f, 0.0f, 0.0f, 1.0f };
+    GLfloat diffuse2[] = { 0.0f, 0.5f, 0.0f, 1.0f };
+    GLfloat diffuse3[] = { 0.0f, 0.0f, 0.5f, 1.0f };
+    GLfloat specular1[] = { 1.0f, 0.0f, 0.0f, 1.0f };
     GLfloat specular2[] = { 0.0f, 1.0f, 0.0f, 1.0f };
-    GLfloat position1[] = { -1.5f, 1.0f, -4.0f, 1.0f };
-    GLfloat position2[] = { 1.5f, 1.0f, 4.0f, 1.0f };
-    glEnable (GL_LIGHTING);
-    glDisable (GL_COLOR_MATERIAL);
-    glLightModelfv (GL_LIGHT_MODEL_AMBIENT, global_ambient);
-    glLightfv (GL_LIGHT0, GL_SPECULAR, specular1);
+    GLfloat specular3[] = { 0.0f, 0.0f, 1.0f, 1.0f };
+    GLfloat position1[] = { 0.0f, 0.0f, -10.0f, 1.0f };
+    GLfloat position2[] = { -10.0f, 0.0f, 10.0f, 1.0f };
+    GLfloat position3[] = { 10.0f, 0.0f, 10.0f, 1.0f };
+
+    glLightfv (GL_LIGHT7, GL_AMBIENT, ambient);
+    glEnable (GL_LIGHT7);
+    glLightfv (GL_LIGHT0, GL_DIFFUSE, diffuse1);
     glLightfv (GL_LIGHT0, GL_POSITION, position1);
     glEnable (GL_LIGHT0);
-    glLightfv (GL_LIGHT1, GL_SPECULAR, specular2);
+    glLightfv (GL_LIGHT1, GL_DIFFUSE, diffuse2);
     glLightfv (GL_LIGHT1, GL_POSITION, position2);
     glEnable (GL_LIGHT1);
+    glLightfv (GL_LIGHT2, GL_DIFFUSE, diffuse3);
+    glLightfv (GL_LIGHT2, GL_POSITION, position3);
+    glEnable (GL_LIGHT2);
+    glLightfv (GL_LIGHT3, GL_DIFFUSE, specular1);
+    glLightfv (GL_LIGHT3, GL_POSITION, position1);
+    glEnable (GL_LIGHT3);
+    glLightfv (GL_LIGHT4, GL_DIFFUSE, specular2);
+    glLightfv (GL_LIGHT4, GL_POSITION, position2);
+    glEnable (GL_LIGHT4);
+    glLightfv (GL_LIGHT5, GL_DIFFUSE, specular3);
+    glLightfv (GL_LIGHT5, GL_POSITION, position3);
+    glEnable (GL_LIGHT5);
 }
 
 void
 initDisplay ()
 {
     glClearColor (0.0f, 0.0f, 0.0f, 1.0f);
-    glColor4f (1.0f, 1.0f, 1.0f, 0.5f);
+    glColor4f (1.0f, 1.0f, 1.0f, 0.0f);
     glViewport (0, 0, dset.w, dset.h);
 
     glMatrixMode (GL_PROJECTION);
@@ -720,7 +737,8 @@ initDisplay ()
     }
 
     glEnable (GL_POINT_SMOOTH);
-    initLight ();
+    glEnable (GL_LIGHTING);
+    glDisable (GL_COLOR_MATERIAL);
     glPointSize (1.0f);
 }
 
@@ -732,11 +750,12 @@ display ()
     glClear (GL_COLOR_BUFFER_BIT);
     glMatrixMode (GL_MODELVIEW);
     glLoadIdentity ();
+	positionLight ();
     if (fset.dimension == 2) {
-        glRotatef (angle, 0.0, 0.0, 1.0);
+        glRotatef (angle, 1.0, 1.0, 1.0);
     }
     else {
-        glRotatef (angle, 0.0, -1.0, 1.0);
+        glRotatef (angle, 1.0, 1.0, 1.0);
     }
     glBegin (GL_POINTS);
     for (i = 0; i < at->numPoints; i++) {
