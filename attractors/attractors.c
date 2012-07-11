@@ -67,6 +67,7 @@ struct attractor
     int numPoints;
     GLdouble r;
     point bound[2];
+    char *code;
 };
 
 struct fractal_settings
@@ -75,6 +76,7 @@ struct fractal_settings
     unsigned int convergenceIterations;
     unsigned int order;
     unsigned int dimension;
+    char *code;
 };
 
 struct display_settings
@@ -85,6 +87,14 @@ struct display_settings
 };
 
 const char *WINDOW_TITLE = "Strange Attractors";
+const char codelist[] = { 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 65, 66, 67,
+    68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84,
+    85, 86, 87,
+    88, 89, 90, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108,
+    109, 110,
+    111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122
+};
+
 static struct fractal_settings fset;
 static struct display_settings dset;
 static struct attractor *at;
@@ -453,6 +463,86 @@ iterateMap (struct attractor *at)
     at->numPoints -= NUM_CONVERGENCE_POINTS;
 }
 
+char *
+createCode (struct polynom *p)
+{
+    char *code;
+    int i, j;
+    int l = p->length * fset.dimension + 4;
+
+    if ((code = malloc (l * (sizeof *code))) == NULL) {
+        fprintf (stderr, "Unable to allocate memory for code\n");
+        return NULL;
+    }
+    code[l - 1] = '\0';
+    code[0] = '0' + fset.dimension;
+    code[1] = '0' + fset.order;
+    code[2] = '_';
+    for (i = 0; i < fset.dimension; i++) {
+        for (j = 0; j < p->length; j++) {
+            code[3 + i * p->length + j] =
+                codelist[(int) floor (p->p[i][j] / 0.08) + 30];
+        }
+    }
+    return code;
+}
+
+void
+applyCode (struct polynom *p, char *code)
+{
+    int i, j, n, k, dim, lc;
+
+    lc = sizeof (codelist) / sizeof (codelist[0]);
+
+    dim = code[0] - '0';
+    for (i = 0; i < dim; i++) {
+        for (j = 0; j < p->length; j++) {
+            n = 3 + i * p->length + j;
+            for (k = 0; k < lc; k++) {
+                if (code[n] == codelist[k])
+                    break;
+            }
+            if (k == lc)
+                fprintf (stderr, "Serious error while applying code\n");
+            p->p[i][j] = (k - 30) * 0.08;
+        }
+    }
+}
+
+int
+checkCode (char *code)
+{
+    int dim, order, l, lc, length, i, j;
+
+    l = strlen (code);
+    if (l < 3)
+        return -1;
+    if (code[2] != '_')
+        return -1;
+
+    dim = code[0] - '0';        /* I know, Unicode will likely not like this */
+    order = code[1] - '0';
+
+    if (dim < 2 || dim > 3)
+        return -1;
+
+    length = getPolynomLength (dim, order);
+    if (l != length * dim + 3)
+        return -1;
+
+    lc = sizeof (codelist) / sizeof (codelist[0]);
+    for (i = 3; i < l; i++) {
+        for (j = 0; j < lc; j++) {
+            if (code[i] == codelist[j])
+                break;
+        }
+        if (j == lc)
+            return -1;
+    }
+
+    return 0;
+}
+
 void
 freeAttractor (struct attractor *at)
 {
@@ -468,6 +558,7 @@ freeAttractor (struct attractor *at)
     }
 
     freePolynom (at->polynom);
+    free (at->code);
     free (at);
 }
 
@@ -500,10 +591,11 @@ centerAttractor (struct attractor *at)
 }
 
 struct attractor *
-newAttractor (void)
+newAttractor (char *code)
 {
-    int i;
+    int i, dim, order, codeValid = 1;
     struct timeval t1, t2;
+    char *ncode;
 
     if ((at = malloc (sizeof *at)) == NULL) {
         fprintf (stderr,
@@ -522,14 +614,27 @@ newAttractor (void)
         exit (EXIT_FAILURE);
     }
 
-    if ((at->polynom->p =
-         malloc (fset.dimension * sizeof *(at->polynom->p))) == NULL) {
+    if ((code == NULL) || (checkCode (code)))
+        codeValid = 0;
+
+    if (codeValid)
+        dim = code[0] - '0';
+    else
+        dim = fset.dimension;
+
+    if ((at->polynom->p = malloc (dim * sizeof *(at->polynom->p))) == NULL) {
         fprintf (stderr, "Unable to allocate memory for polynom. Exiting\n");
         exit (EXIT_FAILURE);
     }
-    at->polynom->order = fset.order;
-    at->polynom->length = getPolynomLength (fset.dimension, fset.order);
-    for (i = 0; i < fset.dimension; i++) {
+
+    if (codeValid)
+        order = code[1] - '0';
+    else
+        order = fset.order;
+
+    at->polynom->order = order;
+    at->polynom->length = getPolynomLength (dim, order);
+    for (i = 0; i < dim; i++) {
         if ((at->polynom->p[i] =
              malloc (at->polynom->length * (sizeof *(at->polynom->p[i])))) ==
             NULL) {
@@ -541,7 +646,12 @@ newAttractor (void)
 
     at->convergenceIterations = fset.convergenceIterations;
     at->numPoints = fset.numPoints;
-    explore (at, fset.order);
+
+    if (!codeValid)
+        explore (at, order);
+    else
+        applyCode (at->polynom, code);
+
     displayPolynom (at->polynom);
     fprintf (stdout, "Lyapunov exponent: %.6f\n", at->lyapunov->ly);
     gettimeofday (&t1, NULL);
@@ -550,12 +660,31 @@ newAttractor (void)
     diffTime ("Map iteration", &t1, &t2);
     at->r = getRadius (at);
     centerAttractor (at);
+    if (!codeValid) {
+        ncode = createCode (at->polynom);
+    }
+    else {
+        ncode = code;
+    }
+    fprintf (stdout, "Code: %s\n", ncode);
+    at->code = ncode;
     return at;
 }
 
 void
 usage (char *prog_name, FILE * stream)
 {
+    fprintf (stream, "Usage: %s\n", prog_name);
+    fprintf (stream, "\t--code [string]\n");
+    fprintf (stream, "\t--conviter [int] (%d)\n", DEFAULT_ITER);
+    fprintf (stream, "\t--dimension [2|3] (%d)\n", DEFAULT_DIM);
+    fprintf (stream, "\t--fullscreen [int] (false)\n");
+    fprintf (stream, "\t--geometry [int]x[int] (%dx%d)\n", DEFAULT_X,
+             DEFAULT_Y);
+    fprintf (stream, "\t--help\n");
+    fprintf (stream, "\t--npoints [int] (%d)\n", DEFAULT_POINTS);
+    fprintf (stream, "\t--order [int] (%d)\n", DEFAULT_ORDER);
+    fprintf (stream, "\t--version\n");
 }
 
 int
@@ -587,10 +716,12 @@ parse_options (int argc, char **argv)
 
     while (1) {
         static struct option long_options[] = {
+            {"code", required_argument, 0, 'C'},
             {"conviter", required_argument, 0, 'c'},
             {"dimension", required_argument, 0, 'd'},
             {"fullscreen", no_argument, &dset.fullscreen, 1},
             {"geometry", required_argument, 0, 'g'},
+            {"help", no_argument, 0, 'h'},
             {"npoints", required_argument, 0, 'n'},
             {"order", required_argument, 0, 'o'},
             {"version", no_argument, 0, 'v'},
@@ -599,7 +730,7 @@ parse_options (int argc, char **argv)
 
         /* getopt_long stores the option index here. */
         int option_index = 0;
-        c = getopt_long (argc, argv, "c:d:fg:n:o:v", long_options,
+        c = getopt_long (argc, argv, "C:c:d:fg:hn:o:v", long_options,
                          &option_index);
 
         /* Detect the end of the options. */
@@ -607,6 +738,11 @@ parse_options (int argc, char **argv)
             break;
         switch (c) {
         case 0:
+            break;
+        case 'C':
+            if ((fset.code = strdup (optarg)) == NULL) {        /* POSIX, not ANSI... who cares */
+                fprintf (stderr, "Unable to allocate memory to code\n");
+            }
             break;
         case 'c':
             fset.convergenceIterations = strtol (optarg, NULL, 0);
@@ -677,6 +813,7 @@ default_settings (void)
     fset.convergenceIterations = DEFAULT_ITER;
     fset.order = DEFAULT_ORDER;
     fset.dimension = DEFAULT_DIM;
+    fset.code = NULL;
 }
 
 void
@@ -686,9 +823,9 @@ positionLight ()
     GLfloat diffuse1[] = { 0.5f, 0.0f, 0.0f, 1.0f };
     GLfloat diffuse2[] = { 0.0f, 0.5f, 0.0f, 1.0f };
     GLfloat diffuse3[] = { 0.0f, 0.0f, 0.5f, 1.0f };
-    GLfloat specular1[] = { 1.0f, 0.0f, 0.0f, 1.0f };
-    GLfloat specular2[] = { 0.0f, 1.0f, 0.0f, 1.0f };
-    GLfloat specular3[] = { 0.0f, 0.0f, 1.0f, 1.0f };
+    GLfloat specular1[] = { 1.0f, 0.5f, 0.5f, 1.0f };
+    GLfloat specular2[] = { 0.5f, 1.0f, 0.5f, 1.0f };
+    GLfloat specular3[] = { 0.5f, 0.5f, 1.0f, 1.0f };
     GLfloat position1[] = { 0.0f, 0.0f, -10.0f, 1.0f };
     GLfloat position2[] = { -10.0f, 0.0f, 10.0f, 1.0f };
     GLfloat position3[] = { 10.0f, 0.0f, 10.0f, 1.0f };
@@ -834,7 +971,7 @@ main (int argc, char **argv)
     srand (time (NULL));
     default_settings ();
     parse_options (argc, argv);
-    at = newAttractor ();
+    at = newAttractor (fset.code);
     animate (argc, argv);
     freeAttractor (at);
     return EXIT_SUCCESS;
