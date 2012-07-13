@@ -404,11 +404,13 @@ displayPolynom (struct polynom *p)
 void
 getRandom (int order, struct polynom *p)
 {
-    int i, j;
+    int i, j, lc;
+
+    lc = (sizeof codelist) / (sizeof codelist[0]);
 
     for (i = 0; i < fset.dimension; i++) {
         for (j = 0; j < p->length; j++) {
-            (p->p[i])[j] = (double) ((rand () % 61) - 30) * 0.08;
+            (p->p[i])[j] = (double) ((rand () % lc) - 30) * 0.08;
         }
     }
 }
@@ -492,7 +494,7 @@ applyCode (struct polynom *p, char *code)
 {
     int i, j, n, k, dim, lc;
 
-    lc = sizeof (codelist) / sizeof (codelist[0]);
+    lc = (sizeof codelist) / (sizeof codelist[0]);
 
     dim = code[0] - '0';
     for (i = 0; i < dim; i++) {
@@ -530,7 +532,7 @@ checkCode (char *code)
     if (l != length * dim + 3)
         return -1;
 
-    lc = sizeof (codelist) / sizeof (codelist[0]);
+    lc = (sizeof codelist) / (sizeof codelist[0]);
     for (i = 3; i < l; i++) {
         for (j = 0; j < lc; j++) {
             if (code[i] == codelist[j])
@@ -594,8 +596,6 @@ struct attractor *
 newAttractor (char *code)
 {
     int i, dim, order, codeValid = 1;
-    struct timeval t1, t2;
-    char *ncode;
 
     if ((at = malloc (sizeof *at)) == NULL) {
         fprintf (stderr,
@@ -647,10 +647,25 @@ newAttractor (char *code)
     at->convergenceIterations = fset.convergenceIterations;
     at->numPoints = fset.numPoints;
 
-    if (!codeValid)
-        explore (at, order);
+    if (codeValid) {
+        at->code = code;
+    }
+    else {
+        at->code = NULL;
+    }
+
+    return at;
+}
+
+void
+computeAttractor (struct attractor *at)
+{
+    struct timeval t1, t2;
+
+    if (at->code == NULL)
+        explore (at, at->polynom->order);
     else
-        applyCode (at->polynom, code);
+        applyCode (at->polynom, at->code);
 
     displayPolynom (at->polynom);
     fprintf (stdout, "Lyapunov exponent: %.6f\n", at->lyapunov->ly);
@@ -660,15 +675,10 @@ newAttractor (char *code)
     diffTime ("Map iteration", &t1, &t2);
     at->r = getRadius (at);
     centerAttractor (at);
-    if (!codeValid) {
-        ncode = createCode (at->polynom);
+    if (at->code == NULL) {
+        at->code = createCode (at->polynom);
     }
-    else {
-        ncode = code;
-    }
-    fprintf (stdout, "Code: %s\n", ncode);
-    at->code = ncode;
-    return at;
+    fprintf (stdout, "Code: %s\n", at->code);
 }
 
 void
@@ -972,6 +982,7 @@ main (int argc, char **argv)
     default_settings ();
     parse_options (argc, argv);
     at = newAttractor (fset.code);
+    computeAttractor (at);
     animate (argc, argv);
     freeAttractor (at);
     return EXIT_SUCCESS;
