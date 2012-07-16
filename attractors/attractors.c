@@ -68,6 +68,7 @@ struct attractor
     GLdouble r;
     point bound[2];
     char *code;
+    int dimension;
 };
 
 struct fractal_settings
@@ -95,6 +96,7 @@ const char codelist[] = { 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 65, 66, 67,
     111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122
 };
 
+const int lc = (sizeof codelist) / (sizeof codelist[0]);
 static struct fractal_settings fset;
 static struct display_settings dset;
 static struct attractor *at;
@@ -402,24 +404,25 @@ displayPolynom (struct polynom *p)
 }
 
 void
-getRandom (int order, struct polynom *p)
+getRandom (struct attractor *at)
 {
-    int i, j, lc;
-
-    lc = (sizeof codelist) / (sizeof codelist[0]);
+    int i, j, v;
+    struct polynom *p = at->polynom;
 
     for (i = 0; i < fset.dimension; i++) {
         for (j = 0; j < p->length; j++) {
-            (p->p[i])[j] = (double) ((rand () % lc) - 30) * 0.08;
+            v = rand () % lc;
+            (p->p[i])[j] = (v - lc / 2) * 0.08;
+            at->code[3 + i * p->length + j] = codelist[v];
         }
     }
 }
 
 void
-explore (struct attractor *at, int order)
+explore (struct attractor *at)
 {
     while (1) {
-        getRandom (order, at->polynom);
+        getRandom (at);
         if (checkConvergence (at)) {
             break;
         }
@@ -465,36 +468,10 @@ iterateMap (struct attractor *at)
     at->numPoints -= NUM_CONVERGENCE_POINTS;
 }
 
-char *
-createCode (struct polynom *p)
-{
-    char *code;
-    int i, j;
-    int l = p->length * fset.dimension + 4;
-
-    if ((code = malloc (l * (sizeof *code))) == NULL) {
-        fprintf (stderr, "Unable to allocate memory for code\n");
-        return NULL;
-    }
-    code[l - 1] = '\0';
-    code[0] = '0' + fset.dimension;
-    code[1] = '0' + fset.order;
-    code[2] = '_';
-    for (i = 0; i < fset.dimension; i++) {
-        for (j = 0; j < p->length; j++) {
-            code[3 + i * p->length + j] =
-                codelist[(int) floor (p->p[i][j] / 0.08) + 30];
-        }
-    }
-    return code;
-}
-
 void
 applyCode (struct polynom *p, char *code)
 {
-    int i, j, n, k, dim, lc;
-
-    lc = (sizeof codelist) / (sizeof codelist[0]);
+    int i, j, n, k, dim;
 
     dim = code[0] - '0';
     for (i = 0; i < dim; i++) {
@@ -506,7 +483,7 @@ applyCode (struct polynom *p, char *code)
             }
             if (k == lc)
                 fprintf (stderr, "Serious error while applying code\n");
-            p->p[i][j] = (k - 30) * 0.08;
+            p->p[i][j] = (k - lc / 2) * 0.08;
         }
     }
 }
@@ -514,7 +491,7 @@ applyCode (struct polynom *p, char *code)
 int
 checkCode (char *code)
 {
-    int dim, order, l, lc, length, i, j;
+    int dim, order, l, length, i, j;
 
     l = strlen (code);
     if (l < 3)
@@ -532,7 +509,6 @@ checkCode (char *code)
     if (l != length * dim + 3)
         return -1;
 
-    lc = (sizeof codelist) / (sizeof codelist[0]);
     for (i = 3; i < l; i++) {
         for (j = 0; j < lc; j++) {
             if (code[i] == codelist[j])
@@ -595,7 +571,7 @@ centerAttractor (struct attractor *at)
 struct attractor *
 newAttractor (char *code)
 {
-    int i, dim, order, codeValid = 1;
+    int i, codeValid = 1;
 
     if ((at = malloc (sizeof *at)) == NULL) {
         fprintf (stderr,
@@ -617,24 +593,30 @@ newAttractor (char *code)
     if ((code == NULL) || (checkCode (code)))
         codeValid = 0;
 
-    if (codeValid)
-        dim = code[0] - '0';
+    if (codeValid) {
+        at->dimension = code[0] - '0';
+        fset.dimension = at->dimension;
+    }
     else
-        dim = fset.dimension;
+        at->dimension = fset.dimension;
 
-    if ((at->polynom->p = malloc (dim * sizeof *(at->polynom->p))) == NULL) {
+
+    if ((at->polynom->p =
+         malloc (at->dimension * sizeof *(at->polynom->p))) == NULL) {
         fprintf (stderr, "Unable to allocate memory for polynom. Exiting\n");
         exit (EXIT_FAILURE);
     }
 
-    if (codeValid)
-        order = code[1] - '0';
+    if (codeValid) {
+        at->polynom->order = code[1] - '0';
+        fset.order = at->polynom->order;
+    }
     else
-        order = fset.order;
+        at->polynom->order = fset.order;
 
-    at->polynom->order = order;
-    at->polynom->length = getPolynomLength (dim, order);
-    for (i = 0; i < dim; i++) {
+    at->polynom->length =
+        getPolynomLength (at->dimension, at->polynom->order);
+    for (i = 0; i < at->dimension; i++) {
         if ((at->polynom->p[i] =
              malloc (at->polynom->length * (sizeof *(at->polynom->p[i])))) ==
             NULL) {
@@ -644,29 +626,41 @@ newAttractor (char *code)
         }
     }
 
-    at->convergenceIterations = fset.convergenceIterations;
-    at->numPoints = fset.numPoints;
-
     if (codeValid) {
         at->code = code;
     }
     else {
-        at->code = NULL;
+        if ((at->code =
+             malloc ((at->polynom->length * fset.dimension +
+                      4) * (sizeof *at->code))) == NULL) {
+            fprintf (stderr, "Unable to allocate memory for code\n");
+        }
+        else {
+            at->code[(at->polynom->length * fset.dimension + 3)] = '\0';
+            at->code[0] = '0' + fset.dimension;
+            at->code[1] = '0' + fset.order;
+            at->code[2] = '_';
+        }
     }
+
+    at->convergenceIterations = fset.convergenceIterations;
+    at->numPoints = fset.numPoints;
 
     return at;
 }
 
 void
-computeAttractor (struct attractor *at)
+computeAttractor (struct attractor *at, char *code)
 {
     struct timeval t1, t2;
 
-    if (at->code == NULL)
-        explore (at, at->polynom->order);
-    else
-        applyCode (at->polynom, at->code);
-
+    if (code == NULL) {
+        explore (at);
+    }
+    else {
+        applyCode (at->polynom, code);
+        checkConvergence (at);
+    }
     displayPolynom (at->polynom);
     fprintf (stdout, "Lyapunov exponent: %.6f\n", at->lyapunov->ly);
     gettimeofday (&t1, NULL);
@@ -675,9 +669,6 @@ computeAttractor (struct attractor *at)
     diffTime ("Map iteration", &t1, &t2);
     at->r = getRadius (at);
     centerAttractor (at);
-    if (at->code == NULL) {
-        at->code = createCode (at->polynom);
-    }
     fprintf (stdout, "Code: %s\n", at->code);
 }
 
@@ -982,7 +973,7 @@ main (int argc, char **argv)
     default_settings ();
     parse_options (argc, argv);
     at = newAttractor (fset.code);
-    computeAttractor (at);
+    computeAttractor (at, fset.code);
     animate (argc, argv);
     freeAttractor (at);
     return EXIT_SUCCESS;
