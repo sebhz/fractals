@@ -32,6 +32,8 @@
 #define DEFAULT_ITER 8192
 #define DEFAULT_ORDER 2
 #define DEFAULT_DIM 3
+#define DIM_DEPTH 512           // Use the DIM_DEPTH predecessors of each point to compute the dimension
+#define DIM_IGNORE 32           // but ignore dimIgnore predecessors (presumably too correlated)
 #define NUM_CONVERGENCE_POINTS 128
 #define AT_INFINITY 1000000
 #define LYAPU_DELTA 0.000001
@@ -69,6 +71,7 @@ struct attractor
     point bound[2];
     char *code;
     int dimension;
+    GLdouble correlationDimension;
 };
 
 struct fractal_settings
@@ -136,6 +139,18 @@ newPoint (void)
                  "I'm trying to go on, but expect a crash pretty soon :-)\n");
     }
     return p;
+}
+
+GLdouble
+euclidianDistance (point a, point b)
+{
+    int i;
+    GLdouble d = 0.0;
+
+    for (i = 0; i < fset.dimension; i++) {
+        d += (a[i] - b[i]) * (a[i] - b[i]);
+    }
+    return d;
 }
 
 inline point
@@ -418,6 +433,36 @@ getRandom (struct attractor *at)
     }
 }
 
+#define DIM_RADIUS1 0.001
+#define DIM_RADIUS2 0.00001
+GLdouble
+computeDimension (struct attractor *at)
+{
+    /* An estimate of the correlation dimension: accumulate the values of the distances between
+       point p and one of its predecessors, ignoring the points right before p */
+    GLdouble n1 = 0.0, n2 = 0.0, d2;
+    GLdouble d2max = 4 * at->r * at->r; /* Square of the attractor radius */
+    int twod = 1 << at->dimension;
+    int i, j;
+
+    if (at->numPoints <= NUM_CONVERGENCE_POINTS + DIM_DEPTH) {
+        return -1;
+    }
+
+    for (i = NUM_CONVERGENCE_POINTS + DIM_DEPTH; i < at->numPoints; i++) {
+        j = i - DIM_IGNORE - (rand () % (DIM_DEPTH - DIM_IGNORE));
+        d2 = euclidianDistance (at->array[i], at->array[j]);
+        if (d2 < DIM_RADIUS1 * twod * d2max)
+            n2++;
+        if (d2 > DIM_RADIUS2 * twod * d2max)
+            continue;
+        n1++;
+    }
+
+    at->correlationDimension = log10 (n2 / n1);
+    return at->correlationDimension;
+}
+
 void
 explore (struct attractor *at)
 {
@@ -543,10 +588,7 @@ freeAttractor (struct attractor *at)
 GLdouble
 getRadius (struct attractor *at)
 {
-    point p = _sub (at->bound[1], at->bound[0]);
-    GLdouble r = 0.5 * sqrt (_modulus (p));
-    free (p);
-    return r;
+    return 0.5 * sqrt (euclidianDistance (at->bound[1], at->bound[0]));
 }
 
 void
@@ -669,6 +711,9 @@ computeAttractor (struct attractor *at, char *code)
     diffTime ("Map iteration", &t1, &t2);
     at->r = getRadius (at);
     centerAttractor (at);
+    computeDimension (at);
+    fprintf (stdout, "Correlation dimension: %.6f\n",
+             at->correlationDimension);
     fprintf (stdout, "Code: %s\n", at->code);
 }
 
@@ -890,7 +935,7 @@ display ()
     glLoadIdentity ();
     positionLight ();
     if (fset.dimension == 2) {
-        glRotatef (angle, 1.0, 1.0, 1.0);
+        glRotatef (angle, 0.0, 0.0, 1.0);
     }
     else {
         glRotatef (angle, 1.0, 1.0, 1.0);
