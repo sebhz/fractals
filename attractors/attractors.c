@@ -104,6 +104,10 @@ static struct fractal_settings fset;
 static struct display_settings dset;
 static struct attractor *at;
 static GLfloat angle = 3.0;
+int frameCount = 0;
+float fps = 0;
+int currentTime = 0, previousTime = 0;
+GLvoid *font_style = GLUT_BITMAP_TIMES_ROMAN_24;
 
 void
 diffTime (const char *caption, struct timeval *t1, struct timeval *t2)
@@ -863,6 +867,52 @@ default_settings (void)
 }
 
 void
+printw (float x, float y, float z, char *format, ...)
+{
+    va_list args;               //  Variable argument list
+    int len;                    //      String length
+    int i;                      //  Iterator
+    char *text;                 //      Text
+
+    //  Initialize a variable argument list
+    va_start (args, format);
+
+    //  Return the number of characters in the string referenced the list of arguments.
+    //  _vscprintf doesn't count terminating '\0' (that's why +1)
+    len = _vscprintf (format, args) + 1;
+
+    //  Allocate memory for a string of the specified size
+    text = (char *) malloc (len * sizeof (char));
+
+    //  Write formatted output using a pointer to the list of arguments
+    vsnprintf (text, len, format, args);
+
+    //  End using variable argument list 
+    va_end (args);
+
+    //  Specify the raster position for pixel operations.
+    glRasterPos3f (x, y, z);
+
+    //  Draw the characters one by one
+    for (i = 0; text[i] != '\0'; i++)
+        glutBitmapCharacter (font_style, text[i]);
+
+    //  Free the allocated memory for the string
+    free (text);
+}
+
+void
+drawFPS ()
+{
+    //  Load the identity matrix so that FPS string being drawn
+    //  won't get animates
+    glLoadIdentity ();
+
+    //  Print the FPS to the window
+    printw (-0.9, -0.9, 0.9, "FPS: %4.2f", fps);
+}
+
+void
 positionLight ()
 {
     GLfloat ambient[] = { 0.1f, 0.1f, 0.1f };
@@ -926,7 +976,13 @@ initDisplay ()
 }
 
 void
-display ()
+animateAttractor (void)
+{
+    angle += 1.0;
+}
+
+void
+drawAttractor (void)
 {
     int i;
 
@@ -951,9 +1007,14 @@ display ()
         }
     }
     glEnd ();
+}
 
+void
+display ()
+{
+    drawAttractor ();
+    drawFPS ();
     glutSwapBuffers ();
-    angle += 1.0;
 }
 
 /* Keep aspect ratio */
@@ -988,6 +1049,40 @@ key (unsigned char mychar, int x, int y)
 }
 
 void
+computeFPS (void)
+{
+
+    //  Increase frame count
+    frameCount++;
+
+    //  Get the number of milliseconds since glutInit called
+    //  (or first call to glutGet(GLUT ELAPSED TIME)).
+    currentTime = glutGet (GLUT_ELAPSED_TIME);
+
+    //  Calculate time passed
+    int timeInterval = currentTime - previousTime;
+
+    if (timeInterval > 1000) {
+        //  calculate the number of frames per second
+        fps = frameCount / (timeInterval / 1000.0f);
+
+        //  Set time
+        previousTime = currentTime;
+
+        //  Reset frame count
+        frameCount = 0;
+    }
+}
+
+void
+idle (void)
+{
+    animateAttractor ();
+    computeFPS ();
+    glutPostRedisplay ();
+}
+
+void
 animate (int argc, char **argv)
 {
     glutInit (&argc, argv);
@@ -997,7 +1092,7 @@ animate (int argc, char **argv)
     glutCreateWindow (WINDOW_TITLE);
 
     /* Even if there are no events, redraw our gl scene. */
-    glutIdleFunc (display);
+    glutIdleFunc (idle);
     glutDisplayFunc (display);
     glutKeyboardFunc (key);
     glutReshapeFunc (reshape);
