@@ -909,20 +909,11 @@ printw (float x, float y, char *format, ...)
     char *text;                 //      Text
     int viewport[4];
 
-    //  Initialize a variable argument list
     va_start (args, format);
-
-    //  Return the number of characters in the string referenced the list of arguments.
-    //  _vscprintf doesn't count terminating '\0' (that's why +1)
     len = _vscprintf (format, args) + 1;
-
-    //  Allocate memory for a string of the specified size
-    text = (char *) malloc (len * sizeof (char));
-
-    //  Write formatted output using a pointer to the list of arguments
+    if ((text = (char *) malloc (len * sizeof (char))) == NULL)
+        return;
     vsnprintf (text, len, format, args);
-
-    //  End using variable argument list 
     va_end (args);
 
     glGetIntegerv (GL_VIEWPORT, viewport);
@@ -934,15 +925,14 @@ printw (float x, float y, char *format, ...)
     glLoadIdentity ();
     glRasterPos2f (x, viewport[3] - y);
 
-    //  Draw the characters one by one
-    for (i = 0; text[i] != '\0'; i++)
+    for (i = 0; i < len - 1; i++)
         glutBitmapCharacter (font_style, text[i]);
+
     glMatrixMode (GL_PROJECTION);
     glPopMatrix ();
     glMatrixMode (GL_MODELVIEW);
     glPopMatrix ();
 
-    //  Free the allocated memory for the string
     free (text);
 }
 
@@ -952,6 +942,7 @@ drawInfo ()
     printw (20, 30, "FPS : %4.2f", fps);
     printw (20, 55, "Code: %s", at->code);
     printw (20, 80, "Speed: %d degrees/s", dset.speed);
+    printw (20, 105, "Angle: %d", (int) floor (angle) % 360);
 }
 
 void
@@ -1023,7 +1014,8 @@ animateAttractor (void)
     static int pt = 0;
 
     int ti = currentTime - pt;
-    angle += dset.speed * ti / 1000.0;
+    if (pt != 0)
+        angle += dset.speed * ti / 1000.0;
     pt = currentTime;
 }
 
@@ -1117,7 +1109,7 @@ computeFPS (void)
         return;
     }
     if (timeInterval > 1000) {
-        fps = frameCount / (timeInterval / 1000.0f);
+        fps = (frameCount - 1) / (timeInterval / 1000.0f);
         previousTime = currentTime;
         frameCount = 0;
     }
@@ -1127,8 +1119,8 @@ void
 idle (void)
 {
     currentTime = glutGet (GLUT_ELAPSED_TIME);
-    computeFPS ();
     animateAttractor ();
+    computeFPS ();
     glutPostRedisplay ();
 }
 
@@ -1160,7 +1152,6 @@ main (int argc, char **argv)
 #endif
 
     srand (time (NULL));
-    default_settings ();
     parse_options (argc, argv);
     at = newAttractor (fset.code);
     computeAttractor (at, fset.code);
