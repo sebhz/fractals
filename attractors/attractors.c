@@ -31,6 +31,7 @@
 #define VERSION_STRING "Polynomial strange attractors - version 1.0"
 #define DEFAULT_X 800
 #define DEFAULT_Y 600
+#define DEFAULT_SPEED 30
 #define DEFAULT_POINTS 65536
 #define DEFAULT_ITER 8192
 #define DEFAULT_ORDER 2
@@ -92,6 +93,7 @@ struct display_settings
     unsigned long int h;        /* height of current window (in pixels) */
     int fullscreen;
     int displayInfo;
+    int speed;                  /* Rotation speed in degree per sec */
 };
 
 const char *WINDOW_TITLE = "Strange Attractors";
@@ -108,9 +110,8 @@ static struct fractal_settings fset;
 static struct display_settings dset;
 static struct attractor *at;
 static GLfloat angle = 3.0;
-int frameCount = 0;
 float fps = 0;
-int currentTime = 0, previousTime = 0;
+int currentTime = 0;
 GLvoid *font_style = GLUT_BITMAP_TIMES_ROMAN_24;
 
 void
@@ -780,13 +781,14 @@ parse_options (int argc, char **argv)
             {"info", no_argument, 0, 'i'},
             {"npoints", required_argument, 0, 'n'},
             {"order", required_argument, 0, 'o'},
+            {"speed", required_argument, 0, 's'},
             {"version", no_argument, 0, 'v'},
             {0, 0, 0, 0}
         };
 
         /* getopt_long stores the option index here. */
         int option_index = 0;
-        c = getopt_long (argc, argv, "C:c:d:g:hin:o:v", long_options,
+        c = getopt_long (argc, argv, "C:c:d:fg:hin:o:s:v", long_options,
                          &option_index);
 
         /* Detect the end of the options. */
@@ -847,6 +849,19 @@ parse_options (int argc, char **argv)
             fset.order = strtol (optarg, NULL, 0);
             break;
 
+        case 's':
+            {
+                int sp = strtol (optarg, NULL, 0);
+                if (sp <= 0) {
+                    fprintf (stderr,
+                             "Invalid speed. Defaulting to %d degrees/s\n",
+                             DEFAULT_SPEED);
+                }
+                else {
+                    dset.speed = sp % 360 ? sp % 360 : 360;
+                }
+                break;
+            }
         case 'v':
             fprintf (stdout, "%s\n", VERSION_STRING);
             exit (EXIT_SUCCESS);
@@ -876,6 +891,7 @@ default_settings (void)
 {
     dset.w = DEFAULT_X;
     dset.h = DEFAULT_Y;
+    dset.speed = DEFAULT_SPEED;
     dset.fullscreen = 0;
     dset.displayInfo = 0;
 
@@ -937,6 +953,7 @@ drawInfo ()
 {
     printw (20, 30, "FPS : %4.2f", fps);
     printw (20, 55, "Code: %s", at->code);
+    printw (20, 80, "Speed: %d degrees/s", dset.speed);
 }
 
 void
@@ -1005,7 +1022,11 @@ initDisplay ()
 void
 animateAttractor (void)
 {
-    angle += 1.0;
+    static int pt = 0;
+
+    int ti = currentTime - pt;
+    angle += dset.speed * ti / 1000.0;
+    pt = currentTime;
 }
 
 void
@@ -1052,6 +1073,9 @@ reshape (int w, int h)
 {
     GLdouble ar;
 
+    dset.w = w;
+    dset.h = h;
+
     glViewport (0, 0, w, h);
     ar = (GLdouble) w / (GLdouble) h;
 
@@ -1085,12 +1109,15 @@ key (unsigned char mychar, int x, int y)
 void
 computeFPS (void)
 {
+    static int frameCount = 0;
+    static int previousTime = 0;
+
     frameCount++;
-
-    currentTime = glutGet (GLUT_ELAPSED_TIME);
-
     int timeInterval = currentTime - previousTime;
-
+    if (frameCount == 1) {
+        previousTime = currentTime;
+        return;
+    }
     if (timeInterval > 1000) {
         fps = frameCount / (timeInterval / 1000.0f);
         previousTime = currentTime;
@@ -1101,8 +1128,9 @@ computeFPS (void)
 void
 idle (void)
 {
-    animateAttractor ();
+    currentTime = glutGet (GLUT_ELAPSED_TIME);
     computeFPS ();
+    animateAttractor ();
     glutPostRedisplay ();
 }
 
