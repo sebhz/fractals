@@ -12,6 +12,9 @@
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ *
+ * FPS display code heavily inspired from http://mycodelog.com/2010/04/16/fps/
+ * Attractor generation algorithm taken from J. Sprott book "Strange Attractors" (http://sprott.physics.wisc.edu/sa.htm)
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -88,6 +91,7 @@ struct display_settings
     unsigned long int w;        /* width of current window (in pixels) */
     unsigned long int h;        /* height of current window (in pixels) */
     int fullscreen;
+    int displayInfo;
 };
 
 const char *WINDOW_TITLE = "Strange Attractors";
@@ -732,6 +736,7 @@ usage (char *prog_name, FILE * stream)
     fprintf (stream, "\t--geometry [int]x[int] (%dx%d)\n", DEFAULT_X,
              DEFAULT_Y);
     fprintf (stream, "\t--help\n");
+    fprintf (stream, "\t--info\n");
     fprintf (stream, "\t--npoints [int] (%d)\n", DEFAULT_POINTS);
     fprintf (stream, "\t--order [int] (%d)\n", DEFAULT_ORDER);
     fprintf (stream, "\t--version\n");
@@ -769,9 +774,10 @@ parse_options (int argc, char **argv)
             {"code", required_argument, 0, 'C'},
             {"conviter", required_argument, 0, 'c'},
             {"dimension", required_argument, 0, 'd'},
-            {"fullscreen", no_argument, &dset.fullscreen, 1},
+            {"fullscreen", no_argument, 0, 'f'},
             {"geometry", required_argument, 0, 'g'},
             {"help", no_argument, 0, 'h'},
+            {"info", no_argument, 0, 'i'},
             {"npoints", required_argument, 0, 'n'},
             {"order", required_argument, 0, 'o'},
             {"version", no_argument, 0, 'v'},
@@ -780,7 +786,7 @@ parse_options (int argc, char **argv)
 
         /* getopt_long stores the option index here. */
         int option_index = 0;
-        c = getopt_long (argc, argv, "C:c:d:fg:hn:o:v", long_options,
+        c = getopt_long (argc, argv, "C:c:d:g:hin:o:v", long_options,
                          &option_index);
 
         /* Detect the end of the options. */
@@ -789,14 +795,17 @@ parse_options (int argc, char **argv)
         switch (c) {
         case 0:
             break;
+
         case 'C':
             if ((fset.code = strdup (optarg)) == NULL) {        /* POSIX, not ANSI... who cares */
                 fprintf (stderr, "Unable to allocate memory to code\n");
             }
             break;
+
         case 'c':
             fset.convergenceIterations = strtol (optarg, NULL, 0);
             break;
+
         case 'd':
             fset.dimension = strtol (optarg, NULL, 0);
             if (fset.dimension < 2 || fset.dimension > 3) {
@@ -805,6 +814,11 @@ parse_options (int argc, char **argv)
                 exit (EXIT_FAILURE);
             }
             break;
+
+        case 'f':
+            dset.fullscreen = 1;
+            break;
+
         case 'g':
             {
                 long n[2];
@@ -817,6 +831,14 @@ parse_options (int argc, char **argv)
                 break;
             }
 
+        case 'h':
+            usage (argv[0], stdout);
+            exit (EXIT_SUCCESS);
+
+        case 'i':
+            dset.displayInfo = 1;
+            break;
+
         case 'n':
             fset.numPoints = strtol (optarg, NULL, 0);
             break;
@@ -824,10 +846,6 @@ parse_options (int argc, char **argv)
         case 'o':
             fset.order = strtol (optarg, NULL, 0);
             break;
-
-        case 'h':
-            usage (argv[0], stdout);
-            exit (EXIT_SUCCESS);
 
         case 'v':
             fprintf (stdout, "%s\n", VERSION_STRING);
@@ -859,6 +877,8 @@ default_settings (void)
     dset.w = DEFAULT_X;
     dset.h = DEFAULT_Y;
     dset.fullscreen = 0;
+    dset.displayInfo = 0;
+
     fset.numPoints = DEFAULT_POINTS;
     fset.convergenceIterations = DEFAULT_ITER;
     fset.order = DEFAULT_ORDER;
@@ -867,12 +887,13 @@ default_settings (void)
 }
 
 void
-printw (float x, float y, float z, char *format, ...)
+printw (float x, float y, char *format, ...)
 {
     va_list args;               //  Variable argument list
     int len;                    //      String length
     int i;                      //  Iterator
     char *text;                 //      Text
+    int viewport[4];
 
     //  Initialize a variable argument list
     va_start (args, format);
@@ -890,26 +911,32 @@ printw (float x, float y, float z, char *format, ...)
     //  End using variable argument list 
     va_end (args);
 
-    //  Specify the raster position for pixel operations.
-    glRasterPos3f (x, y, z);
+    glGetIntegerv (GL_VIEWPORT, viewport);
+    glMatrixMode (GL_PROJECTION);
+    glPushMatrix ();
+    glLoadIdentity ();
+    glOrtho (viewport[0], viewport[2], viewport[1], viewport[3], -1, 1);
+    glMatrixMode (GL_MODELVIEW);
+    glLoadIdentity ();
+    glRasterPos2f (x, viewport[3] - y);
 
     //  Draw the characters one by one
     for (i = 0; text[i] != '\0'; i++)
         glutBitmapCharacter (font_style, text[i]);
+    glMatrixMode (GL_PROJECTION);
+    glPopMatrix ();
+    glMatrixMode (GL_MODELVIEW);
+    glPopMatrix ();
 
     //  Free the allocated memory for the string
     free (text);
 }
 
 void
-drawFPS ()
+drawInfo ()
 {
-    //  Load the identity matrix so that FPS string being drawn
-    //  won't get animates
-    glLoadIdentity ();
-
-    //  Print the FPS to the window
-    printw (-0.9, -0.9, 0.9, "FPS: %4.2f", fps);
+    printw (20, 30, "FPS : %4.2f", fps);
+    printw (20, 55, "Code: %s", at->code);
 }
 
 void
@@ -1013,7 +1040,9 @@ void
 display ()
 {
     drawAttractor ();
-    drawFPS ();
+    if (dset.displayInfo) {
+        drawInfo ();
+    }
     glutSwapBuffers ();
 }
 
@@ -1042,34 +1071,29 @@ reshape (int w, int h)
 void
 key (unsigned char mychar, int x, int y)
 {
-    // exit the program when the Esc key is pressed
-    if (mychar == 27) {
+    switch (mychar) {
+    case 27:
         exit (EXIT_SUCCESS);
+    case 'i':
+        dset.displayInfo = dset.displayInfo ? 0 : 1;
+        break;
+    default:
+        break;
     }
 }
 
 void
 computeFPS (void)
 {
-
-    //  Increase frame count
     frameCount++;
 
-    //  Get the number of milliseconds since glutInit called
-    //  (or first call to glutGet(GLUT ELAPSED TIME)).
     currentTime = glutGet (GLUT_ELAPSED_TIME);
 
-    //  Calculate time passed
     int timeInterval = currentTime - previousTime;
 
     if (timeInterval > 1000) {
-        //  calculate the number of frames per second
         fps = frameCount / (timeInterval / 1000.0f);
-
-        //  Set time
         previousTime = currentTime;
-
-        //  Reset frame count
         frameCount = 0;
     }
 }
