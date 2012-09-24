@@ -106,8 +106,22 @@ const char codelist[] = { 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 65, 66, 67,
 };
 
 const int lc = (sizeof codelist) / (sizeof codelist[0]);
-static struct fractal_settings fset;
-static struct display_settings dset;
+static struct fractal_settings fset = {
+    .numPoints = DEFAULT_POINTS,
+    .convergenceIterations = DEFAULT_ITER,
+    .order = DEFAULT_ORDER,
+    .dimension = DEFAULT_DIM,
+    .code = NULL
+};
+
+static struct display_settings dset = {
+    .w = DEFAULT_X,
+    .h = DEFAULT_Y,
+    .speed = DEFAULT_SPEED,
+    .fullscreen = 0,
+    .displayInfo = 0
+};
+
 static struct attractor *at;
 static GLfloat angle = 3.0;
 float fps = 0;
@@ -884,22 +898,6 @@ parse_options (int argc, char **argv)
                      argv[optind++]);
         usage (argv[0], stderr);
     }
-}
-
-void
-default_settings (void)
-{
-    dset.w = DEFAULT_X;
-    dset.h = DEFAULT_Y;
-    dset.speed = DEFAULT_SPEED;
-    dset.fullscreen = 0;
-    dset.displayInfo = 0;
-
-    fset.numPoints = DEFAULT_POINTS;
-    fset.convergenceIterations = DEFAULT_ITER;
-    fset.order = DEFAULT_ORDER;
-    fset.dimension = DEFAULT_DIM;
-    fset.code = NULL;
 }
 
 void
