@@ -13,7 +13,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
- * FPS display code heavily inspired from http://mycodelog.com/2010/04/16/fps/
+ * fps display code heavily inspired from http://mycodelog.com/2010/04/16/fps/
  * Attractor generation algorithm taken from J. Sprott book "Strange Attractors" (http://sprott.physics.wisc.edu/sa.htm)
  */
 #include <stdio.h>
@@ -94,7 +94,16 @@ struct display_settings
     unsigned long int h;        /* height of current window (in pixels) */
     int fullscreen;
     int displayInfo;
-    int speed;                  /* Rotation speed in degree per sec */
+    int speed;                  /* Rotation speed in degree per sec */	
+};
+
+struct display_parameters
+{
+	float fps;
+	GLfloat angle;
+	unsigned long int old_w;    /* To keep original window size in mem when going full screen */
+	unsigned long int old_h;
+	int currentTime;
 };
 
 const char *WINDOW_TITLE = "Strange Attractors";
@@ -107,6 +116,7 @@ const char codelist[] = { 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 65, 66, 67,
 };
 
 const int lc = (sizeof codelist) / (sizeof codelist[0]);
+
 static struct fractal_settings fset = {
     .numPoints = DEFAULT_POINTS,
     .convergenceIterations = DEFAULT_ITER,
@@ -123,10 +133,12 @@ static struct display_settings dset = {
     .displayInfo = 0
 };
 
+static struct display_parameters pset = {
+	.angle = 0.0,
+	.fps = 0.0,
+	.currentTime = 0
+};
 static struct attractor *at;
-static GLfloat angle = 3.0;
-float fps = 0;
-int currentTime = 0;
 GLvoid *font_style = GLUT_BITMAP_TIMES_ROMAN_24;
 
 void
@@ -943,10 +955,10 @@ drawInfo ()
     glColor4f (1.0f, 1.0f, 0.0f, 1.0f);
     glDisable (GL_LIGHTING);
 
-    printw (20, 30, "FPS : %4.2f", fps);
+    printw (20, 30, "fps : %4.2f", pset.fps);
     printw (20, 55, "Code: %s", at->code);
     printw (20, 80, "Speed: %d degrees/s", dset.speed);
-    printw (20, 105, "Angle: %d", (int) floor (angle) % 360);
+    printw (20, 105, "Angle: %d", (int) floor (pset.angle) % 360);
 }
 
 void
@@ -1019,10 +1031,10 @@ animateAttractor (void)
 {
     static int pt = 0;
 
-    int ti = currentTime - pt;
+    int ti = pset.currentTime - pt;
     if (pt != 0)
-        angle += dset.speed * ti / 1000.0;
-    pt = currentTime;
+        pset.angle += dset.speed * ti / 1000.0;
+    pt = pset.currentTime;
 }
 
 void
@@ -1035,13 +1047,13 @@ drawAttractor (void)
     glLoadIdentity ();
     if (fset.dimension == 2) {
         glColor4f (1.0f, 1.0f, 1.0f, COLOR_ALPHA);
-        glRotatef (angle, 0.0, 0.0, 1.0);
+        glRotatef (pset.angle, 0.0, 0.0, 1.0);
     }
     else {
         glColor4f (1.0f, 1.0f, 1.0f, 1.0f);
         glEnable (GL_LIGHTING);
         positionLight ();
-        glRotatef (angle, 1.0, 1.0, 1.0);
+        glRotatef (pset.angle, 1.0, 1.0, 1.0);
     }
     glBegin (GL_POINTS);
     for (i = 0; i < at->numPoints; i++) {
@@ -1096,6 +1108,7 @@ key (unsigned char mychar, int x, int y)
 {
     switch (mychar) {
     case 27:
+    case 'q':
         exit (EXIT_SUCCESS);
     case 'i':
         dset.displayInfo = dset.displayInfo ? 0 : 1;
@@ -1106,20 +1119,20 @@ key (unsigned char mychar, int x, int y)
 }
 
 void
-computeFPS (void)
+compute_fps (void)
 {
     static int frameCount = 0;
     static int previousTime = 0;
 
     frameCount++;
-    int timeInterval = currentTime - previousTime;
+    int timeInterval = pset.currentTime - previousTime;
     if (frameCount == 1) {
-        previousTime = currentTime;
+        previousTime = pset.currentTime;
         return;
     }
     if (timeInterval > 1000) {
-        fps = (frameCount - 1) / (timeInterval / 1000.0f);
-        previousTime = currentTime;
+        pset.fps = (frameCount - 1) / (timeInterval / 1000.0f);
+        previousTime = pset.currentTime;
         frameCount = 0;
     }
 }
@@ -1127,9 +1140,9 @@ computeFPS (void)
 void
 idle (void)
 {
-    currentTime = glutGet (GLUT_ELAPSED_TIME);
+    pset.currentTime = glutGet (GLUT_ELAPSED_TIME);
     animateAttractor ();
-    computeFPS ();
+    compute_fps ();
     glutPostRedisplay ();
 }
 
