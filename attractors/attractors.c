@@ -30,8 +30,10 @@
 
 #define VERSION_STRING "Polynomial strange attractors - version 1.0"
 #define COLOR_ALPHA 0.2f
-#define DEFAULT_X 800
-#define DEFAULT_Y 600
+#define DEFAULT_W 800
+#define DEFAULT_H 600
+#define DEFAULT_X 128
+#define DEFAULT_Y 128
 #define DEFAULT_SPEED 30
 #define DEFAULT_POINTS 65536
 #define DEFAULT_ITER 8192
@@ -94,16 +96,18 @@ struct display_settings
     unsigned long int h;        /* height of current window (in pixels) */
     int fullscreen;
     int displayInfo;
-    int speed;                  /* Rotation speed in degree per sec */	
+    int speed;                  /* Rotation speed in degree per sec */
 };
 
 struct display_parameters
 {
-	float fps;
-	GLfloat angle;
-	unsigned long int old_w;    /* To keep original window size in mem when going full screen */
-	unsigned long int old_h;
-	int currentTime;
+    float fps;
+    GLfloat angle;
+    unsigned long int old_w;    /* To keep original window size in mem when going full screen */
+    unsigned long int old_h;
+    unsigned long int old_x;
+    unsigned long int old_y;
+    int currentTime;
 };
 
 const char *WINDOW_TITLE = "Strange Attractors";
@@ -126,18 +130,23 @@ static struct fractal_settings fset = {
 };
 
 static struct display_settings dset = {
-    .w = DEFAULT_X,
-    .h = DEFAULT_Y,
+    .w = DEFAULT_W,
+    .h = DEFAULT_H,
     .speed = DEFAULT_SPEED,
     .fullscreen = 0,
     .displayInfo = 0
 };
 
 static struct display_parameters pset = {
-	.angle = 0.0,
-	.fps = 0.0,
-	.currentTime = 0
+    .angle = 0.0,
+    .fps = 0.0,
+    .old_x = DEFAULT_X,
+    .old_y = DEFAULT_Y,
+    .old_h = DEFAULT_H,
+    .old_w = DEFAULT_W,
+    .currentTime = 0
 };
+
 static struct attractor *at;
 GLvoid *font_style = GLUT_BITMAP_TIMES_ROMAN_24;
 
@@ -761,8 +770,8 @@ usage (char *prog_name, FILE * stream)
     fprintf (stream, "\t--conviter [int] (%d)\n", DEFAULT_ITER);
     fprintf (stream, "\t--dimension [2|3] (%d)\n", DEFAULT_DIM);
     fprintf (stream, "\t--fullscreen [int] (false)\n");
-    fprintf (stream, "\t--geometry [int]x[int] (%dx%d)\n", DEFAULT_X,
-             DEFAULT_Y);
+    fprintf (stream, "\t--geometry [int]x[int] (%dx%d)\n", DEFAULT_W,
+             DEFAULT_H);
     fprintf (stream, "\t--help\n");
     fprintf (stream, "\t--info\n");
     fprintf (stream, "\t--npoints [int] (%d)\n", DEFAULT_POINTS);
@@ -1104,15 +1113,38 @@ reshape (int w, int h)
 }
 
 void
+toggleFullscreen (void)
+{
+    if (dset.fullscreen) {
+        dset.w = pset.old_w;
+        dset.h = pset.old_h;
+        glutReshapeWindow (dset.w, dset.h);
+        glutPositionWindow (pset.old_x, pset.old_y);
+    }
+    else {
+        pset.old_x = glutGet ((GLenum) GLUT_WINDOW_X);
+        pset.old_y = glutGet ((GLenum) GLUT_WINDOW_Y);
+        pset.old_w = dset.w;
+        pset.old_h = dset.h;
+        glutFullScreen ();
+    }
+
+    dset.fullscreen = dset.fullscreen == 0 ? 1 : 0;
+}
+
+void
 key (unsigned char mychar, int x, int y)
 {
     switch (mychar) {
-    case 27:
-    case 'q':
-        exit (EXIT_SUCCESS);
+    case 'f':
+        toggleFullscreen ();
+        break;
     case 'i':
         dset.displayInfo = dset.displayInfo ? 0 : 1;
         break;
+    case 27:
+    case 'q':
+        exit (EXIT_SUCCESS);
     default:
         break;
     }
@@ -1154,12 +1186,16 @@ animate (int argc, char **argv)
 
     glutInitWindowSize (dset.w, dset.h);
     glutCreateWindow (WINDOW_TITLE);
+    glutPositionWindow (DEFAULT_X, DEFAULT_Y);
 
     /* Even if there are no events, redraw our gl scene. */
     glutIdleFunc (idle);
     glutDisplayFunc (display);
     glutKeyboardFunc (key);
     glutReshapeFunc (reshape);
+
+    if (dset.fullscreen)
+        glutFullScreen ();
 
     initDisplay ();
     glutMainLoop ();
