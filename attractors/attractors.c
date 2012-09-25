@@ -1093,9 +1093,6 @@ reshape (int w, int h)
 {
     GLdouble ar;
 
-    dset.w = w;
-    dset.h = h;
-
     glViewport (0, 0, w, h);
     ar = (GLdouble) w / (GLdouble) h;
 
@@ -1116,16 +1113,14 @@ void
 toggleFullscreen (void)
 {
     if (dset.fullscreen) {
-        dset.w = pset.old_w;
-        dset.h = pset.old_h;
-        glutReshapeWindow (dset.w, dset.h);
+        glutReshapeWindow (pset.old_w, pset.old_h);
         glutPositionWindow (pset.old_x, pset.old_y);
     }
     else {
         pset.old_x = glutGet ((GLenum) GLUT_WINDOW_X);
         pset.old_y = glutGet ((GLenum) GLUT_WINDOW_Y);
-        pset.old_w = dset.w;
-        pset.old_h = dset.h;
+        pset.old_w = glutGet ((GLenum) GLUT_WINDOW_WIDTH);
+        pset.old_h = glutGet ((GLenum) GLUT_WINDOW_HEIGHT);
         glutFullScreen ();
     }
 
@@ -1186,7 +1181,8 @@ animate (int argc, char **argv)
 
     glutInitWindowSize (dset.w, dset.h);
     glutCreateWindow (WINDOW_TITLE);
-    glutPositionWindow (DEFAULT_X, DEFAULT_Y);
+    pset.old_x = glutGet ((GLenum) GLUT_INIT_WINDOW_X)+6;
+    pset.old_y = glutGet ((GLenum) GLUT_INIT_WINDOW_Y)+36;
 
     /* Even if there are no events, redraw our gl scene. */
     glutIdleFunc (idle);
