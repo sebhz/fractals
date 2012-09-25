@@ -29,6 +29,7 @@
 #include <GL/glut.h>
 
 #define VERSION_STRING "Polynomial strange attractors - version 1.0"
+#define COLOR_ALPHA 0.2f
 #define DEFAULT_X 800
 #define DEFAULT_Y 600
 #define DEFAULT_SPEED 30
@@ -939,6 +940,9 @@ printw (float x, float y, char *format, ...)
 void
 drawInfo ()
 {
+    glColor4f (1.0f, 1.0f, 0.0f, 1.0f);
+    glDisable (GL_LIGHTING);
+
     printw (20, 30, "FPS : %4.2f", fps);
     printw (20, 55, "Code: %s", at->code);
     printw (20, 80, "Speed: %d degrees/s", dset.speed);
@@ -985,7 +989,7 @@ void
 initDisplay ()
 {
     glClearColor (0.0f, 0.0f, 0.0f, 1.0f);
-    glColor4f (1.0f, 1.0f, 1.0f, 0.0f);
+    glColor4f (1.0f, 1.0f, 1.0f, COLOR_ALPHA);
     glViewport (0, 0, dset.w, dset.h);
 
     glMatrixMode (GL_PROJECTION);
@@ -1001,10 +1005,12 @@ initDisplay ()
         glEnable (GL_BLEND);
         glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
+    else {
+        glEnable (GL_LIGHTING);
+        glDisable (GL_COLOR_MATERIAL);
+    }
 
     glEnable (GL_POINT_SMOOTH);
-    glEnable (GL_LIGHTING);
-    glDisable (GL_COLOR_MATERIAL);
     glPointSize (1.0f);
 }
 
@@ -1027,11 +1033,14 @@ drawAttractor (void)
     glClear (GL_COLOR_BUFFER_BIT);
     glMatrixMode (GL_MODELVIEW);
     glLoadIdentity ();
-    positionLight ();
     if (fset.dimension == 2) {
+        glColor4f (1.0f, 1.0f, 1.0f, COLOR_ALPHA);
         glRotatef (angle, 0.0, 0.0, 1.0);
     }
     else {
+        glColor4f (1.0f, 1.0f, 1.0f, 1.0f);
+        glEnable (GL_LIGHTING);
+        positionLight ();
         glRotatef (angle, 1.0, 1.0, 1.0);
     }
     glBegin (GL_POINTS);
