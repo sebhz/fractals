@@ -97,10 +97,6 @@ struct display_settings
     int fullscreen;
     int displayInfo;
     int speed;                  /* Rotation speed in degree per sec */
-};
-
-struct display_parameters
-{
     float fps;
     GLfloat angle;
     unsigned long int old_w;    /* To keep original window size in mem when going full screen */
@@ -130,14 +126,9 @@ static struct fractal_settings fset = {
 };
 
 static struct display_settings dset = {
-    .w = DEFAULT_W,
-    .h = DEFAULT_H,
     .speed = DEFAULT_SPEED,
     .fullscreen = 0,
-    .displayInfo = 0
-};
-
-static struct display_parameters pset = {
+    .displayInfo = 0,
     .angle = 0.0,
     .fps = 0.0,
     .old_x = DEFAULT_X,
@@ -864,8 +855,8 @@ parse_options (int argc, char **argv)
                     fprintf (stderr, "Bad geometry string\n");
                     exit (EXIT_FAILURE);
                 }
-                dset.w = n[0];
-                dset.h = n[1];
+                dset.old_w = n[0];
+                dset.old_h = n[1];
                 break;
             }
 
@@ -964,10 +955,10 @@ drawInfo ()
     glColor4f (1.0f, 1.0f, 0.0f, 1.0f);
     glDisable (GL_LIGHTING);
 
-    printw (20, 30, "fps : %4.2f", pset.fps);
+    printw (20, 30, "fps : %4.2f", dset.fps);
     printw (20, 55, "Code: %s", at->code);
     printw (20, 80, "Speed: %d degrees/s", dset.speed);
-    printw (20, 105, "Angle: %d", (int) floor (pset.angle) % 360);
+    printw (20, 105, "Angle: %d", (int) floor (dset.angle) % 360);
 }
 
 void
@@ -1011,7 +1002,7 @@ initDisplay ()
 {
     glClearColor (0.0f, 0.0f, 0.0f, 1.0f);
     glColor4f (1.0f, 1.0f, 1.0f, COLOR_ALPHA);
-    glViewport (0, 0, dset.w, dset.h);
+    glViewport (0, 0, dset.old_w, dset.old_h);
 
     glMatrixMode (GL_PROJECTION);
     glLoadIdentity ();
@@ -1040,10 +1031,10 @@ animateAttractor (void)
 {
     static int pt = 0;
 
-    int ti = pset.currentTime - pt;
+    int ti = dset.currentTime - pt;
     if (pt != 0)
-        pset.angle += dset.speed * ti / 1000.0;
-    pt = pset.currentTime;
+        dset.angle += dset.speed * ti / 1000.0;
+    pt = dset.currentTime;
 }
 
 void
@@ -1056,13 +1047,13 @@ drawAttractor (void)
     glLoadIdentity ();
     if (fset.dimension == 2) {
         glColor4f (1.0f, 1.0f, 1.0f, COLOR_ALPHA);
-        glRotatef (pset.angle, 0.0, 0.0, 1.0);
+        glRotatef (dset.angle, 0.0, 0.0, 1.0);
     }
     else {
         glColor4f (1.0f, 1.0f, 1.0f, 1.0f);
         glEnable (GL_LIGHTING);
         positionLight ();
-        glRotatef (pset.angle, 1.0, 1.0, 1.0);
+        glRotatef (dset.angle, 1.0, 1.0, 1.0);
     }
     glBegin (GL_POINTS);
     for (i = 0; i < at->numPoints; i++) {
@@ -1113,14 +1104,14 @@ void
 toggleFullscreen (void)
 {
     if (dset.fullscreen) {
-        glutReshapeWindow (pset.old_w, pset.old_h);
-        glutPositionWindow (pset.old_x, pset.old_y);
+        glutReshapeWindow (dset.old_w, dset.old_h);
+        glutPositionWindow (dset.old_x, dset.old_y);
     }
     else {
-        pset.old_x = glutGet ((GLenum) GLUT_WINDOW_X);
-        pset.old_y = glutGet ((GLenum) GLUT_WINDOW_Y);
-        pset.old_w = glutGet ((GLenum) GLUT_WINDOW_WIDTH);
-        pset.old_h = glutGet ((GLenum) GLUT_WINDOW_HEIGHT);
+        dset.old_x = glutGet ((GLenum) GLUT_WINDOW_X);
+        dset.old_y = glutGet ((GLenum) GLUT_WINDOW_Y);
+        dset.old_w = glutGet ((GLenum) GLUT_WINDOW_WIDTH);
+        dset.old_h = glutGet ((GLenum) GLUT_WINDOW_HEIGHT);
         glutFullScreen ();
     }
 
@@ -1152,14 +1143,14 @@ compute_fps (void)
     static int previousTime = 0;
 
     frameCount++;
-    int timeInterval = pset.currentTime - previousTime;
+    int timeInterval = dset.currentTime - previousTime;
     if (frameCount == 1) {
-        previousTime = pset.currentTime;
+        previousTime = dset.currentTime;
         return;
     }
     if (timeInterval > 1000) {
-        pset.fps = (frameCount - 1) / (timeInterval / 1000.0f);
-        previousTime = pset.currentTime;
+        dset.fps = (frameCount - 1) / (timeInterval / 1000.0f);
+        previousTime = dset.currentTime;
         frameCount = 0;
     }
 }
@@ -1167,7 +1158,7 @@ compute_fps (void)
 void
 idle (void)
 {
-    pset.currentTime = glutGet (GLUT_ELAPSED_TIME);
+    dset.currentTime = glutGet (GLUT_ELAPSED_TIME);
     animateAttractor ();
     compute_fps ();
     glutPostRedisplay ();
@@ -1179,10 +1170,10 @@ animate (int argc, char **argv)
     glutInit (&argc, argv);
     glutInitDisplayMode (GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH);
 
-    glutInitWindowSize (dset.w, dset.h);
+    glutInitWindowSize (dset.old_w, dset.old_h);
     glutCreateWindow (WINDOW_TITLE);
-    pset.old_x = glutGet ((GLenum) GLUT_INIT_WINDOW_X)+6;
-    pset.old_y = glutGet ((GLenum) GLUT_INIT_WINDOW_Y)+36;
+    dset.old_x = glutGet ((GLenum) GLUT_INIT_WINDOW_X)+6;
+    dset.old_y = glutGet ((GLenum) GLUT_INIT_WINDOW_Y)+36;
 
     /* Even if there are no events, redraw our gl scene. */
     glutIdleFunc (idle);
