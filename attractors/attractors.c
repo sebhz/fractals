@@ -22,6 +22,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <getopt.h>
+#include <pthread.h>
 
 #ifdef __MINGW__
 #include <windows.h>
@@ -40,7 +41,7 @@
 #define DEFAULT_ORDER 2
 #define DEFAULT_DIM 3
 #define DIM_DEPTH 512           // Use the DIM_DEPTH predecessors of each point to compute the dimension
-#define DIM_IGNORE 32           // but ignore dimIgnore predecessors (presumably too correlated)
+#define DIM_IGNORE 32           // but ignore DIM_IGNORE predecessors (presumably too correlated)
 #define NUM_CONVERGENCE_POINTS 128
 #define AT_INFINITY 1000000
 #define LYAPU_DELTA 0.000001
@@ -138,7 +139,10 @@ static struct display_settings dset = {
     .currentTime = 0
 };
 
-static struct attractor *at;
+static struct attractor *at[2];
+static int frontBuffer = 0;
+static int threadRunning = 0;
+
 GLvoid *font_style = GLUT_BITMAP_TIMES_ROMAN_24;
 
 void
@@ -327,12 +331,16 @@ eval (point p, struct polynom * polynom)
     return pe;
 }
 
-
 void
 displayPoint (point p)
 {
-    fprintf (stdout, "0x%08x : [%.10Lf,%.10Lf,%.10Lf]\n", (int) p, p[0], p[1],
-             p[2]);
+    int i;
+
+    fprintf (stdout, "0x%08x : [ ", (int) p);
+    for (i = 0; i < fset.dimension; i++) {
+        fprintf (stdout, "%.6f ", (double) p[i]);
+    }
+    fprintf (stdout, "]\n");
 }
 
 point
@@ -370,7 +378,7 @@ computeLyapunov (point p, point pe, struct attractor *at)
 }
 
 int
-checkConvergence (struct attractor *at)
+isAttractorConverging (struct attractor *at)
 {
     point p, pe, pnew = NULL;
     int i, result = 0;
@@ -455,16 +463,16 @@ displayPolynom (struct polynom *p)
 }
 
 void
-getRandom (struct attractor *at)
+getRandom (struct attractor *a)
 {
     int i, j, v;
-    struct polynom *p = at->polynom;
+    struct polynom *p = a->polynom;
 
     for (i = 0; i < fset.dimension; i++) {
         for (j = 0; j < p->length; j++) {
             v = rand () % lc;
             (p->p[i])[j] = (v - lc / 2) * 0.08;
-            at->code[3 + i * p->length + j] = codelist[v];
+            a->code[3 + i * p->length + j] = codelist[v];
         }
     }
 }
@@ -481,11 +489,11 @@ computeDimension (struct attractor *at)
     int twod = 1 << at->dimension;
     int i, j;
 
-    if (at->numPoints <= NUM_CONVERGENCE_POINTS + DIM_DEPTH) {
+    if (at->numPoints <= DIM_DEPTH) {
         return -1;
     }
 
-    for (i = NUM_CONVERGENCE_POINTS + DIM_DEPTH; i < at->numPoints; i++) {
+    for (i = DIM_DEPTH; i < at->numPoints - NUM_CONVERGENCE_POINTS; i++) {
         j = i - DIM_IGNORE - (rand () % (DIM_DEPTH - DIM_IGNORE));
         d2 = euclidianDistance (at->array[i], at->array[j]);
         if (d2 < DIM_RADIUS1 * twod * d2max)
@@ -504,19 +512,19 @@ explore (struct attractor *at)
 {
     while (1) {
         getRandom (at);
-        if (checkConvergence (at)) {
+        if (isAttractorConverging (at)) {
             break;
         }
     }
 }
 
 void
-iterateMap (struct attractor *at)
+iterateMap (struct attractor *a)
 {
     point p, pnew, pmin, pmax, ptmp;
     int i, j;
 
-    if ((at->array = malloc (at->numPoints * (sizeof *(at->array)))) == NULL) {
+    if ((a->array = malloc (a->numPoints * (sizeof *(a->array)))) == NULL) {
         fprintf (stderr,
                  "Unable to allocate memory for point array. Exiting\n");
         exit (EXIT_FAILURE);
@@ -532,11 +540,11 @@ iterateMap (struct attractor *at)
         pmax[i] = -AT_INFINITY;
     }
 
-    for (i = 0; i < at->numPoints; i++) {
-        pnew = eval (p, at->polynom);
+    for (i = 0; i < a->numPoints; i++) {
+        pnew = eval (p, a->polynom);
         p = pnew;
         if (i >= NUM_CONVERGENCE_POINTS) {
-            at->array[i - NUM_CONVERGENCE_POINTS] = pnew;
+            a->array[i - NUM_CONVERGENCE_POINTS] = pnew;
             for (j = 0; j < fset.dimension; j++) {
                 pmin[j] = min (p[j], pmin[j]);
                 pmax[j] = max (p[j], pmax[j]);
@@ -544,9 +552,8 @@ iterateMap (struct attractor *at)
         }
     }
     free (ptmp);
-    at->bound[0] = pmin;
-    at->bound[1] = pmax;
-    at->numPoints -= NUM_CONVERGENCE_POINTS;
+    a->bound[0] = pmin;
+    a->bound[1] = pmax;
 }
 
 void
@@ -636,7 +643,7 @@ centerAttractor (struct attractor *at)
     int i, j;
 
     point m = _middle (at->bound[0], at->bound[1]);
-    for (i = 0; i < at->numPoints; i++) {
+    for (i = 0; i < at->numPoints - NUM_CONVERGENCE_POINTS; i++) {
         for (j = 0; j < fset.dimension; j++) {
             at->array[i][j] -= m[j];
         }
@@ -651,41 +658,44 @@ centerAttractor (struct attractor *at)
 
 /* Allocate memory for a polynomial attractor */
 struct attractor *
-newAttractor (int order, int dimension)
+newAttractor (int order, int dimension, int convergenceIterations,
+              int numPoints)
 {
     int i;
+    struct attractor *a;
 
-    if ((at = malloc (sizeof *at)) == NULL) {
+
+    if ((a = malloc (sizeof *a)) == NULL) {
         fprintf (stderr,
                  "Unable to allocate memory for attractor. Exiting\n");
         exit (EXIT_FAILURE);
     }
 
-    if ((at->lyapunov = malloc (sizeof *(at->lyapunov))) == NULL) {
+    if ((a->lyapunov = malloc (sizeof *(a->lyapunov))) == NULL) {
         fprintf (stderr,
                  "Unable to allocate memory for lyapunov structure. Exiting\n");
         exit (EXIT_FAILURE);
     }
 
-    if ((at->polynom = malloc (sizeof *(at->polynom))) == NULL) {
+    if ((a->polynom = malloc (sizeof *(a->polynom))) == NULL) {
         fprintf (stderr, "Unable to allocate memory for polynom. Exiting\n");
         exit (EXIT_FAILURE);
     }
 
-    at->dimension = dimension;
+    a->dimension = dimension;
 
-    if ((at->polynom->p =
-         malloc (at->dimension * sizeof *(at->polynom->p))) == NULL) {
+    if ((a->polynom->p =
+         malloc (a->dimension * sizeof *(a->polynom->p))) == NULL) {
         fprintf (stderr, "Unable to allocate memory for polynom. Exiting\n");
         exit (EXIT_FAILURE);
     }
 
-    at->polynom->order = order;
+    a->polynom->order = order;
 
-    at->polynom->length = getPolynomLength (dimension, order);
+    a->polynom->length = getPolynomLength (dimension, order);
     for (i = 0; i < dimension; i++) {
-        if ((at->polynom->p[i] =
-             malloc (at->polynom->length * (sizeof *(at->polynom->p[i])))) ==
+        if ((a->polynom->p[i] =
+             malloc (a->polynom->length * (sizeof *(a->polynom->p[i])))) ==
             NULL) {
             fprintf (stderr,
                      "Unable to allocate memory for polynom. Exiting\n");
@@ -693,53 +703,52 @@ newAttractor (int order, int dimension)
         }
     }
 
-    if ((at->code =
-         malloc ((at->polynom->length * dimension +
-                  4) * (sizeof *at->code))) == NULL) {
+    if ((a->code =
+         malloc ((a->polynom->length * dimension +
+                  4) * (sizeof *a->code))) == NULL) {
         fprintf (stderr, "Unable to allocate memory for code\n");
         exit (EXIT_FAILURE);
     }
     else {
-        at->code[(at->polynom->length * dimension + 3)] = '\0';
-        at->code[0] = '0' + dimension;
-        at->code[1] = '0' + order;
-        at->code[2] = '_';
+        a->code[(a->polynom->length * dimension + 3)] = '\0';
+        a->code[0] = '0' + dimension;
+        a->code[1] = '0' + order;
+        a->code[2] = '_';
     }
+    a->convergenceIterations = convergenceIterations;
+    a->numPoints = numPoints;
 
-    return at;
+    return a;
 }
 
 /* Compute an attractor previously allocated by newAttractor */
 void
-computeAttractor (struct attractor *at, char *code, int convergenceIterations,
-                  int numPoints)
+computeAttractor (struct attractor *a, char *code)
 {
     struct timeval t1, t2;
 
-    at->convergenceIterations = convergenceIterations;
-    at->numPoints = numPoints;
-
     if (code == NULL || checkCode (code)) {
-        explore (at);
+        explore (a);
     }
     else {
-        strncpy (at->code, code, at->polynom->length * at->dimension + 3);
-        applyCode (at->polynom, code);
-        checkConvergence (at);
+        strncpy (a->code, code, a->polynom->length * a->dimension + 3);
+        applyCode (a->polynom, code);
+        if (!isAttractorConverging (a))
+            fprintf (stderr, "Bad code - attractor not converging\n");
     }
 
-    displayPolynom (at->polynom);
-    fprintf (stdout, "Lyapunov exponent: %.6f\n", at->lyapunov->ly);
+    displayPolynom (a->polynom);
+    fprintf (stdout, "Lyapunov exponent: %.6f\n", a->lyapunov->ly);
     gettimeofday (&t1, NULL);
-    iterateMap (at);
+    iterateMap (a);
     gettimeofday (&t2, NULL);
     diffTime ("Map iteration", &t1, &t2);
-    at->r = getRadius (at);
-    centerAttractor (at);
-    computeDimension (at);
+    a->r = getRadius (a);
+    centerAttractor (a);
+    computeDimension (a);
     fprintf (stdout, "Correlation dimension: %.6f\n",
-             at->correlationDimension);
-    fprintf (stdout, "Code: %s\n", at->code);
+             a->correlationDimension);
+    fprintf (stdout, "Code: %s\n", a->code);
 }
 
 void
@@ -868,13 +877,13 @@ parse_options (int argc, char **argv)
         case 's':
             {
                 int sp = strtol (optarg, NULL, 0);
-                if (sp <= 0) {
+                if (sp < 0) {
                     fprintf (stderr,
                              "Invalid speed. Defaulting to %d degrees/s\n",
                              DEFAULT_SPEED);
                 }
                 else {
-                    dset.speed = sp % 360 ? sp % 360 : 360;
+                    dset.speed = sp;
                 }
                 break;
             }
@@ -905,10 +914,10 @@ parse_options (int argc, char **argv)
 void
 printw (float x, float y, char *format, ...)
 {
-    va_list args;               //  Variable argument list
-    int len;                    //      String length
-    int i;                      //  Iterator
-    char *text;                 //      Text
+    va_list args;
+    int len;
+    int i;
+    char *text;
     int viewport[4];
 
     va_start (args, format);
@@ -945,7 +954,7 @@ drawInfo ()
     glDisable (GL_LIGHTING);
 
     printw (20, 30, "fps : %4.2f", dset.fps);
-    printw (20, 55, "Code: %s", at->code);
+    printw (20, 55, "Code: %s", at[frontBuffer]->code);
     printw (20, 80, "Speed: %d degrees/s", dset.speed);
     printw (20, 105, "Angle: %d", (int) floor (dset.angle) % 360);
 }
@@ -997,7 +1006,8 @@ initDisplay ()
     glLoadIdentity ();
 
     /* Add 2% to move the clipping planes a bit further */
-    glOrtho (-at->r, at->r, -at->r, at->r, -at->r, at->r);
+    glOrtho (-at[frontBuffer]->r, at[frontBuffer]->r, -at[frontBuffer]->r,
+             at[frontBuffer]->r, -at[frontBuffer]->r, at[frontBuffer]->r);
 
     glMatrixMode (GL_MODELVIEW);
     glLoadIdentity ();
@@ -1045,13 +1055,13 @@ drawAttractor (void)
         glRotatef (dset.angle, 1.0, 1.0, 1.0);
     }
     glBegin (GL_POINTS);
-    for (i = 0; i < at->numPoints; i++) {
+    for (i = 0; i < at[frontBuffer]->numPoints - NUM_CONVERGENCE_POINTS; i++) {
         if (fset.dimension == 2)
-            glVertex2dv (at->array[i]);
+            glVertex2dv (at[frontBuffer]->array[i]);
         else {
-            glVertex3dv (at->array[i]);
+            glVertex3dv (at[frontBuffer]->array[i]);
             /* Normal equal to the vector -> vertex redirects light in the same direction */
-            glNormal3dv (at->array[i]);
+            glNormal3dv (at[frontBuffer]->array[i]);
         }
     }
     glEnd ();
@@ -1080,10 +1090,14 @@ reshape (int w, int h)
     glLoadIdentity ();
 
     if (ar < 1.0) {
-        glOrtho (-at->r, at->r, -at->r / ar, at->r / ar, -at->r, at->r);
+        glOrtho (-at[frontBuffer]->r, at[frontBuffer]->r,
+                 -at[frontBuffer]->r / ar, at[frontBuffer]->r / ar,
+                 -at[frontBuffer]->r, at[frontBuffer]->r);
     }
     else {
-        glOrtho (-at->r * ar, at->r * ar, -at->r, at->r, -at->r, at->r);
+        glOrtho (-at[frontBuffer]->r * ar, at[frontBuffer]->r * ar,
+                 -at[frontBuffer]->r, at[frontBuffer]->r, -at[frontBuffer]->r,
+                 at[frontBuffer]->r);
     }
     glMatrixMode (GL_MODELVIEW);
     glLoadIdentity ();
@@ -1145,9 +1159,96 @@ computeFPS (void)
 }
 
 void
+copyPolynom (struct attractor *a, struct polynom *p2)
+{
+    int i, j;
+
+    for (i = 0; i < fset.dimension; i++) {
+        for (j = 0; j < p2->length; j++) {
+            a->polynom->p[i][j] = p2->p[i][j];
+        }
+    }
+}
+
+void
+swapBuffers (void)
+{
+    struct attractor *tmp;
+
+    tmp = at[frontBuffer];
+    at[frontBuffer] = at[1 - frontBuffer];
+    at[1 - frontBuffer] = tmp;
+}
+
+void
+setClosePolynom (struct attractor *a, struct polynom *p2)
+{
+    int i;
+    int place = rand () % (fset.dimension * p2->length);
+    int coord = place / p2->length;
+    int expon = place % p2->length;
+    int dir;
+
+    for (i = 0; i < lc; i++) {
+        if (a->code[3 + place] == codelist[i])
+            break;
+    }
+    if (i == lc) {
+        dir = -1;
+    }
+    else if (i == 0) {
+        dir = 1;
+    }
+    else {
+        dir = (rand () % 2) ? -1 : 1;
+    }
+    a->code[3 + place] = codelist[i + dir];
+    a->polynom->p[coord][expon] += dir * 0.01;
+}
+
+void
+backgroundCompute (void)
+{
+    struct attractor *a = at[1 - frontBuffer];
+    int i;
+    do {
+        copyPolynom (a, at[frontBuffer]->polynom);
+        strncpy (a->code, at[frontBuffer]->code,
+                 a->polynom->length * a->dimension + 3);
+        setClosePolynom (a, at[frontBuffer]->polynom);
+    }
+    while (!isAttractorConverging (a));
+
+    // OK is now using a polynom close to its sibling. And it is converging - time to do the full calculation
+    if (a->array != NULL) {
+        for (i = 0; i < a->numPoints; i++) {
+            free (a->array[i]);
+        }
+        free (a->array);
+    }
+
+    iterateMap (a);
+    // Do some housekeeping
+    a->r = getRadius (a);
+    centerAttractor (a);
+
+    // Need to protect this with a mutex - should have been set to 1 elsewhere
+    threadRunning = 0;
+}
+
+void
 idle (void)
 {
     dset.currentTime = glutGet (GLUT_ELAPSED_TIME);
+
+    // TODO Protect this with a mutex
+    if (threadRunning == 0) {
+        // Looks like something is ready for us in the backbuffer
+        threadRunning = 1;
+        // Relaunch background thread here
+        backgroundCompute ();
+        swapBuffers ();
+    }
     animateAttractor ();
     computeFPS ();
     glutPostRedisplay ();
@@ -1174,8 +1275,12 @@ animate (int argc, char **argv)
         glutFullScreen ();
 
     initDisplay ();
+    threadRunning = 0;
+    /* TODO - launch the initial background thread here - right before drawing starts */
+    //backgroundCompute();
     glutMainLoop ();
 }
+
 
 int
 main (int argc, char **argv)
@@ -1191,10 +1296,16 @@ main (int argc, char **argv)
         fset.dimension = fset.code[0] - '0';
         fset.order = fset.code[1] - '0';
     }
-    at = newAttractor (fset.order, fset.dimension);
-    computeAttractor (at, fset.code, fset.convergenceIterations,
+    at[frontBuffer] =
+        newAttractor (fset.order, fset.dimension, fset.convergenceIterations,
                       fset.numPoints);
+    at[1 - frontBuffer] =
+        newAttractor (fset.order, fset.dimension, fset.convergenceIterations,
+                      fset.numPoints);
+
+    computeAttractor (at[frontBuffer], fset.code);
+
     animate (argc, argv);
-    freeAttractor (at);
+    freeAttractor (at[frontBuffer]);
     return EXIT_SUCCESS;
 }
