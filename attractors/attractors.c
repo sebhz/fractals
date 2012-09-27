@@ -574,6 +574,9 @@ checkCode (char *code)
 {
     int dim, order, l, length, i, j;
 
+    if (code == NULL)
+        return -1;
+
     l = strlen (code);
     if (l < 3)
         return -1;
@@ -646,10 +649,11 @@ centerAttractor (struct attractor *at)
     free (m);
 }
 
+/* Allocate memory for a polynomial attractor */
 struct attractor *
-newAttractor (char *code)
+newAttractor (int order, int dimension)
 {
-    int i, codeValid = 1;
+    int i;
 
     if ((at = malloc (sizeof *at)) == NULL) {
         fprintf (stderr,
@@ -668,16 +672,7 @@ newAttractor (char *code)
         exit (EXIT_FAILURE);
     }
 
-    if ((code == NULL) || (checkCode (code)))
-        codeValid = 0;
-
-    if (codeValid) {
-        at->dimension = code[0] - '0';
-        fset.dimension = at->dimension;
-    }
-    else
-        at->dimension = fset.dimension;
-
+    at->dimension = dimension;
 
     if ((at->polynom->p =
          malloc (at->dimension * sizeof *(at->polynom->p))) == NULL) {
@@ -685,16 +680,10 @@ newAttractor (char *code)
         exit (EXIT_FAILURE);
     }
 
-    if (codeValid) {
-        at->polynom->order = code[1] - '0';
-        fset.order = at->polynom->order;
-    }
-    else
-        at->polynom->order = fset.order;
+    at->polynom->order = order;
 
-    at->polynom->length =
-        getPolynomLength (at->dimension, at->polynom->order);
-    for (i = 0; i < at->dimension; i++) {
+    at->polynom->length = getPolynomLength (dimension, order);
+    for (i = 0; i < dimension; i++) {
         if ((at->polynom->p[i] =
              malloc (at->polynom->length * (sizeof *(at->polynom->p[i])))) ==
             NULL) {
@@ -704,41 +693,41 @@ newAttractor (char *code)
         }
     }
 
-    if (codeValid) {
-        at->code = code;
+    if ((at->code =
+         malloc ((at->polynom->length * dimension +
+                  4) * (sizeof *at->code))) == NULL) {
+        fprintf (stderr, "Unable to allocate memory for code\n");
+        exit (EXIT_FAILURE);
     }
     else {
-        if ((at->code =
-             malloc ((at->polynom->length * fset.dimension +
-                      4) * (sizeof *at->code))) == NULL) {
-            fprintf (stderr, "Unable to allocate memory for code\n");
-        }
-        else {
-            at->code[(at->polynom->length * fset.dimension + 3)] = '\0';
-            at->code[0] = '0' + fset.dimension;
-            at->code[1] = '0' + fset.order;
-            at->code[2] = '_';
-        }
+        at->code[(at->polynom->length * dimension + 3)] = '\0';
+        at->code[0] = '0' + dimension;
+        at->code[1] = '0' + order;
+        at->code[2] = '_';
     }
-
-    at->convergenceIterations = fset.convergenceIterations;
-    at->numPoints = fset.numPoints;
 
     return at;
 }
 
+/* Compute an attractor previously allocated by newAttractor */
 void
-computeAttractor (struct attractor *at, char *code)
+computeAttractor (struct attractor *at, char *code, int convergenceIterations,
+                  int numPoints)
 {
     struct timeval t1, t2;
 
-    if (code == NULL) {
+    at->convergenceIterations = convergenceIterations;
+    at->numPoints = numPoints;
+
+    if (code == NULL || checkCode (code)) {
         explore (at);
     }
     else {
+        strncpy (at->code, code, at->polynom->length * at->dimension + 3);
         applyCode (at->polynom, code);
         checkConvergence (at);
     }
+
     displayPolynom (at->polynom);
     fprintf (stdout, "Lyapunov exponent: %.6f\n", at->lyapunov->ly);
     gettimeofday (&t1, NULL);
@@ -1137,7 +1126,7 @@ key (unsigned char mychar, int x, int y)
 }
 
 void
-compute_fps (void)
+computeFPS (void)
 {
     static int frameCount = 0;
     static int previousTime = 0;
@@ -1160,7 +1149,7 @@ idle (void)
 {
     dset.currentTime = glutGet (GLUT_ELAPSED_TIME);
     animateAttractor ();
-    compute_fps ();
+    computeFPS ();
     glutPostRedisplay ();
 }
 
@@ -1172,8 +1161,8 @@ animate (int argc, char **argv)
 
     glutInitWindowSize (dset.old_w, dset.old_h);
     glutCreateWindow (WINDOW_TITLE);
-    dset.old_x = glutGet ((GLenum) GLUT_INIT_WINDOW_X)+6;
-    dset.old_y = glutGet ((GLenum) GLUT_INIT_WINDOW_Y)+36;
+    dset.old_x = glutGet ((GLenum) GLUT_INIT_WINDOW_X) + 6;
+    dset.old_y = glutGet ((GLenum) GLUT_INIT_WINDOW_Y) + 36;
 
     /* Even if there are no events, redraw our gl scene. */
     glutIdleFunc (idle);
@@ -1198,8 +1187,13 @@ main (int argc, char **argv)
 
     srand (time (NULL));
     parse_options (argc, argv);
-    at = newAttractor (fset.code);
-    computeAttractor (at, fset.code);
+    if (fset.code != NULL && !checkCode (fset.code)) {
+        fset.dimension = fset.code[0] - '0';
+        fset.order = fset.code[1] - '0';
+    }
+    at = newAttractor (fset.order, fset.dimension);
+    computeAttractor (at, fset.code, fset.convergenceIterations,
+                      fset.numPoints);
     animate (argc, argv);
     freeAttractor (at);
     return EXIT_SUCCESS;
