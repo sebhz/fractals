@@ -968,15 +968,21 @@ printw (float x, float y, char *format, ...)
 void
 drawInfo ()
 {
-    int i, j;
+    int i, j, y = 30;
     char *s;
 
     glColor4f (1.0f, 1.0f, 0.0f, 1.0f);
     glDisable (GL_LIGHTING);
 
-    printw (20, 30, "fps : %4.2f", dset.fps);
-    printw (20, 50, "Speed: %d degrees/s", dset.speed);
-    printw (20, 70, "Angle: %d", (int) floor (dset.angle) % 360);
+    printw (20, y, "fps : %4.2f", dset.fps);
+    if (dset.speed != 0) {
+        y += 20;
+        printw (20, y, "Speed: %d degrees/s", dset.speed);
+        y += 20;
+        printw (20, y, "Angle: %d", (int) floor (dset.angle) % 360);
+    }
+    y += 20;
+    printw (20, y, "Lyapunov exponent: %f", at[frontBuffer]->lyapunov->ly);
 
     if ((s = malloc (3 + (at[frontBuffer]->polynom->length) * 8 + 1)) != NULL) {
         s[0] = '[';
@@ -987,7 +993,8 @@ drawInfo ()
                 sprintf (s + 2 + j * 8, "%+0.4f ",
                          at[frontBuffer]->polynom->p[i][j]);
             s[3 + (at[frontBuffer]->polynom->length) * 8 - 1] = ']';
-            printw (20, 90 + 20 * i, "%s", s);
+            y += 20;
+            printw (20, y, "%s", s);
         }
         free (s);
     }
