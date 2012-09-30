@@ -36,6 +36,7 @@
 #define DEFAULT_X 128
 #define DEFAULT_Y 128
 #define DEFAULT_SPEED 30
+#define DEFAULT_INCREMENT 0.0005
 #define DEFAULT_POINTS 65536
 #define DEFAULT_ITER 8192
 #define DEFAULT_ORDER 2
@@ -104,6 +105,7 @@ struct display_settings
     unsigned long int old_h;
     unsigned long int old_x;
     unsigned long int old_y;
+    float increment;
     int currentTime;
 };
 
@@ -136,14 +138,15 @@ static struct display_settings dset = {
     .old_y = DEFAULT_Y,
     .old_h = DEFAULT_H,
     .old_w = DEFAULT_W,
-    .currentTime = 0
+    .currentTime = 0,
+    .increment = DEFAULT_INCREMENT
 };
 
 static struct attractor *at[2];
 static int frontBuffer = 0;
 static int threadRunning = 0;
 
-GLvoid *font_style = GLUT_BITMAP_TIMES_ROMAN_24;
+GLvoid *font_style = GLUT_BITMAP_9_BY_15;
 
 void
 diffTime (const char *caption, struct timeval *t1, struct timeval *t2)
@@ -524,11 +527,6 @@ iterateMap (struct attractor *a)
     point p, pnew, pmin, pmax, ptmp;
     int i, j;
 
-    if ((a->array = malloc (a->numPoints * (sizeof *(a->array)))) == NULL) {
-        fprintf (stderr,
-                 "Unable to allocate memory for point array. Exiting\n");
-        exit (EXIT_FAILURE);
-    }
 
     p = newPoint ();
     pmin = newPoint ();
@@ -718,6 +716,12 @@ newAttractor (int order, int dimension, int convergenceIterations,
     a->convergenceIterations = convergenceIterations;
     a->numPoints = numPoints;
 
+    if ((a->array = malloc (a->numPoints * (sizeof *(a->array)))) == NULL) {
+        fprintf (stderr,
+                 "Unable to allocate memory for point array. Exiting\n");
+        exit (EXIT_FAILURE);
+    }
+
     return a;
 }
 
@@ -755,17 +759,20 @@ void
 usage (char *prog_name, FILE * stream)
 {
     fprintf (stream, "Usage: %s\n", prog_name);
-    fprintf (stream, "\t--code [string]\n");
-    fprintf (stream, "\t--conviter [int] (%d)\n", DEFAULT_ITER);
-    fprintf (stream, "\t--dimension [2|3] (%d)\n", DEFAULT_DIM);
-    fprintf (stream, "\t--fullscreen [int] (false)\n");
-    fprintf (stream, "\t--geometry [int]x[int] (%dx%d)\n", DEFAULT_W,
+    fprintf (stream, "\t--code or -C [string]\n");
+    fprintf (stream, "\t--conviter or -c [int] (%d)\n", DEFAULT_ITER);
+    fprintf (stream, "\t--dimension or -d [2|3] (%d)\n", DEFAULT_DIM);
+    fprintf (stream, "\t--fullscreen or -f [int] (false)\n");
+    fprintf (stream, "\t--geometry  or -g [int]x[int] (%dx%d)\n", DEFAULT_W,
              DEFAULT_H);
-    fprintf (stream, "\t--help\n");
-    fprintf (stream, "\t--info\n");
-    fprintf (stream, "\t--npoints [int] (%d)\n", DEFAULT_POINTS);
-    fprintf (stream, "\t--order [int] (%d)\n", DEFAULT_ORDER);
-    fprintf (stream, "\t--version\n");
+    fprintf (stream, "\t--help or -h\n");
+    fprintf (stream, "\t--info or -i\n");
+    fprintf (stream, "\t--increment or -I [float] (%0+.4f)\n",
+             DEFAULT_INCREMENT);
+    fprintf (stream, "\t--npoints or -n [int] (%d)\n", DEFAULT_POINTS);
+    fprintf (stream, "\t--order or -o [int] (%d)\n", DEFAULT_ORDER);
+    fprintf (stream, "\t--speed or -s [int] (%d)\n", DEFAULT_SPEED);
+    fprintf (stream, "\t--version or -v\n");
 }
 
 int
@@ -804,6 +811,7 @@ parse_options (int argc, char **argv)
             {"geometry", required_argument, 0, 'g'},
             {"help", no_argument, 0, 'h'},
             {"info", no_argument, 0, 'i'},
+            {"increment", required_argument, 0, 'I'},
             {"npoints", required_argument, 0, 'n'},
             {"order", required_argument, 0, 'o'},
             {"speed", required_argument, 0, 's'},
@@ -813,7 +821,7 @@ parse_options (int argc, char **argv)
 
         /* getopt_long stores the option index here. */
         int option_index = 0;
-        c = getopt_long (argc, argv, "C:c:d:fg:hin:o:s:v", long_options,
+        c = getopt_long (argc, argv, "C:c:d:fg:hiI:n:o:s:v", long_options,
                          &option_index);
 
         /* Detect the end of the options. */
@@ -864,6 +872,16 @@ parse_options (int argc, char **argv)
 
         case 'i':
             dset.displayInfo = 1;
+            break;
+
+        case 'I':
+            dset.increment = strtof (optarg, NULL);
+            if (fabs (dset.increment > 1)) {
+                fprintf (stderr,
+                         "Increment probably way too high. Defaulting back to %f\n",
+                         DEFAULT_INCREMENT);
+                dset.increment = DEFAULT_INCREMENT;
+            }
             break;
 
         case 'n':
@@ -950,13 +968,29 @@ printw (float x, float y, char *format, ...)
 void
 drawInfo ()
 {
+    int i, j;
+    char *s;
+
     glColor4f (1.0f, 1.0f, 0.0f, 1.0f);
     glDisable (GL_LIGHTING);
 
     printw (20, 30, "fps : %4.2f", dset.fps);
-    printw (20, 55, "Code: %s", at[frontBuffer]->code);
-    printw (20, 80, "Speed: %d degrees/s", dset.speed);
-    printw (20, 105, "Angle: %d", (int) floor (dset.angle) % 360);
+    printw (20, 50, "Speed: %d degrees/s", dset.speed);
+    printw (20, 70, "Angle: %d", (int) floor (dset.angle) % 360);
+
+    if ((s = malloc (3 + (at[frontBuffer]->polynom->length) * 8 + 1)) != NULL) {
+        s[0] = '[';
+        s[1] = ' ';
+        s[3 + (at[frontBuffer]->polynom->length) * 8] = '\0';
+        for (i = 0; i < fset.dimension; i++) {
+            for (j = 0; j < at[frontBuffer]->polynom->length; j++)
+                sprintf (s + 2 + j * 8, "%+0.4f ",
+                         at[frontBuffer]->polynom->p[i][j]);
+            s[3 + (at[frontBuffer]->polynom->length) * 8 - 1] = ']';
+            printw (20, 90 + 20 * i, "%s", s);
+        }
+        free (s);
+    }
 }
 
 void
@@ -1183,27 +1217,13 @@ swapBuffers (void)
 void
 setClosePolynom (struct attractor *a, struct polynom *p2)
 {
-    int i;
     int place = rand () % (fset.dimension * p2->length);
     int coord = place / p2->length;
     int expon = place % p2->length;
     int dir;
 
-    for (i = 0; i < lc; i++) {
-        if (a->code[3 + place] == codelist[i])
-            break;
-    }
-    if (i == lc) {
-        dir = -1;
-    }
-    else if (i == 0) {
-        dir = 1;
-    }
-    else {
-        dir = (rand () % 2) ? -1 : 1;
-    }
-    a->code[3 + place] = codelist[i + dir];
-    a->polynom->p[coord][expon] += dir * 0.01;
+    dir = (rand () % 2) ? -1 : 1;
+    a->polynom->p[coord][expon] += dir * dset.increment;
 }
 
 void
@@ -1222,9 +1242,9 @@ backgroundCompute (void)
     // OK is now using a polynom close to its sibling. And it is converging - time to do the full calculation
     if (a->array != NULL) {
         for (i = 0; i < a->numPoints; i++) {
-            free (a->array[i]);
+            if (a->array[i] != NULL)
+                free (a->array[i]);
         }
-        free (a->array);
     }
 
     iterateMap (a);
