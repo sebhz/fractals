@@ -12,7 +12,7 @@ $(TARGET): $(OBJS)
 
 LDFLAGS = -lglut -lGLU -lGL
 windows : CPPFLAGS += -D__MINGW__ -D__USE_MINGW_ANSI_STDIO
-windows : LDFLAGS = -lmingw32 -lopengl32 -lglu32 -lglut32
+windows : LDFLAGS = -lmingw32 -lopengl32 -lglu32 -lglut32 -lpthread
 windows : $(TARGET)
 
 indent: $(SRC) $(INC)

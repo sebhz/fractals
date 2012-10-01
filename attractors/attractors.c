@@ -145,6 +145,7 @@ static struct display_settings dset = {
 static struct attractor *at[2];
 static int frontBuffer = 0;
 static int threadRunning = 0;
+static pthread_t ph;
 
 GLvoid *font_style = GLUT_BITMAP_9_BY_15;
 
@@ -1233,11 +1234,16 @@ setClosePolynom (struct attractor *a, struct polynom *p2)
     a->polynom->p[coord][expon] += dir * dset.increment;
 }
 
-void
-backgroundCompute (void)
+static void *
+backgroundCompute (void *v)
 {
     struct attractor *a = at[1 - frontBuffer];
     int i;
+
+    /* Under windows, random is working strangely with threads */
+#ifdef __MINGW__
+    srand (time (NULL));
+#endif
     do {
         copyPolynom (a, at[frontBuffer]->polynom);
         strncpy (a->code, at[frontBuffer]->code,
@@ -1261,6 +1267,8 @@ backgroundCompute (void)
 
     // Need to protect this with a mutex - should have been set to 1 elsewhere
     threadRunning = 0;
+
+    return NULL;
 }
 
 void
@@ -1273,7 +1281,7 @@ idle (void)
         // Looks like something is ready for us in the backbuffer
         threadRunning = 1;
         // Relaunch background thread here
-        backgroundCompute ();
+        pthread_create (&ph, NULL, backgroundCompute, NULL);
         swapBuffers ();
     }
     animateAttractor ();
@@ -1302,9 +1310,9 @@ animate (int argc, char **argv)
         glutFullScreen ();
 
     initDisplay ();
-    threadRunning = 0;
+    threadRunning = 1;
     /* TODO - launch the initial background thread here - right before drawing starts */
-    //backgroundCompute();
+    pthread_create (&ph, NULL, backgroundCompute, NULL);
     glutMainLoop ();
 }
 
