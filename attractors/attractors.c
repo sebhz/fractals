@@ -67,6 +67,7 @@ struct polynom
     double **p;
     int length;
     int order;
+    double sum;
 };
 
 struct attractor
@@ -555,6 +556,20 @@ iterateMap (struct attractor *a)
     a->bound[1] = pmax;
 }
 
+double
+getPolynomSum (struct polynom *p)
+{
+    int i, j;
+    double sum = 0.0;
+
+    for (i = 0; i < fset.dimension; i++) {
+        for (j = 0; j < p->length; j++) {
+            sum += p->p[i][j];
+        }
+    }
+    return sum;
+}
+
 void
 applyCode (struct polynom *p, char *code)
 {
@@ -689,8 +704,8 @@ newAttractor (int order, int dimension, int convergenceIterations,
         exit (EXIT_FAILURE);
     }
 
+    a->polynom->sum = 0;
     a->polynom->order = order;
-
     a->polynom->length = getPolynomLength (dimension, order);
     for (i = 0; i < dimension; i++) {
         if ((a->polynom->p[i] =
@@ -741,6 +756,8 @@ computeAttractor (struct attractor *a, char *code)
         if (!isAttractorConverging (a))
             fprintf (stderr, "Bad code - attractor not converging\n");
     }
+
+    a->polynom->sum = getPolynomSum (a->polynom);
 
     displayPolynom (a->polynom);
     fprintf (stdout, "Lyapunov exponent: %.6f\n", a->lyapunov->ly);
@@ -999,6 +1016,9 @@ drawInfo ()
         }
         free (s);
     }
+    y += 20;
+    printw (20, y, "<%f>", at[frontBuffer]->polynom->sum);
+
 }
 
 void
@@ -1210,6 +1230,7 @@ copyPolynom (struct attractor *a, struct polynom *p2)
             a->polynom->p[i][j] = p2->p[i][j];
         }
     }
+    a->polynom->sum = p2->sum;
 }
 
 void
@@ -1222,6 +1243,7 @@ setClosePolynom (struct attractor *a, struct polynom *p2)
 
     dir = (rand () % 2) ? -1 : 1;
     a->polynom->p[coord][expon] += dir * dset.increment;
+    a->polynom->sum += dir * dset.increment;
 }
 
 static void *
