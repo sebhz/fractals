@@ -144,7 +144,7 @@ static struct display_settings dset = {
 
 static struct attractor *at[2];
 static int frontBuffer = 0;
-static int threadRunning = 0;
+static volatile int threadRunning = 0;
 static pthread_t ph;
 
 GLvoid *font_style = GLUT_BITMAP_9_BY_15;
@@ -1237,36 +1237,41 @@ setClosePolynom (struct attractor *a, struct polynom *p2)
 static void *
 backgroundCompute (void *v)
 {
-    struct attractor *a = at[1 - frontBuffer];
+    struct attractor *a;
     int i;
 
     /* Under windows, random is working strangely with threads */
 #ifdef __MINGW__
     srand (time (NULL));
 #endif
-    do {
-        copyPolynom (a, at[frontBuffer]->polynom);
-        strncpy (a->code, at[frontBuffer]->code,
-                 a->polynom->length * a->dimension + 3);
-        setClosePolynom (a, at[frontBuffer]->polynom);
-    }
-    while (!isAttractorConverging (a));
 
-    // OK is now using a polynom close to its sibling. And it is converging - time to do the full calculation
-    if (a->array != NULL) {
-        for (i = 0; i < a->numPoints; i++) {
-            if (a->array[i] != NULL)
-                free (a->array[i]);
+    while (1) {
+        a = at[1 - frontBuffer];
+        do {
+            copyPolynom (a, at[frontBuffer]->polynom);
+            strncpy (a->code, at[frontBuffer]->code,
+                     a->polynom->length * a->dimension + 3);
+            setClosePolynom (a, at[frontBuffer]->polynom);
         }
+        while (!isAttractorConverging (a));
+
+        // OK is now using a polynom close to its sibling. And it is converging - time to do the full calculation
+        if (a->array != NULL) {
+            for (i = 0; i < a->numPoints; i++) {
+                if (a->array[i] != NULL)
+                    free (a->array[i]);
+            }
+        }
+
+        iterateMap (a);
+        // Do some housekeeping
+        a->r = getRadius (a);
+        centerAttractor (a);
+
+        // Need to protect this with a mutex - should have been set to 1 elsewhere
+        threadRunning = 0;
+        while (threadRunning == 0);
     }
-
-    iterateMap (a);
-    // Do some housekeeping
-    a->r = getRadius (a);
-    centerAttractor (a);
-
-    // Need to protect this with a mutex - should have been set to 1 elsewhere
-    threadRunning = 0;
 
     return NULL;
 }
@@ -1279,10 +1284,8 @@ idle (void)
     // TODO Protect this with a mutex
     if (threadRunning == 0) {
         // Looks like something is ready for us in the backbuffer
-        threadRunning = 1;
-        // Relaunch background thread here
-        pthread_create (&ph, NULL, backgroundCompute, NULL);
         swapBuffers ();
+        threadRunning = 1;
     }
     animateAttractor ();
     computeFPS ();
@@ -1311,7 +1314,6 @@ animate (int argc, char **argv)
 
     initDisplay ();
     threadRunning = 1;
-    /* TODO - launch the initial background thread here - right before drawing starts */
     pthread_create (&ph, NULL, backgroundCompute, NULL);
     glutMainLoop ();
 }
@@ -1342,5 +1344,6 @@ main (int argc, char **argv)
 
     animate (argc, argv);
     freeAttractor (at[frontBuffer]);
+    freeAttractor (at[1 - frontBuffer]);
     return EXIT_SUCCESS;
 }
