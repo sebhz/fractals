@@ -1213,16 +1213,6 @@ copyPolynom (struct attractor *a, struct polynom *p2)
 }
 
 void
-swapBuffers (void)
-{
-    struct attractor *tmp;
-
-    tmp = at[frontBuffer];
-    at[frontBuffer] = at[1 - frontBuffer];
-    at[1 - frontBuffer] = tmp;
-}
-
-void
 setClosePolynom (struct attractor *a, struct polynom *p2)
 {
     int place = rand () % (fset.dimension * p2->length);
@@ -1262,17 +1252,15 @@ backgroundCompute (void *v)
                     free (a->array[i]);
             }
         }
-
         iterateMap (a);
-        // Do some housekeeping
         a->r = getRadius (a);
         centerAttractor (a);
 
-        // Need to protect this with a mutex - should have been set to 1 elsewhere
+        // TODO protect this with a mutex
         threadRunning = 0;
         while (threadRunning == 0);
     }
-
+    /* To please the compiler */
     return NULL;
 }
 
@@ -1282,10 +1270,10 @@ idle (void)
     dset.currentTime = glutGet (GLUT_ELAPSED_TIME);
 
     // TODO Protect this with a mutex
+    /* Thread is waiting -> calculation done in the backbuffer */
     if (threadRunning == 0) {
-        // Looks like something is ready for us in the backbuffer
-        swapBuffers ();
-        threadRunning = 1;
+        frontBuffer = 1 - frontBuffer;  /* Swap the buffers */
+        threadRunning = 1;      /* Relaunch thread to compute next attractor in the series */
     }
     animateAttractor ();
     computeFPS ();
