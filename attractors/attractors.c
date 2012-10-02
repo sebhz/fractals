@@ -147,6 +147,7 @@ static struct attractor *at[2];
 static int frontBuffer = 0;
 static volatile int threadRunning = 0;
 static pthread_t ph;
+static pthread_mutex_t mt = PTHREAD_MUTEX_INITIALIZER;
 
 GLvoid *font_style = GLUT_BITMAP_9_BY_15;
 
@@ -1278,8 +1279,9 @@ backgroundCompute (void *v)
         a->r = getRadius (a);
         centerAttractor (a);
 
-        // TODO protect this with a mutex
+        pthread_mutex_lock (&mt);
         threadRunning = 0;
+        pthread_mutex_unlock (&mt);
         while (threadRunning == 0);
     }
     /* To please the compiler */
@@ -1291,11 +1293,12 @@ idle (void)
 {
     dset.currentTime = glutGet (GLUT_ELAPSED_TIME);
 
-    // TODO Protect this with a mutex
     /* Thread is waiting -> calculation done in the backbuffer */
     if (threadRunning == 0) {
+        pthread_mutex_lock (&mt);
         frontBuffer = 1 - frontBuffer;  /* Swap the buffers */
         threadRunning = 1;      /* Relaunch thread to compute next attractor in the series */
+        pthread_mutex_unlock (&mt);
     }
     animateAttractor ();
     computeFPS ();
