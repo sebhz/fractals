@@ -3,8 +3,9 @@ TAR=tar
 INDENT=indent 
 CFLAGS=-Wall -O3
 LDFLAGS=-lm
-OBJS=attractors.o
-SRC=attractors.c
+OBJS=attractors.o util.o main.o args.o display.o
+SRC=attractors.c util.c main.c args.c display.c
+INC=util.h global.h display.h args.h attractors.h
 TARGET=attractors
 
 $(TARGET): $(OBJS)
