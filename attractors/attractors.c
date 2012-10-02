@@ -46,7 +46,8 @@
 #define NUM_CONVERGENCE_POINTS 128
 #define AT_INFINITY 1000000
 #define LYAPU_DELTA 0.000001
-
+#define MAX_ITER 1000
+#define MAX_DIVERGENCE 1.5
 /* Looks like minGW defines min and max macros somewhere */
 #ifndef __MINGW__
 #define min(x, y) (x)<(y)?(x):(y)
@@ -108,6 +109,7 @@ struct display_settings
     unsigned long int old_y;
     float increment;
     int currentTime;
+    double divergence;
 };
 
 const char *WINDOW_TITLE = "Strange Attractors";
@@ -140,7 +142,8 @@ static struct display_settings dset = {
     .old_h = DEFAULT_H,
     .old_w = DEFAULT_W,
     .currentTime = 0,
-    .increment = DEFAULT_INCREMENT
+    .increment = DEFAULT_INCREMENT,
+    .divergence = 0
 };
 
 static struct attractor *at[2];
@@ -1018,7 +1021,7 @@ drawInfo ()
         free (s);
     }
     y += 20;
-    printw (20, y, "<%f>", at[frontBuffer]->polynom->sum);
+    printw (20, y, "Divergence :%f", dset.divergence);
 
 }
 
@@ -1235,14 +1238,12 @@ copyPolynom (struct attractor *a, struct polynom *p2)
 }
 
 void
-setClosePolynom (struct attractor *a, struct polynom *p2)
+setClosePolynom (struct attractor *a, struct polynom *p2, int dir)
 {
     int place = rand () % (fset.dimension * p2->length);
     int coord = place / p2->length;
     int expon = place % p2->length;
-    int dir;
 
-    dir = (rand () % 2) ? -1 : 1;
     a->polynom->p[coord][expon] += dir * dset.increment;
     a->polynom->sum += dir * dset.increment;
 }
@@ -1251,8 +1252,11 @@ static void *
 backgroundCompute (void *v)
 {
     struct attractor *a;
-    int i;
+    int i, dir, iter;
+    double baseSum = AT_INFINITY;
 
+    dir = -1;
+    iter = 0;
     /* Under windows, random is working strangely with threads */
 #ifdef __MINGW__
     srand (time (NULL));
@@ -1264,7 +1268,15 @@ backgroundCompute (void *v)
             copyPolynom (a, at[frontBuffer]->polynom);
             strncpy (a->code, at[frontBuffer]->code,
                      a->polynom->length * a->dimension + 3);
-            setClosePolynom (a, at[frontBuffer]->polynom);
+            setClosePolynom (a, at[frontBuffer]->polynom, dir);
+            iter++;
+            dset.divergence = fabs (baseSum - a->polynom->sum);
+            if (baseSum == AT_INFINITY || iter > MAX_ITER
+                || dset.divergence > MAX_DIVERGENCE) {
+                baseSum = a->polynom->sum;
+                dir = -dir;
+                iter = 0;
+            }
         }
         while (!isAttractorConverging (a));
 
