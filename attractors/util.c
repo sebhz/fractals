@@ -117,43 +117,30 @@ _middle (point a, point b)
 static point
 fastEval (point p, struct polynom *polynom)
 {                               /* For polynoms of order 2 */
+    int i;
     point pe = newPoint ();
     GLfloat x2 = p[0] * p[0];
     GLfloat y2 = p[1] * p[1];
     GLfloat xy = p[0] * p[1];
 
     if (fset.dimension == 2) {
-        pe[0] =
-            polynom->p[0][0] + polynom->p[0][1] * p[0] +
-            polynom->p[0][2] * p[1] + polynom->p[0][3] * x2 +
-            polynom->p[0][4] * y2 + polynom->p[0][5] * xy;
-        pe[1] =
-            polynom->p[1][0] + polynom->p[1][1] * p[0] +
-            polynom->p[1][2] * p[1] + polynom->p[1][3] * x2 +
-            polynom->p[1][4] * y2 + polynom->p[1][5] * xy;
+        for (i = 0; i < 2; i++)
+            pe[i] =
+                polynom->p[i][0] + polynom->p[i][1] * p[0] +
+                polynom->p[i][2] * p[1] + polynom->p[i][3] * x2 +
+                polynom->p[i][4] * y2 + polynom->p[i][5] * xy;
     }
     else {
         GLfloat z2 = p[2] * p[2];
         GLfloat xz = p[0] * p[2];
         GLfloat yz = p[1] * p[2];
-        pe[0] =
-            polynom->p[0][0] + polynom->p[0][1] * p[0] +
-            polynom->p[0][2] * p[1] + polynom->p[0][3] * p[2] +
-            polynom->p[0][4] * x2 + polynom->p[0][5] * y2 +
-            polynom->p[0][6] * z2 + polynom->p[0][7] * xy +
-            polynom->p[0][8] * xz + polynom->p[0][9] * yz;
-        pe[1] =
-            polynom->p[1][0] + polynom->p[1][1] * p[0] +
-            polynom->p[1][2] * p[1] + polynom->p[1][3] * p[2] +
-            polynom->p[1][4] * x2 + polynom->p[1][5] * y2 +
-            polynom->p[1][6] * z2 + polynom->p[1][7] * xy +
-            polynom->p[1][8] * xz + polynom->p[1][9] * yz;
-        pe[2] =
-            polynom->p[2][0] + polynom->p[2][1] * p[0] +
-            polynom->p[2][2] * p[1] + polynom->p[2][3] * p[2] +
-            polynom->p[2][4] * x2 + polynom->p[2][5] * y2 +
-            polynom->p[2][6] * z2 + polynom->p[2][7] * xy +
-            polynom->p[2][8] * xz + polynom->p[2][9] * yz;
+        for (i = 0; i < 3; i++)
+            pe[i] =
+                polynom->p[i][0] + polynom->p[i][1] * p[0] +
+                polynom->p[i][2] * p[1] + polynom->p[i][3] * p[2] +
+                polynom->p[i][4] * x2 + polynom->p[i][5] * y2 +
+                polynom->p[i][6] * z2 + polynom->p[i][7] * xy +
+                polynom->p[i][8] * xz + polynom->p[i][9] * yz;
     }
     return pe;
 }
