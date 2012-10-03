@@ -118,21 +118,16 @@ isAttractorConverging (struct attractor *at)
 }
 
 inline int
-factorial (n)
-{
-    int r = 1, i;
-
-    for (i = 1; i <= n; i++) {
-        r *= i;
-    }
-
-    return r;
-}
-
-inline int
 getPolynomLength (int dim, int order)
 {
-    return factorial (order + dim) / factorial (order) / factorial (dim);
+    int i, a = 1;
+    /* (order + dim)! / order! / dim ! */
+    for (i = order + 1; i <= order + dim; i++)
+        a *= i;
+    if (dim == 2)
+        return a / 2;
+    else
+        return a / 6;
 }
 
 void
