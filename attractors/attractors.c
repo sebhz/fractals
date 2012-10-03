@@ -13,7 +13,6 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
- * fps display code heavily inspired from http://mycodelog.com/2010/04/16/fps/
  * Attractor generation algorithm taken from J. Sprott book "Strange Attractors" (http://sprott.physics.wisc.edu/sa.htm)
  */
 #include <stdio.h>
