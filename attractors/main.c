@@ -40,11 +40,6 @@ int frontBuffer = 0;
 int
 main (int argc, char **argv)
 {
-#ifdef __MINGW__
-    freopen ("CON", "w", stdout);
-    freopen ("CON", "w", stderr);
-#endif
-
     srand (time (NULL));
     parseOptions (argc, argv);
     if (fset.code != NULL && !checkCode (fset.code)) {
