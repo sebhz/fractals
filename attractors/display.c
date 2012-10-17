@@ -17,6 +17,8 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
 #include <math.h>
 #include <time.h>
 #include <sys/time.h>
@@ -69,7 +71,13 @@ printw (float x, float y, char *format, ...)
     int viewport[4];
 
     va_start (args, format);
+
+#ifdef __MINGW__
     len = _vscprintf (format, args) + 1;
+#else
+    len = vsnprintf (NULL, 0, format, args) + 1;
+#endif
+
     if ((text = (char *) malloc (len * sizeof (char))) == NULL)
         return;
     vsnprintf (text, len, format, args);
