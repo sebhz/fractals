@@ -92,10 +92,12 @@ isAttractorConverging (struct attractor *at)
         pnew = eval (p, at->polynom);
 
         if (_abs (pnew) > AT_INFINITY) {        /* Diverging - not an SA */
+	    free(p);
             break;
         }
         point ptmp = _sub (pnew, p);
         if (_abs (ptmp) < 1 / AT_INFINITY) {    /* Fixed point - not an SA */
+	    free(p);
             free (ptmp);
             break;
         }
@@ -104,6 +106,7 @@ isAttractorConverging (struct attractor *at)
         free (pe);
         pe = ptmp;
         if (at->lyapunov->ly < 0.005 && i >= NUM_CONVERGENCE_POINTS) {  /* Limit cycle - not an SA */
+	    free(p);
             break;
         }
         free (p);
@@ -214,7 +217,7 @@ explore (struct attractor *a)
 void
 iterateMap (struct attractor *a)
 {
-    point p, pnew, pmin, pmax, ptmp;
+    point p, pnew, pmin, pmax, ptmp, ptofree[NUM_CONVERGENCE_POINTS];
     int i, j;
 
 
@@ -228,18 +231,26 @@ iterateMap (struct attractor *a)
         pmax[i] = -AT_INFINITY;
     }
 
-    for (i = 0; i < a->numPoints; i++) {
-        pnew = eval (p, a->polynom);
-        p = pnew;
-        if (i >= NUM_CONVERGENCE_POINTS) {
-            a->array[i - NUM_CONVERGENCE_POINTS] = pnew;
-            for (j = 0; j < fset.dimension; j++) {
-                pmin[j] = min (p[j], pmin[j]);
-                pmax[j] = max (p[j], pmax[j]);
-            }
-        }
+    for (i = 0; i < NUM_CONVERGENCE_POINTS; i++) {
+	ptofree[i] = eval (p, a->polynom);
+	p = ptofree[i];
+    }
+    for (i = 0; i < NUM_CONVERGENCE_POINTS-1; i++) {
+	free(ptofree[i]);
     }
     free (ptmp);
+    ptmp = p;
+
+    for (i = 0; i < a->numPoints-NUM_CONVERGENCE_POINTS; i++) {
+        pnew = eval (p, a->polynom);
+        a->array[i] = pnew;
+        p = pnew;
+        for (j = 0; j < fset.dimension; j++) {
+            pmin[j] = min (p[j], pmin[j]);
+            pmax[j] = max (p[j], pmax[j]);
+        }
+    }
+    free(ptmp);
     a->bound[0] = pmin;
     a->bound[1] = pmax;
 }
@@ -320,7 +331,7 @@ freeAttractor (struct attractor *at)
     int i;
 
     free (at->lyapunov);
-    for (i = 0; i < at->numPoints; i++) {
+    for (i = 0; i < (at->numPoints-NUM_CONVERGENCE_POINTS); i++) {
         free (at->array[i]);
     }
     free (at->array);
@@ -420,12 +431,11 @@ newAttractor (int order, int dimension, int convergenceIterations,
     a->convergenceIterations = convergenceIterations;
     a->numPoints = numPoints;
 
-    if ((a->array = malloc (a->numPoints * (sizeof *(a->array)))) == NULL) {
+    if ((a->array = malloc ((a->numPoints - NUM_CONVERGENCE_POINTS) * (sizeof *(a->array)))) == NULL) {
         fprintf (stderr,
                  "Unable to allocate memory for point array. Exiting\n");
         exit (EXIT_FAILURE);
     }
-
     return a;
 }
 
