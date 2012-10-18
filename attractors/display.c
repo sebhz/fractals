@@ -71,13 +71,7 @@ printw (float x, float y, char *format, ...)
     int viewport[4];
 
     va_start (args, format);
-
-#ifdef __MINGW__
-    len = _vscprintf (format, args) + 1;
-#else
     len = vsnprintf (NULL, 0, format, args) + 1;
-#endif
-
     if ((text = (char *) malloc (len * sizeof (char))) == NULL)
         return;
     vsnprintf (text, len, format, args);
