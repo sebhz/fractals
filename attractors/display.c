@@ -398,7 +398,7 @@ backgroundCompute (void *v)
 
         // OK is now using a polynom close to its sibling. And it is converging - time to do the full calculation
         if (a->array != NULL) {
-            for (i = 0; i < a->numPoints; i++) {
+            for (i = 0; i < a->numPoints - NUM_CONVERGENCE_POINTS; i++) {
                 if (a->array[i] != NULL)
                     free (a->array[i]);
             }
