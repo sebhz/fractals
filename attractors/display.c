@@ -231,7 +231,7 @@ drawAttractor (void)
         glRotatef (dset.angle, 1.0, 1.0, 1.0);
     }
     glBegin (GL_POINTS);
-    for (i = 0; i < at[frontBuffer]->numPoints - NUM_CONVERGENCE_POINTS; i++) {
+    for (i = 0; i < at[frontBuffer]->numPoints; i++) {
         if (fset.dimension == 2)
             glVertex2dv (at[frontBuffer]->array[i]);
         else {
@@ -392,7 +392,7 @@ backgroundCompute (void *v)
 
         // OK is now using a polynom close to its sibling. And it is converging - time to do the full calculation
         if (a->array != NULL) {
-            for (i = 0; i < a->numPoints - NUM_CONVERGENCE_POINTS; i++) {
+            for (i = 0; i < a->numPoints; i++) {
                 if (a->array[i] != NULL)
                     free (a->array[i]);
             }

@@ -189,7 +189,7 @@ computeDimension (struct attractor *at)
         return -1;
     }
 
-    for (i = DIM_DEPTH; i < at->numPoints - NUM_CONVERGENCE_POINTS; i++) {
+    for (i = DIM_DEPTH; i < at->numPoints; i++) {
         j = i - DIM_IGNORE - (rand () % (DIM_DEPTH - DIM_IGNORE));
         d2 = euclidianDistance (at->array[i], at->array[j]);
         if (d2 < DIM_RADIUS1 * twod * d2max)
@@ -241,7 +241,7 @@ iterateMap (struct attractor *a)
     free (ptmp);
     ptmp = p;
 
-    for (i = 0; i < a->numPoints-NUM_CONVERGENCE_POINTS; i++) {
+    for (i = 0; i < a->numPoints; i++) {
         pnew = eval (p, a->polynom);
         a->array[i] = pnew;
         p = pnew;
@@ -331,7 +331,7 @@ freeAttractor (struct attractor *at)
     int i;
 
     free (at->lyapunov);
-    for (i = 0; i < (at->numPoints-NUM_CONVERGENCE_POINTS); i++) {
+    for (i = 0; i < at->numPoints; i++) {
         free (at->array[i]);
     }
     free (at->array);
@@ -356,7 +356,7 @@ centerAttractor (struct attractor *a)
     int i, j;
 
     point m = _middle (a->bound[0], a->bound[1]);
-    for (i = 0; i < a->numPoints - NUM_CONVERGENCE_POINTS; i++) {
+    for (i = 0; i < a->numPoints; i++) {
         for (j = 0; j < fset.dimension; j++) {
             a->array[i][j] -= m[j];
         }
@@ -429,9 +429,9 @@ newAttractor (int order, int dimension, int convergenceIterations,
         a->code[2] = '_';
     }
     a->convergenceIterations = convergenceIterations;
-    a->numPoints = numPoints;
+    a->numPoints = numPoints - NUM_CONVERGENCE_POINTS;
 
-    if ((a->array = malloc ((a->numPoints - NUM_CONVERGENCE_POINTS) * (sizeof *(a->array)))) == NULL) {
+    if ((a->array = malloc (a->numPoints * (sizeof *(a->array)))) == NULL) {
         fprintf (stderr,
                  "Unable to allocate memory for point array. Exiting\n");
         exit (EXIT_FAILURE);
