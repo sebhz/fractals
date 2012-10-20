@@ -71,12 +71,12 @@ printw (float x, float y, char *format, ...)
     int viewport[4];
 
     va_start (args, format);
-	va_copy (args2, args);
+    va_copy (args2, args);
     len = vsnprintf (NULL, 0, format, args) + 1;
     if ((text = (char *) malloc (len * sizeof (char))) == NULL)
         return;
     vsnprintf (text, len, format, args2);
-	va_end (args2);
+    va_end (args2);
     va_end (args);
 
     glGetIntegerv (GL_VIEWPORT, viewport);

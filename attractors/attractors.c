@@ -92,12 +92,12 @@ isAttractorConverging (struct attractor *at)
         pnew = eval (p, at->polynom);
 
         if (_abs (pnew) > AT_INFINITY) {        /* Diverging - not an SA */
-	    free(p);
+            free (p);
             break;
         }
         point ptmp = _sub (pnew, p);
         if (_abs (ptmp) < 1 / AT_INFINITY) {    /* Fixed point - not an SA */
-	    free(p);
+            free (p);
             free (ptmp);
             break;
         }
@@ -106,7 +106,7 @@ isAttractorConverging (struct attractor *at)
         free (pe);
         pe = ptmp;
         if (at->lyapunov->ly < 0.005 && i >= NUM_CONVERGENCE_POINTS) {  /* Limit cycle - not an SA */
-	    free(p);
+            free (p);
             break;
         }
         free (p);
@@ -232,11 +232,11 @@ iterateMap (struct attractor *a)
     }
 
     for (i = 0; i < NUM_CONVERGENCE_POINTS; i++) {
-	ptofree[i] = eval (p, a->polynom);
-	p = ptofree[i];
+        ptofree[i] = eval (p, a->polynom);
+        p = ptofree[i];
     }
-    for (i = 0; i < NUM_CONVERGENCE_POINTS-1; i++) {
-	free(ptofree[i]);
+    for (i = 0; i < NUM_CONVERGENCE_POINTS - 1; i++) {
+        free (ptofree[i]);
     }
     free (ptmp);
     ptmp = p;
@@ -250,7 +250,7 @@ iterateMap (struct attractor *a)
             pmax[j] = max (p[j], pmax[j]);
         }
     }
-    free(ptmp);
+    free (ptmp);
     a->bound[0] = pmin;
     a->bound[1] = pmax;
 }
