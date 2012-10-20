@@ -402,12 +402,13 @@ backgroundCompute (void *v)
         while (!isAttractorConverging (a));
 
         // OK is now using a polynom close to its sibling. And it is converging - time to do the full calculation
-        if (a->array != NULL) {
-            for (i = 0; i < a->numPoints; i++) {
-                if (a->array[i] != NULL)
-                    free (a->array[i]);
-            }
+        for (i = 0; i < a->numPoints; i++) {
+            free (a->array[i]);
         }
+        for (i = 0; i < 2; i++) {
+            free (a->bound[i]);
+        }
+
         iterateMap (a);
         a->r = getRadius (a);
         centerAttractor (a);
