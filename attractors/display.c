@@ -72,18 +72,24 @@ printw (float x, float y, int v, char *format, ...)
     va_start (args, format);
     va_copy (args2, args);
     len = vsnprintf (NULL, 0, format, args) + 1;
-    if ((text = (char *) malloc (len * sizeof (char))) == NULL)
-        return;
+    if (len == -1)
+        goto cleanup;
+    if ((text = malloc (len * (sizeof *text))) == NULL)
+        goto cleanup;
     vsnprintf (text, len, format, args2);
-    va_end (args2);
-    va_end (args);
+    if (len == -1) {
+        free (text);
+        goto cleanup;
+    }
 
     glRasterPos2f (x, v - y);
-
     for (i = 0; i < len - 1; i++)
         glutBitmapCharacter (font_style, text[i]);
 
     free (text);
+  cleanup:
+    va_end (args2);
+    va_end (args);
 }
 
 void
