@@ -332,14 +332,14 @@ computeFPS (void)
     static int frameCount = 0;
     static int previousTime = 0;
 
-    frameCount++;
-    int timeInterval = dset.currentTime - previousTime;
-    if (frameCount == 1) {
+    if (previousTime == 0) {
         previousTime = dset.currentTime;
         return;
     }
+    frameCount++;
+    int timeInterval = dset.currentTime - previousTime;
     if (timeInterval > 1000) {
-        dset.fps = (frameCount - 1) / (timeInterval / 1000.0f);
+        dset.fps = frameCount / (timeInterval / 1000.0f);
         previousTime = dset.currentTime;
         frameCount = 0;
     }
