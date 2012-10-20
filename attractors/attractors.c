@@ -206,12 +206,9 @@ computeDimension (struct attractor *at)
 void
 explore (struct attractor *a)
 {
-    while (1) {
+    do
         getRandom (a);
-        if (isAttractorConverging (a)) {
-            break;
-        }
-    }
+    while (!isAttractorConverging (a));
 }
 
 void
