@@ -64,17 +64,19 @@ GLvoid *const font_style = GLUT_BITMAP_9_BY_15;
 void
 printw (float x, float y, char *format, ...)
 {
-    va_list args;
+    va_list args, args2;
     int len;
     int i;
     char *text;
     int viewport[4];
 
     va_start (args, format);
+	va_copy (args2, args);
     len = vsnprintf (NULL, 0, format, args) + 1;
     if ((text = (char *) malloc (len * sizeof (char))) == NULL)
         return;
-    vsnprintf (text, len, format, args);
+    vsnprintf (text, len, format, args2);
+	va_end (args2);
     va_end (args);
 
     glGetIntegerv (GL_VIEWPORT, viewport);
