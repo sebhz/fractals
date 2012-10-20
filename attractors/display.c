@@ -183,21 +183,45 @@ positionLight ()
 }
 
 void
+centerProjection (w, h)
+{
+    const float margin = 1.05;
+    GLdouble aRadius = at[frontBuffer]->r * margin;
+    GLdouble ar = (GLdouble) w / (GLdouble) h;
+
+    glMatrixMode (GL_PROJECTION);
+    glLoadIdentity ();
+
+    if (ar < 1.0) {
+        glOrtho (-aRadius, aRadius,
+                 -aRadius / ar, aRadius / ar, -aRadius, aRadius);
+    }
+    else {
+        glOrtho (-aRadius * ar, aRadius * ar,
+                 -aRadius, aRadius, -aRadius, aRadius);
+    }
+
+    glMatrixMode (GL_MODELVIEW);
+    glLoadIdentity ();
+
+}
+
+void
+centerDisplay ()
+{
+    int viewport[4];
+    glGetIntegerv (GL_VIEWPORT, viewport);
+    centerProjection (viewport[2], viewport[3]);
+}
+
+void
 initDisplay ()
 {
     glClearColor (0.0f, 0.0f, 0.0f, 1.0f);
     glColor4f (1.0f, 1.0f, 1.0f, COLOR_ALPHA);
     glViewport (0, 0, dset.old_w, dset.old_h);
 
-    glMatrixMode (GL_PROJECTION);
-    glLoadIdentity ();
-
-    /* Add 2% to move the clipping planes a bit further */
-    glOrtho (-at[frontBuffer]->r, at[frontBuffer]->r, -at[frontBuffer]->r,
-             at[frontBuffer]->r, -at[frontBuffer]->r, at[frontBuffer]->r);
-
-    glMatrixMode (GL_MODELVIEW);
-    glLoadIdentity ();
+    centerDisplay ();
 
     if (fset.dimension == 2) {
         glEnable (GL_BLEND);
@@ -264,32 +288,6 @@ display ()
     glutSwapBuffers ();
 }
 
-/* Keep aspect ratio */
-void
-reshape (int w, int h)
-{
-    GLdouble ar;
-
-    glViewport (0, 0, w, h);
-    ar = (GLdouble) w / (GLdouble) h;
-
-    glMatrixMode (GL_PROJECTION);
-    glLoadIdentity ();
-
-    if (ar < 1.0) {
-        glOrtho (-at[frontBuffer]->r, at[frontBuffer]->r,
-                 -at[frontBuffer]->r / ar, at[frontBuffer]->r / ar,
-                 -at[frontBuffer]->r, at[frontBuffer]->r);
-    }
-    else {
-        glOrtho (-at[frontBuffer]->r * ar, at[frontBuffer]->r * ar,
-                 -at[frontBuffer]->r, at[frontBuffer]->r, -at[frontBuffer]->r,
-                 at[frontBuffer]->r);
-    }
-    glMatrixMode (GL_MODELVIEW);
-    glLoadIdentity ();
-}
-
 void
 toggleFullscreen (void)
 {
@@ -343,6 +341,13 @@ computeFPS (void)
         previousTime = dset.currentTime;
         frameCount = 0;
     }
+}
+
+void
+reshape (int w, int h)
+{
+    glViewport (0, 0, w, h);
+    centerProjection (w, h);
 }
 
 void
@@ -433,6 +438,7 @@ idle (void)
         frontBuffer = 1 - frontBuffer;  /* Swap the buffers */
         threadRunning = 1;      /* Relaunch thread to compute next attractor in the series */
         pthread_mutex_unlock (&mt);
+        centerDisplay ();       /* We want the attractor to keep centered */
     }
     animateAttractor ();
     computeFPS ();
