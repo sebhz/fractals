@@ -62,13 +62,12 @@ static pthread_mutex_t mt = PTHREAD_MUTEX_INITIALIZER;
 GLvoid *const font_style = GLUT_BITMAP_9_BY_15;
 
 void
-printw (float x, float y, char *format, ...)
+printw (float x, float y, int v, char *format, ...)
 {
     va_list args, args2;
     int len;
     int i;
     char *text;
-    int viewport[4];
 
     va_start (args, format);
     va_copy (args2, args);
@@ -79,22 +78,10 @@ printw (float x, float y, char *format, ...)
     va_end (args2);
     va_end (args);
 
-    glGetIntegerv (GL_VIEWPORT, viewport);
-    glMatrixMode (GL_PROJECTION);
-    glPushMatrix ();
-    glLoadIdentity ();
-    glOrtho (viewport[0], viewport[2], viewport[1], viewport[3], -1, 1);
-    glMatrixMode (GL_MODELVIEW);
-    glLoadIdentity ();
-    glRasterPos2f (x, viewport[3] - y);
+    glRasterPos2f (x, v - y);
 
     for (i = 0; i < len - 1; i++)
         glutBitmapCharacter (font_style, text[i]);
-
-    glMatrixMode (GL_PROJECTION);
-    glPopMatrix ();
-    glMatrixMode (GL_MODELVIEW);
-    glPopMatrix ();
 
     free (text);
 }
@@ -104,19 +91,30 @@ drawInfo ()
 {
     int i, j, y = 30;
     char *s;
+    int viewport[4];
 
     glColor4f (1.0f, 1.0f, 0.0f, 1.0f);
     glDisable (GL_LIGHTING);
 
-    printw (20, y, "fps : %4.2f", dset.fps);
+    glGetIntegerv (GL_VIEWPORT, viewport);
+    glMatrixMode (GL_PROJECTION);
+    glPushMatrix ();
+    glLoadIdentity ();
+    glOrtho (viewport[0], viewport[2], viewport[1], viewport[3], -1, 1);
+    glMatrixMode (GL_MODELVIEW);
+    glLoadIdentity ();
+
+    printw (20, y, viewport[3], "fps : %4.2f", dset.fps);
     if (dset.speed != 0) {
         y += 20;
-        printw (20, y, "Speed: %d degrees/s", dset.speed);
+        printw (20, y, viewport[3], "Speed: %d degrees/s", dset.speed);
         y += 20;
-        printw (20, y, "Angle: %d", (int) floor (dset.angle) % 360);
+        printw (20, y, viewport[3], "Angle: %d",
+                (int) floor (dset.angle) % 360);
     }
     y += 20;
-    printw (20, y, "Lyapunov exponent: %f", at[frontBuffer]->lyapunov->ly);
+    printw (20, y, viewport[3], "Lyapunov exponent: %f",
+            at[frontBuffer]->lyapunov->ly);
 
     if ((s = malloc (3 + (at[frontBuffer]->polynom->length) * 8 + 1)) != NULL) {
         s[0] = '[';
@@ -128,12 +126,17 @@ drawInfo ()
                          at[frontBuffer]->polynom->p[i][j]);
             s[3 + (at[frontBuffer]->polynom->length) * 8 - 1] = ']';
             y += 20;
-            printw (20, y, "%s", s);
+            printw (20, y, viewport[3], "%s", s);
         }
         free (s);
     }
     y += 20;
-    printw (20, y, "Divergence :%f", dset.divergence);
+    printw (20, y, viewport[3], "Divergence :%f", dset.divergence);
+
+    glMatrixMode (GL_PROJECTION);
+    glPopMatrix ();
+    glMatrixMode (GL_MODELVIEW);
+    glPopMatrix ();
 
 }
 
