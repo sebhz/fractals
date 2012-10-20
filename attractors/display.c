@@ -76,8 +76,8 @@ printw (float x, float y, int v, char *format, ...)
         goto cleanup;
     if ((text = malloc (len * (sizeof *text))) == NULL)
         goto cleanup;
-    vsnprintf (text, len, format, args2);
-    if (len == -1) {
+
+    if (vsnprintf (text, len, format, args2) == -1) {
         free (text);
         goto cleanup;
     }
