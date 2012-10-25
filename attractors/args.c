@@ -23,7 +23,7 @@
 
 #include "global.h"
 
-#define VERSION_STRING "Polynomial strange attractors - version 1.0"
+#define VERSION_STRING "Polynomial strange attractors - version 2.0"
 
 extern struct fractal_settings fset;
 extern struct display_settings dset;
