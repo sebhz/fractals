@@ -9,9 +9,10 @@
 import random
 import math
 import argparse
+import colorsys
 
 try:
-    import Image
+    from PIL import Image
 except:
     print "this program requires the PIL module"
     print "available at http://www.pythonware.com/library/pil"
@@ -141,6 +142,8 @@ class polynomialAttractor(object):
 			print "Either this is a very slowly diverging attractor, or you used a wrong code"
 			return None
 
+		# Append the x father as extra coordinate, for colorization
+		l.append(p[0])
 		return l
 
 	def computeLyapunov(self, p, pe):
@@ -251,23 +254,38 @@ class polynomialAttractor(object):
 
 		self.fdim = math.log10(n2/n1)
 
-def w_to_s(wc, sc, p):
-	x, y = p
+# Project point on windows coordinate, and compute its color based on
+# its parent x coordinate
+# sc: screen bound (0,0,800,600)
+# wc: attractor bound (x0,y0, x1, y1)
+# p: point in the attractor (x, y, xfather)
+# bounds: bounds of the attractor
+# Returns a triplet (x, y, color)
+def w_to_s(wc, sc, p, bounds):
+	x, y, c = p
 
 	if x < wc[0] or x > wc[2] or y < wc[1] or y > wc[3]:
 		return None
 	
+	# Move c in the [0,1] range
+	c = (c-bounds[0])/(bounds[2]-bounds[0])
+    
+	cc = toRGB(*[int(255*z) for z in colorsys.hsv_to_rgb(c, 0.7, 1.0)])
+
 	return ( int(sc[0] + (x-wc[0])/(wc[2]-wc[0])*(sc[2]-sc[0])), 
-			 int(sc[1] + (sc[3]-sc[1])- (y-wc[1])/(wc[3]-wc[1])*(sc[3]-sc[1])) )
+			 int(sc[1] + (sc[3]-sc[1])- (y-wc[1])/(wc[3]-wc[1])*(sc[3]-sc[1])),
+			 cc)
 
 # Enlarge window_c so that it has the same aspect ratio as screen_c 
+# sc: screen bound (0,0,800,600)
+# wc: attractor bound (x0,y0, x1, y1)
 def scaleRatio(wc, sc):
 	# Enlarge window by 5% in both directions
 	hoff = (wc[3]-wc[1])*0.025
 	woff = (wc[2]-wc[0])*0.025
 	nwc  = (wc[0]-woff, wc[1]-hoff, wc[2]+woff, wc[3]+hoff)
 	
-	wa = float(nwc[3]-nwc[1])/float(nwc[2]-nwc[0]) #New window aspect ratio
+	wa = float(nwc[3]-nwc[1])/float(nwc[2]-nwc[0]) # New window aspect ratio
 	sa = float(sc[3]-sc[1])/float(sc[2]-sc[0]) # Screen aspect ratio
 	r = sa/wa
 	
@@ -283,69 +301,26 @@ def scaleRatio(wc, sc):
 def toRGB(r, g, b):
 	return b*65536 + g*256 + r
 
-def colorizeAttractor(lc):
-	d = dict()
-
-	# Number of time a pixel is redrawn
-	for p in lc:
-		if d.has_key(p):
-			d[p] = d[p]+1
-		else:
-			d[p] = 1
-
-	# Now convert this to an histogram of the image...
-	h = [0]*(max(d.values())+1)
-	for v in d.values():
-		h[v] += 1
-
-	# Equalize histogram:
-	# First compute the cumulative distribution function
-	cdf = [0]*len(h)
-	for i in range(1, len(cdf)):
-		cdf[i] = cdf[i-1]+h[i]
-
-	# Then use the equalizing formula (http://en.wikipedia.org/wiki/Histogram_equalization)
-	b = 2**8-1
-	m  = cdf[i]
-	mm = cdf[1]
-	equalize = lambda x: int(math.floor(b*(cdf[x] - mm)/(m-mm)))
-	h[1:]  = [equalize(x) for x in range(1, len(h))]
-
-	# Move back the equalized/normalized values into the original dict, after lookup
-	# Create a color gradient
-	cg = createColorGradient((10, 10, 10), (255, 255, 255), b+1)
-	for k, v in d.iteritems():
-		d[k] = cg[h[v]]
-
-	return d
-
-def createColorGradient(start_color, end_color, length):
-	l = list()
-
-	step    = [float(e-s)/(length-1) for e, s in zip(end_color, start_color)]
-	for i in range(length):
-		r, g, b = [int(start + i*s) for start, s in zip(start_color, step)]
-		l.append(toRGB(r, g, b))
-
-	return l
-
-def projectPoint(pt, *direction):
-	return (pt[0], pt[1]) #Ignore Z for now
+def projectPoint(pt, dim, *direction):
+	return (pt[0], pt[1], pt[dim]) # Ignore Z for now
 
 # Creates an image and fill it with an array of RGB values
-def createImage(wc, sc, l):
+# sc: screen bound (0,0,800,600)
+# wc: window containing attractor bound (x0,y0, x1, y1)
+# bounds: attractor bounds (xx0, yy0, xx1, yy1)
+def createImage(wc, sc, l, dim, bounds):
 	w = sc[2]-sc[0]
 	h = sc[3]-sc[1]
 	size = w*h
+
+	# Black pixels in all the window
 	cv = [toRGB(0, 0, 0)]*size
 
 	im = Image.new("RGB", (w, h), None)
-	lc = [w_to_s(wc, sc, projectPoint(pt)) for pt in l]
-	d  = colorizeAttractor(lc)
+	lc = [w_to_s(wc, sc, projectPoint(pt, dim), bounds) for pt in l]
 	
-	for pt,v in d.iteritems():
-		xi, yi = projectPoint(pt)
-		cv[yi*w + xi] = v
+	for pt in lc:
+		cv[pt[1]*w + pt[0]] = pt[2]
 
 	im.putdata(cv) 
 	return im
@@ -355,12 +330,13 @@ def projectBound(at):
 		return (at.bound[0][0], at.bound[0][0], at.bound[1][0], at.bound[1][0])
 	elif at.opt['dim'] == 2:
 		return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
-	elif at.opt['dim'] == 3: #For now, ignore the Z part
+	elif at.opt['dim'] == 3: # For now, ignore the Z part
 		return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
 
 def renderAttractor(at, screen_c):
-	window_c = scaleRatio(projectBound(at), screen_c)
-	im = createImage(window_c, screen_c, l)
+	b = projectBound(at)
+	window_c = scaleRatio(b, screen_c)
+	im = createImage(window_c, screen_c, l, at.opt['dim'], b)
 	return im
 
 def parseArgs():
