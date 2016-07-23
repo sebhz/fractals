@@ -18,6 +18,16 @@ except:
     print "available at https://github.com/drj11/pypng"
     raise SystemExit
 
+defaultParameters = {
+	'bpc': 8,
+	'dim': 2,
+	'depth': 5,
+	'iter': 65536,
+	'geometry': "800x600",
+	'number': 16,
+	'order': 2
+}
+
 class polynom(object):
 	def __init__(self, a):
 		self.a = a
@@ -50,31 +60,33 @@ class polynomialAttractor(object):
 		else:
 			self.opt = dict()
 
+		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
+		self.fdim      = 0
+		self.bound     = None	# Parameters not in the code first
+
 		if not 'init' in self.opt:
 			self.init = [self.initVal]*self.opt['dim']
 
 		if not 'iter' in self.opt:
-			self.opt['iter'] = 4096
+			self.opt['iter'] = defaultParameters['iter']
 
-		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
-		self.fdim      = 0
-		self.bound     = None
-
+	# Then derive other parameters from code if a code is supplied
 		if 'code' in self.opt and self.opt['code']:
 			self.code = self.opt['code']
 			self.decodeCode()
 			return
 
+	# If no code supplied parse options qnd derive the parameters from there
 		if not 'dim' in self.opt:
-			self.opt['dim'] = 2
-		
+			self.opt['dim'] = defaultParameters['dim']
+
 		if not 'depth' in self.opt:
-			self.opt['depth'] = 5
+			self.opt['depth'] = defaultParameters['depth']
 
 		if 'order' in self.opt:
 			self.order = self.opt['order']
 		else:
-			self.order = 2 # Quadratic by default
+			self.order = defaultParameters['order'] # Quadratic by default
 
 		if not 'coef' in self.opt:
 			self.coef   = None
@@ -86,7 +98,7 @@ class polynomialAttractor(object):
 			self.derive = polynom(self.coef[0]).derive()
 			self.code   = self.createCode()
 			self.pl     = len(self.coef[0])
-			# Need to override order here, or throw an error if not coherent
+			# TODO: override order here, or throw an error if not coherent
 
 	def __str__(self):
 		return self.code
@@ -270,14 +282,14 @@ def w_to_s(wc, sc, p, bounds):
 	# Move c in the [0,1] range
 	c = (c-bounds[0])/(bounds[2]-bounds[0])
     
-	cc = [int(32767*z) for z in colorsys.hsv_to_rgb(c, 0.8, 1.0)]
+	cc = [int((1<<(args.bpc-3)-1)*z) for z in colorsys.hsv_to_rgb(c, 0.8, 1.0)]
 
 	return ( int(sc[0] + (x-wc[0])/(wc[2]-wc[0])*(sc[2]-sc[0])), 
 			 int(sc[1] + (sc[3]-sc[1])- (y-wc[1])/(wc[3]-wc[1])*(sc[3]-sc[1])),
 			 cc)
 
 # Enlarge window_c so that it has the same aspect ratio as screen_c 
-# sc: screen bound (0,0,800,600)
+# sc: screen bound e.g. (0,0,800,600)
 # wc: attractor bound (x0,y0, x1, y1)
 def scaleRatio(wc, sc):
 	# Enlarge window by 5% in both directions
@@ -302,7 +314,7 @@ def projectPoint(pt, dim, *direction):
 	return (pt[0], pt[1], pt[dim]) # Ignore Z for now
 
 # Creates an image array and fill it with an array of RGB values
-# sc: screen bound (0,0,800,600)
+# sc: screen bound e.g. (0,0,800,600)
 # wc: window containing attractor bound (x0,y0, x1, y1)
 # l : attractor points (list of x, y, [z], x_parent)
 # bounds: attractor bounds (xx0, yy0, xx1, yy1)
@@ -320,7 +332,7 @@ def createImageArray(wc, sc, l, dim, bounds):
 		offset = 3*(pt[1]*w + pt[0])
 		for o in range(3):
 			cv[offset+o] += pt[2][o]
-			cv[offset+o] = cv[offset+o]%0xFFFF
+			if cv[offset+o] >= (1 << args.bpc): cv[offset+o] = (1 << args.bpc) - 1
  
 	return cv
 
@@ -340,13 +352,14 @@ def renderAttractor(at, l, screen_c):
 
 def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
+	parser.add_argument('-b', '--bpc', help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=(8, 16))
 	parser.add_argument('-c', '--code', help='attractor code')
-	parser.add_argument('-d', '--dimension', help='attractor dimension', default=2, type=int, choices=range(1,4))
-	parser.add_argument('-D', '--depth',     help='attractor depth (for 1D only)', default=5, type=int)
-	parser.add_argument('-g', '--geometry',  help='image geometry (XxY form)', default='800x600')
-	parser.add_argument('-i', '--iter',      help='attractor number of iterations', default=480000, type=int)
-	parser.add_argument('-n', '--number',    help='number of attractors to generate', default=16, type=int)
-	parser.add_argument('-o', '--order',     help='attractor order', default=2, type=int)
+	parser.add_argument('-d', '--dimension', help='attractor dimension (defaut = %d)' % defaultParameters['dim'], default=defaultParameters['dim'], type=int, choices=range(1,4))
+	parser.add_argument('-D', '--depth',     help='attractor depth (for 1D only - default = %d)' % defaultParameters['depth'], default=defaultParameters['depth'], type=int)
+	parser.add_argument('-g', '--geometry',  help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
+	parser.add_argument('-i', '--iter',      help='attractor number of iterations (default = %d)' % defaultParameters['iter'], default=defaultParameters['iter'], type=int)
+	parser.add_argument('-n', '--number',    help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
+	parser.add_argument('-o', '--order',     help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
 	parser.add_argument('-q', '--quiet',     help='shut up !', action='store_true', default=False)
 	args = parser.parse_args()
 	return args
@@ -374,11 +387,11 @@ while True: # args.number = 0 -> infinite loop
 		n += 1
 		if n == args.number or args.code: break
 		continue
-	if not args.quiet: print at
+	if not args.quiet: print at, at.lyapunov['ly']
 	a = renderAttractor(at, l, screen_c)
-	w = png.Writer(size=(int(g[0]), int(g[1])), bitdepth=16)
+	w = png.Writer(size=(int(g[0]), int(g[1])), bitdepth=args.bpc)
 	aa = w.array_scanlines(a)
-	f = open("png/" + at.code + ".png", "wb")
+	f = open("png/" + at.code + "_" + str(args.bpc) + ".png", "wb")
 	w.write(f, aa)
 	n += 1
 	if n == args.number or args.code: break
