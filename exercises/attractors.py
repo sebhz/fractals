@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# Generate and colorize various dimension strange attractors
+# Generate and colorize various dimension polynomial strange attractors
 # Algo taken from Julian Sprott's book: http://sprott.physics.wisc.edu/sa.htm
 # Some coloring ideas (histogram equalization, gradient mapping) taken from
 # Ian Whitham's blog
@@ -12,10 +12,10 @@ import argparse
 import colorsys
 
 try:
-    from PIL import Image
+    import png
 except:
-    print "this program requires the PIL module"
-    print "available at http://www.pythonware.com/library/pil"
+    print "this program requires the pyPNG module"
+    print "available at https://github.com/drj11/pypng"
     raise SystemExit
 
 class polynom(object):
@@ -270,7 +270,7 @@ def w_to_s(wc, sc, p, bounds):
 	# Move c in the [0,1] range
 	c = (c-bounds[0])/(bounds[2]-bounds[0])
     
-	cc = toRGB(*[int(255*z) for z in colorsys.hsv_to_rgb(c, 0.7, 1.0)])
+	cc = [int(32767*z) for z in colorsys.hsv_to_rgb(c, 0.8, 1.0)]
 
 	return ( int(sc[0] + (x-wc[0])/(wc[2]-wc[0])*(sc[2]-sc[0])), 
 			 int(sc[1] + (sc[3]-sc[1])- (y-wc[1])/(wc[3]-wc[1])*(sc[3]-sc[1])),
@@ -298,32 +298,31 @@ def scaleRatio(wc, sc):
 	
 	return wc
 
-def toRGB(r, g, b):
-	return b*65536 + g*256 + r
-
 def projectPoint(pt, dim, *direction):
 	return (pt[0], pt[1], pt[dim]) # Ignore Z for now
 
-# Creates an image and fill it with an array of RGB values
+# Creates an image array and fill it with an array of RGB values
 # sc: screen bound (0,0,800,600)
 # wc: window containing attractor bound (x0,y0, x1, y1)
+# l : attractor points (list of x, y, [z], x_parent)
 # bounds: attractor bounds (xx0, yy0, xx1, yy1)
-def createImage(wc, sc, l, dim, bounds):
+def createImageArray(wc, sc, l, dim, bounds):
 	w = sc[2]-sc[0]
 	h = sc[3]-sc[1]
-	size = w*h
+	size = w*h*3
 
 	# Black pixels in all the window
-	cv = [toRGB(0, 0, 0)]*size
+	cv = [0]*size
 
-	im = Image.new("RGB", (w, h), None)
 	lc = [w_to_s(wc, sc, projectPoint(pt, dim), bounds) for pt in l]
 	
 	for pt in lc:
-		cv[pt[1]*w + pt[0]] = pt[2]
-
-	im.putdata(cv) 
-	return im
+		offset = 3*(pt[1]*w + pt[0])
+		for o in range(3):
+			cv[offset+o] += pt[2][o]
+			cv[offset+o] = cv[offset+o]%0xFFFF
+ 
+	return cv
 
 def projectBound(at):
 	if at.opt['dim'] == 1:
@@ -333,11 +332,11 @@ def projectBound(at):
 	elif at.opt['dim'] == 3: # For now, ignore the Z part
 		return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
 
-def renderAttractor(at, screen_c):
+def renderAttractor(at, l, screen_c):
 	b = projectBound(at)
 	window_c = scaleRatio(b, screen_c)
-	im = createImage(window_c, screen_c, l, at.opt['dim'], b)
-	return im
+	a = createImageArray(window_c, screen_c, l, at.opt['dim'], b)
+	return a
 
 def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
@@ -354,7 +353,9 @@ def parseArgs():
 
 # ----------------------------- Main loop ----------------------------- #
 args = parseArgs()
-screen_c = [0, 0] + [int(x) for x in args.geometry.split('x')]
+g = args.geometry.split('x')
+screen_c = [0, 0] + [int(x) for x in g]
+
 random.seed()
 n = 0
 while True: # args.number = 0 -> infinite loop
@@ -374,7 +375,10 @@ while True: # args.number = 0 -> infinite loop
 		if n == args.number or args.code: break
 		continue
 	if not args.quiet: print at
-	im = renderAttractor(at, screen_c)
-	im.save("png/" + at.code + ".png", "PNG")
+	a = renderAttractor(at, l, screen_c)
+	w = png.Writer(size=(int(g[0]), int(g[1])), bitdepth=16)
+	aa = w.array_scanlines(a)
+	f = open("png/" + at.code + ".png", "wb")
+	w.write(f, aa)
 	n += 1
 	if n == args.number or args.code: break
