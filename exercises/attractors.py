@@ -166,13 +166,16 @@ class polynomialAttractor(object):
 	def computeLyapunov(self, p, pe):
 		if self.opt['dim'] == 1:
 			df = abs(self.derive(p[0]))
+			if df == 0:
+				print >> sys.stderr, "Unable to compute Lyapunov exponent, but trying to go on..."
+				return pe
 		else:
 			p2   = self.evalCoef(pe)
 			if not p2: return pe
 			dl   = [d-x for d,x in zip(p2, p)]
 			dl2  = reduce(lambda x,y: x*x + y*y, dl)
 			if dl2 == 0:
-				print "Unable to compute Lyapunov exponent, but trying to go on..."
+				print >> sys.stderr, "Unable to compute Lyapunov exponent, but trying to go on..."
 				return pe
 			df = 1000000000000*dl2
 			rs = 1/math.sqrt(df)
@@ -371,6 +374,7 @@ def projectBound(at):
 	elif at.opt['dim'] == 3: # For now, ignore the Z part
 		return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
 
+# Performs histogram equalization on the attractor pixels
 def equalizeAttractor(p):
 	if not args.greyscale: return
 
