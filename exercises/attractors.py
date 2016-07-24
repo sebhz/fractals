@@ -11,6 +11,7 @@ import math
 import argparse
 import colorsys
 import sys
+import os
 
 try:
     import png
@@ -443,9 +444,13 @@ while True: # args.number = 0 -> infinite loop
 		w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = True, bitdepth=args.bpc, interlace=True)
 	else:
 		w = png.Writer(size=(int(g[0]), int(g[1])), bitdepth=args.bpc, interlace=True)
-
 	aa = w.array_scanlines(a)
-	f = open("png/" + at.code + "_" + str(args.bpc) + "e" if args.equalize else "" + ".png", "wb")
-	w.write(f, aa)
+
+	suffix = str(args.bpc) + "e" if args.equalize else str(args.bpc)
+	filepath = os.path.join("png", at.code + "_" + suffix + ".png")
+
+	with open(filepath, "wb") as f:
+		w.write(f, aa)
+
 	n += 1
 	if n == args.number or args.code: break
