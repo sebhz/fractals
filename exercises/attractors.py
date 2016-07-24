@@ -10,6 +10,7 @@ import random
 import math
 import argparse
 import colorsys
+import sys
 
 try:
     import png
@@ -274,20 +275,14 @@ class polynomialAttractor(object):
 # p: point in the attractor (x, y, xfather)
 # bounds: bounds of the attractor
 # Returns a triplet (x, y, [R, G, B])
-def w_to_s(wc, sc, p, bounds):
-	x, y, c = p
+def w_to_s(wc, sc, p):
+	x, y = p
 
 	if x < wc[0] or x > wc[2] or y < wc[1] or y > wc[3]:
 		return None
 	
-	# Move c in the [0,1] range
-	c = (c-bounds[0])/(bounds[2]-bounds[0])
-    
-	cc = [int((1<<(args.bpc-3)-1)*z) for z in colorsys.hsv_to_rgb(c, 0.8, 1.0)]
-
-	return ( int(sc[0] + (x-wc[0])/(wc[2]-wc[0])*(sc[2]-sc[0])), 
-			 int(sc[1] + (sc[3]-sc[1])-(y-wc[1])/(wc[3]-wc[1])*(sc[3]-sc[1])),
-			 cc)
+	return ( (int(sc[0] + (x-wc[0])/(wc[2]-wc[0])*(sc[2]-sc[0])),
+			  int(sc[1] + (sc[3]-sc[1])-(y-wc[1])/(wc[3]-wc[1])*(sc[3]-sc[1])),) )
 
 # Enlarge window_c so that it has the same aspect ratio as screen_c 
 # sc: screen bound e.g. (0,0,800,600)
@@ -311,31 +306,56 @@ def scaleRatio(wc, sc):
 	
 	return wc
 
-def projectPoint(pt, dim, *direction):
-	return (pt[0], pt[1], pt[dim]) # Ignore Z for now
+def projectPoint(pt, *direction):
+	return (pt[0:2]) # Ignore Z and direction for now
 
-# Creates an image array and fill it with an array of RGB values
+# Project attractor to screen coordinates
 # sc: screen bound e.g. (0,0,800,600)
 # wc: window containing attractor bound (x0,y0, x1, y1)
 # l : attractor points (list of x, y, [z], x_parent)
 # bounds: attractor bounds (xx0, yy0, xx1, yy1)
-def createImageArray(wc, sc, l, dim, bounds):
+# Returns the attractor points: dict indexed by (X, Y) and containing COLOR, 
+# with X and Y in window coordinates and COLOR being either a grayscale value or an RGB triplet
+def projectAttractor(wc, sc, l, dim, bounds):
 	w = sc[2]-sc[0]
 	h = sc[3]-sc[1]
-	size = w*h*3
 
-	# Black pixels in all the window
-	cv = [0]*size
+	projectedAttractor = dict()
 
 	for pt in l:
-		projectedPixel = w_to_s(wc, sc, projectPoint(pt, dim), bounds)
-		offset = 3*(projectedPixel[1]*w + projectedPixel[0])
-		for o in range(3):
-			cv[offset+o] += projectedPixel[2][o]
-			if cv[offset+o] >= (1 << args.bpc):
-				cv[offset+o] = (1 << args.bpc) - 1
+		projectedPixel = w_to_s(wc, sc, projectPoint(pt))
+		# Move color in the [0,1] range
+		color = (pt[dim]-bounds[0])/(bounds[2]-bounds[0])
+		if args.grayscale:
+			cc = int((1<<(args.bpc-3)-1)*color)
+			if projectedPixel in projectedAttractor:
+				projectedAttractor[projectedPixel] = min((1<<args.bpc)-1, cc + projectedAttractor[projectedPixel])
+			else:
+				projectedAttractor[projectedPixel] = cc
+		else:
+			cc = [int((1<<(args.bpc-3)-1)*z) for z in colorsys.hsv_to_rgb(color, 0.8, 1.0)]
+			if projectedPixel in projectedAttractor:
+				projectedAttractor[projectedPixel] = [min((1<<args.bpc)-1,sum(v)) for v in zip (cc, projectedAttractor[projectedPixel])]
+			else:
+				projectedAttractor[projectedPixel] = cc
 
-	return cv
+	return projectedAttractor
+
+def createImageArray(p, sc):
+	w = sc[2]-sc[0]
+	h = sc[3]-sc[1]
+	a = [0]*w*h
+	if not args.grayscale:
+		a = 3*a
+
+	for c, v in p.iteritems():
+		offset = c[0] + c[1]*w
+		if args.grayscale:
+			a[offset] = v
+		else:
+			a[3*offset:3*offset+3] = v
+
+	return a
 
 def projectBound(at):
 	if at.opt['dim'] == 1:
@@ -345,24 +365,51 @@ def projectBound(at):
 	elif at.opt['dim'] == 3: # For now, ignore the Z part
 		return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
 
+def equalizeAttractor(p):
+	if not args.grayscale: return
+
+	pools = [0]*(1<<args.bpc)
+
+	# Create cumulative distribution
+	for v in p.itervalues():
+		pools[v] += 1
+	for i, v in enumerate(pools):
+		if i == 0: continue # strange... enumerate(pools[1:]) does not seem to work
+		pools[i] = pools[i] + pools[i-1]
+
+	# Stretch the values to the full range
+	for i, v in enumerate(pools):
+		pools[i] = ((1<<args.bpc)-1)*(pools[i]-pools[0])/(pools[-1]-pools[0])
+
+	# Now reapply the stretched values
+	for k in p:
+		p[k] = pools[p[k]]
+
 def renderAttractor(at, l, screen_c):
 	b = projectBound(at)
 	window_c = scaleRatio(b, screen_c)
-	a = createImageArray(window_c, screen_c, l, at.opt['dim'], b)
+	p = projectAttractor(window_c, screen_c, l, at.opt['dim'], b)
+	if args.equalize:
+		equalizeAttractor(p)
+	a = createImageArray(p, screen_c)
 	return a
 
 def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
-	parser.add_argument('-b', '--bpc', help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=(8, 16))
-	parser.add_argument('-c', '--code', help='attractor code')
+	parser.add_argument('-b', '--bpc',       help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=(8, 16))
+	parser.add_argument('-c', '--code',      help='attractor code')
 	parser.add_argument('-d', '--dimension', help='attractor dimension (defaut = %d)' % defaultParameters['dim'], default=defaultParameters['dim'], type=int, choices=range(1,4))
 	parser.add_argument('-D', '--depth',     help='attractor depth (for 1D only - default = %d)' % defaultParameters['depth'], default=defaultParameters['depth'], type=int)
+	parser.add_argument('-e', '--equalize',  help='perform histogram equalization on the attractor (default is not to equalize)', action='store_true', default=False)
 	parser.add_argument('-g', '--geometry',  help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
+	parser.add_argument('-G', '--grayscale', help='render attractor in grayscale (default is to colorize)', action='store_true', default=False)
 	parser.add_argument('-i', '--iter',      help='attractor number of iterations (default = %d)' % defaultParameters['iter'], default=defaultParameters['iter'], type=int)
 	parser.add_argument('-n', '--number',    help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
 	parser.add_argument('-o', '--order',     help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
 	parser.add_argument('-q', '--quiet',     help='shut up !', action='store_true', default=False)
 	args = parser.parse_args()
+	if args.equalize and not args.grayscale:
+		print >> sys.stderr, "Warning: histogram equalization is only relevant for greyscale images. No equalization will be performed."
 	return args
 
 # ----------------------------- Main loop ----------------------------- #
@@ -392,9 +439,13 @@ while True: # args.number = 0 -> infinite loop
 		print at, at.fdim, at.lyapunov['ly']
 
 	a = renderAttractor(at, l, screen_c)
-	w = png.Writer(size=(int(g[0]), int(g[1])), bitdepth=args.bpc, interlace=True)
+	if args.grayscale:
+		w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = True, bitdepth=args.bpc, interlace=True)
+	else:
+		w = png.Writer(size=(int(g[0]), int(g[1])), bitdepth=args.bpc, interlace=True)
+
 	aa = w.array_scanlines(a)
-	f = open("png/" + at.code + "_" + str(args.bpc) + ".png", "wb")
+	f = open("png/" + at.code + "_" + str(args.bpc) + "e" if args.equalize else "" + ".png", "wb")
 	w.write(f, aa)
 	n += 1
 	if n == args.number or args.code: break
