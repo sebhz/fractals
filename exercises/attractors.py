@@ -22,8 +22,8 @@ defaultParameters = {
 	'bpc': 8,
 	'dim': 2,
 	'depth': 5,
-	'iter': 65536,
-	'geometry': "800x600",
+	'iter': 2<<17,
+	'geometry': "1280x1024",
 	'number': 16,
 	'order': 2
 }
@@ -62,21 +62,22 @@ class polynomialAttractor(object):
 
 		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
 		self.fdim      = 0
-		self.bound     = None	# Parameters not in the code first
+		self.bound     = None
 
+		# Parameters not in the code first
 		if not 'init' in self.opt:
 			self.init = [self.initVal]*self.opt['dim']
 
 		if not 'iter' in self.opt:
 			self.opt['iter'] = defaultParameters['iter']
 
-	# Then derive other parameters from code if a code is supplied
+		# Then derive other parameters from code if a code is supplied
 		if 'code' in self.opt and self.opt['code']:
 			self.code = self.opt['code']
 			self.decodeCode()
 			return
 
-	# If no code supplied parse options qnd derive the parameters from there
+		# If no code supplied parse options qnd derive the parameters from there
 		if not 'dim' in self.opt:
 			self.opt['dim'] = defaultParameters['dim']
 
@@ -272,7 +273,7 @@ class polynomialAttractor(object):
 # wc: attractor bound (x0,y0, x1, y1)
 # p: point in the attractor (x, y, xfather)
 # bounds: bounds of the attractor
-# Returns a triplet (x, y, color)
+# Returns a triplet (x, y, [R, G, B])
 def w_to_s(wc, sc, p, bounds):
 	x, y, c = p
 
@@ -285,7 +286,7 @@ def w_to_s(wc, sc, p, bounds):
 	cc = [int((1<<(args.bpc-3)-1)*z) for z in colorsys.hsv_to_rgb(c, 0.8, 1.0)]
 
 	return ( int(sc[0] + (x-wc[0])/(wc[2]-wc[0])*(sc[2]-sc[0])), 
-			 int(sc[1] + (sc[3]-sc[1])- (y-wc[1])/(wc[3]-wc[1])*(sc[3]-sc[1])),
+			 int(sc[1] + (sc[3]-sc[1])-(y-wc[1])/(wc[3]-wc[1])*(sc[3]-sc[1])),
 			 cc)
 
 # Enlarge window_c so that it has the same aspect ratio as screen_c 
@@ -326,14 +327,14 @@ def createImageArray(wc, sc, l, dim, bounds):
 	# Black pixels in all the window
 	cv = [0]*size
 
-	lc = [w_to_s(wc, sc, projectPoint(pt, dim), bounds) for pt in l]
-	
-	for pt in lc:
-		offset = 3*(pt[1]*w + pt[0])
+	for pt in l:
+		projectedPixel = w_to_s(wc, sc, projectPoint(pt, dim), bounds)
+		offset = 3*(projectedPixel[1]*w + projectedPixel[0])
 		for o in range(3):
-			cv[offset+o] += pt[2][o]
-			if cv[offset+o] >= (1 << args.bpc): cv[offset+o] = (1 << args.bpc) - 1
- 
+			cv[offset+o] += projectedPixel[2][o]
+			if cv[offset+o] >= (1 << args.bpc):
+				cv[offset+o] = (1 << args.bpc) - 1
+
 	return cv
 
 def projectBound(at):
@@ -379,7 +380,7 @@ while True: # args.number = 0 -> infinite loop
 							  'code' : args.code })
 	if args.code:
 		if not at.checkConvergence():
-			print "Not an  attractor it seems... but trying to display it anyway."
+			print "Not an attractor it seems... but trying to display it anyway."
 	else:
 		at.explore()
 	l = at.iterateMap()
@@ -387,9 +388,11 @@ while True: # args.number = 0 -> infinite loop
 		n += 1
 		if n == args.number or args.code: break
 		continue
-	if not args.quiet: print at, at.lyapunov['ly']
+	if not args.quiet:
+		print at, at.fdim, at.lyapunov['ly']
+
 	a = renderAttractor(at, l, screen_c)
-	w = png.Writer(size=(int(g[0]), int(g[1])), bitdepth=args.bpc)
+	w = png.Writer(size=(int(g[0]), int(g[1])), bitdepth=args.bpc, interlace=True)
 	aa = w.array_scanlines(a)
 	f = open("png/" + at.code + "_" + str(args.bpc) + ".png", "wb")
 	w.write(f, aa)
