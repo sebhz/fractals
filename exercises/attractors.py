@@ -379,9 +379,8 @@ def equalizeAttractor(p):
 	# Create cumulative distribution
 	for v in p.itervalues():
 		pools[v] += 1
-	for i, v in enumerate(pools):
-		if i == 0: continue # strange... enumerate(pools[1:]) does not seem to work
-		pools[i] = pools[i] + pools[i-1]
+	for i, v in enumerate(pools[1:]):
+		pools[i+1] = pools[i+1] + pools[i]
 
 	# Stretch the values to the full range
 	for i, v in enumerate(pools):
