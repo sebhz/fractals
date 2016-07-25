@@ -26,7 +26,7 @@ defaultParameters = {
 	'bpc': 8,
 	'dim': 2,
 	'depth': 5,
-	'iter': 2<<17,
+	'iter': 1<<18,
 	'geometry': "1280x1024",
 	'number': 16,
 	'order': 2
@@ -332,7 +332,7 @@ def projectAttractor(wc, sc, l, dim, bounds):
 		projectedPixel = w_to_s(wc, sc, projectPoint(pt))
 		# Move color in the [0,1] range
 		color = (pt[dim]-bounds[0])/(bounds[2]-bounds[0])
-		if args.greyscale:
+		if args.render != "color":
 			cc = int((1<<(INTERNAL_BPC-3)-1)*color)
 			if projectedPixel in projectedAttractor:
 				projectedAttractor[projectedPixel] = min((1<<INTERNAL_BPC)-1, cc + projectedAttractor[projectedPixel])
@@ -352,14 +352,14 @@ def createImageArray(p, sc):
 	w = sc[2]-sc[0]
 	h = sc[3]-sc[1]
 	a = [0]*w*h
-	if not args.greyscale:
+	if args.render != "greyscale":
 		a = 3*a
 
 	shift = INTERNAL_BPC-args.bpc
 
 	for c, v in p.iteritems():
 		offset = c[0] + c[1]*w
-		if args.greyscale:
+		if args.render == "greyscale":
 			a[offset] = v >> shift
 		else:
 			a[3*offset:3*offset+3] = [x >> shift for x in v]
@@ -374,16 +374,23 @@ def projectBound(at):
 	elif at.opt['dim'] == 3: # For now, ignore the Z part
 		return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
 
+# Maps a color gradient to an attractor, using greyscale value as and index
+# Gradient is a table with INTERNAL_BPC indexes containing (R,G,B) tuples
+# p must be an attractor in greyscale with indexed colors
+def mapGradient(p, gradient):
+	for i in p:
+		p[i] = gradient[p[i]]
+
 # Performs histogram equalization on the attractor pixels
 def equalizeAttractor(p):
-	if not args.greyscale: return
+	if args.render == "color": return
 
 	pools = [0]*(1<<INTERNAL_BPC)
 
 	# Create cumulative distribution
 	for v in p.itervalues():
 		pools[v] += 1
-	for i, v in enumerate(pools[1:]):
+	for i in range(len(pools) - 1):
 		pools[i+1] = pools[i+1] + pools[i]
 
 	# Stretch the values to the full range
@@ -400,6 +407,8 @@ def renderAttractor(at, l, screen_c):
 	p = projectAttractor(window_c, screen_c, l, at.opt['dim'], b)
 	if args.equalize:
 		equalizeAttractor(p)
+	if args.render == "colormap":
+		mapGradient(p, None)
 	a = createImageArray(p, screen_c)
 	return a
 
@@ -411,14 +420,14 @@ def parseArgs():
 	parser.add_argument('-D', '--depth',     help='attractor depth (for 1D only - default = %d)' % defaultParameters['depth'], default=defaultParameters['depth'], type=int)
 	parser.add_argument('-e', '--equalize',  help='perform histogram equalization on the attractor (default is not to equalize)', action='store_true', default=False)
 	parser.add_argument('-g', '--geometry',  help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
-	parser.add_argument('-G', '--greyscale', help='render attractor in greyscale (default is to colorize)', action='store_true', default=False)
 	parser.add_argument('-i', '--iter',      help='attractor number of iterations (default = %d)' % defaultParameters['iter'], default=defaultParameters['iter'], type=int)
 	parser.add_argument('-n', '--number',    help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
 	parser.add_argument('-o', '--order',     help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
 	parser.add_argument('-q', '--quiet',     help='shut up !', action='store_true', default=False)
+	parser.add_argument('-r', '--render',    help='rendering mode (greyscale, color, colormap)', default = "color", type=str, choices=("greyscale", "color", "colormap"))
 	args = parser.parse_args()
-	if args.equalize and not args.greyscale:
-		print >> sys.stderr, "Warning: histogram equalization is only relevant for greyscale images. No equalization will be performed."
+	if args.equalize and args.render == "color":
+		print >> sys.stderr, "Warning: histogram equalization is only relevant for greyscale or colormap images. No equalization will be performed."
 	return args
 
 # ----------------------------- Main loop ----------------------------- #
@@ -448,7 +457,7 @@ while True: # args.number = 0 -> infinite loop
 		print at, at.fdim, at.lyapunov['ly']
 
 	a = renderAttractor(at, l, screen_c)
-	w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = args.greyscale, bitdepth=args.bpc, interlace=True)
+	w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = True if args.render == "greyscale" else False, bitdepth=args.bpc, interlace=True)
 	aa = w.array_scanlines(a)
 
 	suffix = str(args.bpc) + "e" if args.equalize else str(args.bpc)
