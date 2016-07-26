@@ -374,6 +374,29 @@ def projectBound(at):
 	elif at.opt['dim'] == 3: # For now, ignore the Z part
 		return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
 
+# Create a gradient map
+# gdef: gradient definition: a list of ((R0, G0, B0), (R1, G1, B1), offset)
+# with (R0, G0, B0) being starting color, (R1, G1, B1) being end color and
+# offset the percentage of the range. All numbers are between 0 and 1.
+# mode: either "RGB" or "HSV". If HSV, the start and end color are assumed to be HSV
+# Returns an array of (R, G, B) values, with R, G and B between 0 and (1<<INTERNAL_BPC)-1.
+# Length of the array is also 1<<INTERNAL_BPC since it will be indexed using this length.
+def createGradient(gdef, mode):
+	g = [0]*(1<<INTERNAL_BPC)
+	b_range = (1<<INTERNAL_BPC)-1
+
+	colorspaceConvert = lambda(x): colorsys.rgb_to_hsv(x) if mode == "HSV" else x
+
+	r = 0
+	for g_range in gdef:
+		end_index = int(g_range[2]*(b_range+1))
+		for i in range(0, end_index-r):
+			pixel = [int(b_range*(x[0] + (x[1]-x[0])*i/end_index)) for x in zip(colorspaceConvert(g_range[0]), colorspaceConvert(g_range[1]))]
+			g[i+r] = tuple(pixel)
+		r=end_index
+
+	return g
+
 # Maps a color gradient to an attractor, using greyscale value as and index
 # Gradient is a table with INTERNAL_BPC indexes containing (R,G,B) tuples
 # p must be an attractor in greyscale with indexed colors
@@ -408,7 +431,7 @@ def renderAttractor(at, l, screen_c):
 	if args.equalize:
 		equalizeAttractor(p)
 	if args.render == "colormap":
-		mapGradient(p, None)
+		mapGradient(p, GRADIENTS[0])
 	a = createImageArray(p, screen_c)
 	return a
 
@@ -434,6 +457,11 @@ def parseArgs():
 args = parseArgs()
 g = args.geometry.split('x')
 screen_c = [0, 0] + [int(x) for x in g]
+GRADIENTS = (
+	createGradient( ( ( (0.5, 0.0, 0.0), (0.0, 0.0, 1.0), 0.75 ),
+                      ( (0.0, 0.0, 1.0), (0.8, 0.9, 1.0), 1.00 ),
+                    ), "RGB" ),
+            )
 
 random.seed()
 n = 0
