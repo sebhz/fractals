@@ -116,7 +116,7 @@ class polynomialAttractor(object):
 
 		codelist = range(48,58) + range(65,91) + range(97,123)
 		d = dict([(codelist[i], i) for i in range(0, len(codelist))])
-		self.coef = [[(d[ord(_)]-30)*.08 for _ in self.code[3+__*self.pl:3+(__+1)*self.pl]] for __ in range(self.opt['dim'])]	
+		self.coef = [[(d[ord(_)]-30)*.08 for _ in self.code[3+__*self.pl:3+(__+1)*self.pl]] for __ in range(self.opt['dim'])]
 		self.derive = polynom(self.coef[0]).derive()
 
 	def createCode(self):
@@ -286,7 +286,7 @@ def w_to_s(wc, sc, p):
 
 	if x < wc[0] or x > wc[2] or y < wc[1] or y > wc[3]:
 		return None
-	
+
 	return ( (int(sc[0] + (x-wc[0])/(wc[2]-wc[0])*(sc[2]-sc[0])),
 			  int(sc[1] + (sc[3]-sc[1])-(y-wc[1])/(wc[3]-wc[1])*(sc[3]-sc[1])),) )
 
@@ -298,18 +298,18 @@ def scaleRatio(wc, sc):
 	hoff = (wc[3]-wc[1])*0.025
 	woff = (wc[2]-wc[0])*0.025
 	nwc  = (wc[0]-woff, wc[1]-hoff, wc[2]+woff, wc[3]+hoff)
-	
+
 	wa = float(nwc[3]-nwc[1])/float(nwc[2]-nwc[0]) # New window aspect ratio
 	sa = float(sc[3]-sc[1])/float(sc[2]-sc[0]) # Screen aspect ratio
 	r = sa/wa
-	
+
 	if wa < sa: # Enlarge window height to get the right AR - keep it centered vertically
 		yoff = (nwc[3]-nwc[1])*(r-1)/2
 		return (nwc[0], nwc[1]-yoff, nwc[2], nwc[3]+yoff)
 	elif wa > sa: # Enlarge window width to get the right AR - keep it centered horizontally
 		xoff = (nwc[2]-nwc[0])*(1/r-1)/2
 		return (nwc[0]-xoff, nwc[1], nwc[2]+xoff, nwc[3])
-	
+
 	return wc
 
 def projectPoint(pt, *direction):
