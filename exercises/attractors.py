@@ -327,19 +327,29 @@ def projectAttractor(wc, sc, l, dim, bounds):
 	h = sc[3]-sc[1]
 
 	projectedAttractor = dict()
+	# First compute maximum number of time a pixel is visited
+	for pt in l:
+		projectedPixel = w_to_s(wc, sc, projectPoint(pt))
+		if projectedPixel in projectedAttractor:
+			projectedAttractor[projectedPixel] += 1
+		else:
+			projectedAttractor[projectedPixel] = 1
+	scaleFactor = max(8, float(sum(projectedAttractor.values())/len(projectedAttractor.values())))
 
+	projectedAttractor = dict()
+	# Now perform the coloring based on parent position (for hue), and accumulating based on intensity
 	for pt in l:
 		projectedPixel = w_to_s(wc, sc, projectPoint(pt))
 		# Move color in the [0,1] range
 		color = (pt[dim]-bounds[0])/(bounds[2]-bounds[0])
 		if args.render != "color":
-			cc = int((1<<(INTERNAL_BPC-3)-1)*color)
+			cc = int((1<<INTERNAL_BPC)*color/(scaleFactor-1))
 			if projectedPixel in projectedAttractor:
 				projectedAttractor[projectedPixel] = min((1<<INTERNAL_BPC)-1, cc + projectedAttractor[projectedPixel])
 			else:
 				projectedAttractor[projectedPixel] = cc
 		else:
-			cc = [int((1<<(INTERNAL_BPC-3)-1)*z) for z in colorsys.hsv_to_rgb(color, 0.8, 1.0)]
+			cc = [int((1<<INTERNAL_BPC)*color/(scaleFactor-1)) for color in colorsys.hsv_to_rgb(color, 0.8, 1.0)]
 			if projectedPixel in projectedAttractor:
 				projectedAttractor[projectedPixel] = [min((1<<INTERNAL_BPC)-1,sum(v)) for v in zip (cc, projectedAttractor[projectedPixel])]
 			else:
