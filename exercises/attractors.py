@@ -29,7 +29,8 @@ defaultParameters = {
 	'iter': 1<<18,
 	'geometry': "1280x1024",
 	'number': 1,
-	'order': 2
+	'order': 2,
+	'outdir': "png",
 }
 
 class polynom(object):
@@ -456,6 +457,7 @@ def parseArgs():
 	parser.add_argument('-i', '--iter',      help='attractor number of iterations (default = %d)' % defaultParameters['iter'], default=defaultParameters['iter'], type=int)
 	parser.add_argument('-n', '--number',    help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
 	parser.add_argument('-o', '--order',     help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
+	parser.add_argument('-O', '--outdir',    help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
 	parser.add_argument('-q', '--quiet',     help='shut up !', action='store_true', default=False)
 	parser.add_argument('-r', '--render',    help='rendering mode (greyscale, color, colormap)', default = "color", type=str, choices=("greyscale", "color", "colormap"))
 	args = parser.parse_args()
@@ -499,7 +501,7 @@ while True: # args.number = 0 -> infinite loop
 	aa = w.array_scanlines(a)
 
 	suffix = str(args.bpc) + "e" if args.equalize else str(args.bpc)
-	filepath = os.path.join("png", at.code + "_" + suffix + ".png")
+	filepath = os.path.join(args.outdir, at.code + "_" + suffix + ".png")
 
 	with open(filepath, "wb") as f:
 		w.write(f, aa)
