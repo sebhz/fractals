@@ -28,7 +28,7 @@ defaultParameters = {
 	'depth': 5,
 	'iter': 1<<18,
 	'geometry': "1280x1024",
-	'number': 16,
+	'number': 1,
 	'order': 2
 }
 
