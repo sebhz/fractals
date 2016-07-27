@@ -3,7 +3,7 @@
 # Generate and colorize various dimension polynomial strange attractors
 # Algo taken from Julian Sprott's book: http://sprott.physics.wisc.edu/sa.htm
 # Some coloring ideas (histogram equalization, gradient mapping) taken from
-# Ian Whitham's blog
+# Ian Witham's blog
 # http://ianwitham.wordpress.com/category/graphics/strange-attractors-graphics/
 
 import random
