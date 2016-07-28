@@ -141,6 +141,13 @@ class polynomialAttractor(object):
 			n = 0
 			equation[v] = variables[v]+"="
 			for i in range(self.order+1):
+				if self.opt['dim'] == 1:
+					if c[n] == 0:
+						n+=1
+						continue
+					equation[v] += "%.3f*%s^%d+" % (c[n], variables[0], i)
+					n+=1
+					continue
 				for j in range(self.order-i+1):
 					if self.opt['dim'] == 2:
 						if c[n] == 0:
@@ -148,13 +155,14 @@ class polynomialAttractor(object):
 							continue
 						equation[v] += "%.3f*%s^%d*%s^%d+" % (c[n], variables[0], j, variables[1], i)
 						n += 1
-					elif self.opt['dim'] == 3:
+						continue
 						for k in range(self.order-i-j+1):
-							if c[n] == 0:
-								n+=1
-								continue
-							equation[v] += "%.3f*%s^%d*%s^%d*%s^d+" % (c[n], variables[0], k, variables[1], j, variables[2], i)
-							n += 1
+							if self.opt['dim'] == 3:
+								if c[n] == 0:
+									n+=1
+									continue
+								equation[v] += "%.3f*%s^%d*%s^%d*%s^d+" % (c[n], variables[0], k, variables[1], j, variables[2], i)
+								n += 1
 			# Some cleanup
 			for r in variables:
 				equation[v] = equation[v].replace("*%s^0" % (r), "")
@@ -531,7 +539,7 @@ while True: # args.number = 0 -> infinite loop
 		continue
 	if not args.quiet:
 		p = at.humanReadablePolynom(True)
-		print at, at.fdim, at.lyapunov['ly'], p[0], p[1]
+		print at, at.fdim, at.lyapunov['ly'], p[0], "" if args.dimension < 2 else p[1]
 
 	a = renderAttractor(at, l, screen_c)
 	w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = True if args.render == "greyscale" else False, bitdepth=args.bpc, interlace=True)
