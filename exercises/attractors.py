@@ -59,6 +59,8 @@ class polynomialAttractor(object):
 	dimTransient = 1024  # Ignore the first dimTransient points when computing dimension
 	dimDepth     = 500   # Use the dimDepth predecessors of each point to compute the dimension
 	dimIgnore    = 20    # but ignore dimIgnore predecessors (presumably too correlated)
+	codelist     = range(48,58) + range(65,91) + range(97,123)
+	codeStep     = .125
 
 	def __init__(self, *opt):
 		if opt:
@@ -83,7 +85,7 @@ class polynomialAttractor(object):
 			self.decodeCode()
 			return
 
-		# If no code supplied parse options qnd derive the parameters from there
+		# If no code supplied parse options and derive the parameters from there
 		if not 'dim' in self.opt:
 			self.opt['dim'] = defaultParameters['dim']
 
@@ -116,9 +118,8 @@ class polynomialAttractor(object):
 		if self.opt['dim'] == 1: self.opt['depth'] = int(self.code[2])
 		self.getPolynomLength()
 
-		codelist = range(48,58) + range(65,91) + range(97,123)
-		d = dict([(codelist[i], i) for i in range(0, len(codelist))])
-		self.coef = [[(d[ord(_)]-30)*.08 for _ in self.code[3+__*self.pl:3+(__+1)*self.pl]] for __ in range(self.opt['dim'])]
+		d = dict([(self.codelist[i], i) for i in range(0, len(self.codelist))])
+		self.coef = [[(d[ord(_)]-30)*self.codeStep for _ in self.code[3+__*self.pl:3+(__+1)*self.pl]] for __ in range(self.opt['dim'])]
 		self.derive = polynom(self.coef[0]).derive()
 
 	def createCode(self):
@@ -128,8 +129,7 @@ class polynomialAttractor(object):
 		else:
 			self.code += "_"
 		# ASCII codes of digits and letters
-		codelist = range(48,58) + range(65,91) + range(97,123)
-		c = [codelist[int(x/0.08+30)] for c in self.coef for x in c]
+		c = [self.codelist[int(x/self.codeStep)+30] for c in self.coef for x in c]
 		self.code +="".join(map(chr,c))
 
 	# Outputs a human readable string of the polynom. If isHTML is True
@@ -146,14 +146,14 @@ class polynomialAttractor(object):
 						if c[n] == 0:
 							n+=1
 							continue
-						equation[v] += "%.2f*%s^%d*%s^%d+" % (c[n], variables[0], j, variables[1], i)
+						equation[v] += "%.3f*%s^%d*%s^%d+" % (c[n], variables[0], j, variables[1], i)
 						n += 1
 					elif self.opt['dim'] == 3:
 						for k in range(self.order-i-j+1):
 							if c[n] == 0:
 								n+=1
 								continue
-							equation[v] += "%.2f*%s^%d*%s^%d*%s^d+" % (c[n], variables[0], k, variables[1], j, variables[2], i)
+							equation[v] += "%.3f*%s^%d*%s^%d*%s^d+" % (c[n], variables[0], k, variables[1], j, variables[2], i)
 							n += 1
 			# Some cleanup
 			for r in variables:
@@ -172,7 +172,7 @@ class polynomialAttractor(object):
 				  math.factorial(self.order)*math.factorial(self.opt['dim']))
 
 	def getRandom(self):
-		self.coef = [[random.randint(-30, 31)*0.08 for _ in range(0, self.pl)] for __ in range(self.opt['dim'])]
+		self.coef = [[random.randint(-30, 31)*self.codeStep for _ in range(0, self.pl)] for __ in range(self.opt['dim'])]
 		if self.opt['dim'] == 1: self.derive = polynom(self.coef[0]).derive()
 
 	def evalCoef(self, p):
