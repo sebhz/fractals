@@ -12,6 +12,7 @@ import argparse
 import colorsys
 import sys
 import os
+import re
 
 try:
     import png
@@ -100,7 +101,7 @@ class polynomialAttractor(object):
 			self.code   = None
 			self.getPolynomLength()
 		else:
-			self.coef = self.opt['coef']
+			self.coef   = self.opt['coef']
 			self.derive = polynom(self.coef[0]).derive()
 			self.code   = self.createCode()
 			self.pl     = len(self.coef[0])
@@ -130,6 +131,41 @@ class polynomialAttractor(object):
 		codelist = range(48,58) + range(65,91) + range(97,123)
 		c = [codelist[int(x/0.08+30)] for c in self.coef for x in c]
 		self.code +="".join(map(chr,c))
+
+	# Outputs a human readable string of the polynom. If isHTML is True
+	# outputs an HTML blurb of the equation. Else output a plain text.
+	def humanReadablePolynom(self, isHTML):
+		variables = ('x', 'y', 'z') # Limit ourselves to 3 dimensions for now
+		equation = [""]*self.opt['dim']
+		for v, c in enumerate(self.coef): # Iterate on each dimension
+			n = 0
+			equation[v] = variables[v]+"="
+			for i in range(self.order+1):
+				for j in range(self.order-i+1):
+					if self.opt['dim'] == 2:
+						if c[n] == 0:
+							n+=1
+							continue
+						equation[v] += "%.2f*%s^%d*%s^%d+" % (c[n], variables[0], j, variables[1], i)
+						n += 1
+					elif self.opt['dim'] == 3:
+						for k in range(self.order-i-j+1):
+							if c[n] == 0:
+								n+=1
+								continue
+							equation[v] += "%.2f*%s^%d*%s^%d*%s^d+" % (c[n], variables[0], k, variables[1], j, variables[2], i)
+							n += 1
+			# Some cleanup
+			for r in variables:
+				equation[v] = equation[v].replace("*%s^0" % (r), "")
+				equation[v] = equation[v].replace("*%s^1" % (r), "*%s" % (r))
+			equation[v] = equation[v].replace("+-", "-")
+			equation[v] = equation[v][:-1]
+
+			if isHTML: # Convert this in a nice HTML equation
+				equation[v] = re.sub(r'\^(\d+)',r'<sup>\1</sup>', equation[v])
+
+		return equation
 
 	def getPolynomLength(self):
 		self.pl = math.factorial(self.order+self.opt['dim'])/(
@@ -494,7 +530,7 @@ while True: # args.number = 0 -> infinite loop
 		if n == args.number or args.code: break
 		continue
 	if not args.quiet:
-		print at, at.fdim, at.lyapunov['ly']
+		print at, at.fdim, at.lyapunov['ly'], at.humanReadablePolynom(True)
 
 	a = renderAttractor(at, l, screen_c)
 	w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = True if args.render == "greyscale" else False, bitdepth=args.bpc, interlace=True)
