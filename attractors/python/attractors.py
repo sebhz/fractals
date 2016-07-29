@@ -353,45 +353,54 @@ def scaleRatio(wc, sc):
 
 	return wc
 
-# Project attractor to screen coordinates
+# Project attractor to screen coordinates and colorize it
 # sc: screen bound e.g. (0,0,800,600)
 # wc: window containing attractor bound (x0,y0, x1, y1)
-# l : attractor points (list of x, y, [z], x_parent)
+# attractor: attractor points (list of x, y, [z], x_parent)
+# dim: attractor dimension
 # bounds: attractor bounds (xx0, yy0, xx1, yy1)
 # Returns the attractor points: dict indexed by (X, Y) and containing COLOR, 
-# with X and Y in window coordinates and COLOR being either a greyscale value or an RGB triplet
-def projectAttractor(wc, sc, l, dim, bounds):
+def projectAttractor(wc, sc, attractor, dim, bounds):
 	w = sc[2]-sc[0]
 	h = sc[3]-sc[1]
 
-	projectedAttractor = dict()
-	# First compute maximum number of time a pixel is visited
-	for pt in l:
-		projectedPixel = w_to_s(wc, sc, pt[0:2])
-		if projectedPixel in projectedAttractor:
-			projectedAttractor[projectedPixel] += 1
-		else:
-			projectedAttractor[projectedPixel] = 1
-	scaleFactor = max(8, float(sum(projectedAttractor.values())/len(projectedAttractor.values())))
+	# Compute the histogram "a la Flame"
+	# Nested dict: histogram[(x,y)]['frequency'] and histogram[x][y]['color']
+	histogram=dict()
 
-	projectedAttractor = dict()
-	# Now perform the coloring based on parent position (for hue), and accumulating based on intensity
+	M = 0
 	for pt in l:
 		projectedPixel = w_to_s(wc, sc, pt[0:2])
 		# Move color in the [0,1] range
 		color = (pt[dim]-bounds[0])/(bounds[2]-bounds[0])
-		if args.render != "color":
-			cc = int((1<<INTERNAL_BPC)*color/(scaleFactor-1))
-			if projectedPixel in projectedAttractor:
-				projectedAttractor[projectedPixel] = min((1<<INTERNAL_BPC)-1, cc + projectedAttractor[projectedPixel])
-			else:
-				projectedAttractor[projectedPixel] = cc
+		if projectedPixel in histogram:
+			histogram[projectedPixel]['frequency'] += 1
+			histogram[projectedPixel]['color'] = (histogram[projectedPixel]['color'] + color)/2
 		else:
-			cc = [int((1<<INTERNAL_BPC)*color/(scaleFactor-1)) for color in colorsys.hsv_to_rgb(color, 0.8, 1.0)]
-			if projectedPixel in projectedAttractor:
-				projectedAttractor[projectedPixel] = [min((1<<INTERNAL_BPC)-1,sum(v)) for v in zip (cc, projectedAttractor[projectedPixel])]
-			else:
-				projectedAttractor[projectedPixel] = cc
+			histogram[projectedPixel] = dict()
+			histogram[projectedPixel]['frequency'] = 1
+			histogram[projectedPixel]['color'] = color
+		M = max(M, histogram[projectedPixel]['frequency'])
+
+	# TODO: Subsample here
+	pass
+
+	# Now equalize
+	lm = math.log(M)
+	gamma = 1.1
+	for v in histogram.values():
+		alpha = math.log(v['frequency'])/lm
+		v['color'] = (v['color']*alpha)**(1/gamma)
+		if v['color'] >= 1.0:
+			print ">>>", v['color'], alpha, gamma
+
+	# Now create the projected attractor
+	projectedAttractor = dict()
+	for k, v in histogram.iteritems():
+		if args.render == "color":
+			projectedAttractor[k] = [int(((1<<INTERNAL_BPC)-1)*color) for color in colorsys.hsv_to_rgb(v['color'], 0.8, 1.0)]
+		else:
+			projectedAttractor[k] =  int(((1<<INTERNAL_BPC)-1)*v['color'])
 
 	return projectedAttractor
 
