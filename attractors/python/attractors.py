@@ -362,6 +362,13 @@ def scaleRatio(wc, sc):
 # Returns the attractor points: dict indexed by (X, Y) and containing COLOR, 
 def projectAttractor(wc, sc, attractor, dim, bounds):
 
+	# Maps a color value in [0,1] interval to a RGB triplet
+	palette = [
+		lambda(x): colorsys.hsv_to_rgb(x,         0.8,          1.0),
+		lambda(x): colorsys.hsv_to_rgb(x/4,       0.8,          0.2 + x*0.79),
+		lambda(x): colorsys.hsv_to_rgb(1- x/4,    0.3 + x*0.69, 0.9),
+	]
+
 	# Compute the histogram "a la Flame"
 	# Nested dict: histogram[(x,y)]['frequency'] and histogram[x][y]['color']
 	histogram=dict()
@@ -373,7 +380,7 @@ def projectAttractor(wc, sc, attractor, dim, bounds):
 		color = (pt[dim]-bounds[0])/(bounds[2]-bounds[0])
 		if projectedPixel in histogram:
 			histogram[projectedPixel]['frequency'] += 1
-			histogram[projectedPixel]['color'] = (histogram[projectedPixel]['color'] + color)/2
+#			histogram[projectedPixel]['color'] = (histogram[projectedPixel]['color'] + color)/2
 		else:
 			histogram[projectedPixel] = dict()
 			histogram[projectedPixel]['frequency'] = 1
@@ -385,7 +392,7 @@ def projectAttractor(wc, sc, attractor, dim, bounds):
 
 	# Now equalize
 	lm = math.log(M)
-	gamma = 1.0
+	gamma = 1.2
 	for v in histogram.values():
 		alpha = math.log(v['frequency'])/lm
 		v['color'] = (v['color']*alpha)**(1/gamma)
@@ -394,19 +401,18 @@ def projectAttractor(wc, sc, attractor, dim, bounds):
 	projectedAttractor = dict()
 	for k, v in histogram.iteritems():
 		if args.render == "color":
-			projectedAttractor[k] = [int(((1<<INTERNAL_BPC)-1)*color) for color in colorsys.hsv_to_rgb(v['color'], 0.8, 1.0)]
+			projectedAttractor[k] = [int(((1<<INTERNAL_BPC)-1)*color) for color in palette[2](v['color'])]
 		else:
 			projectedAttractor[k] =  int(((1<<INTERNAL_BPC)-1)*v['color'])
 
 	return projectedAttractor
 
 # Creates the final image array
-def createImageArray(p, sc):
+def createImageArray(p, sc, background):
 	w = sc[2]-sc[0]
 	h = sc[3]-sc[1]
-	a = [0]*w*h
-	if args.render != "greyscale":
-		a = 3*a
+
+	a = background*w*h
 
 	shift = INTERNAL_BPC-args.bpc
 
@@ -451,7 +457,7 @@ def renderAttractor(at, l, screen_c):
 	p = projectAttractor(window_c, screen_c, l, at.opt['dim'], b)
 	if args.equalize:
 		equalizeAttractor(p)
-	a = createImageArray(p, screen_c)
+	a = createImageArray(p, screen_c, [0x0] if args.render == "greyscale" else [0x0, 0x0, 0x0])
 	return a
 
 def parseArgs():
