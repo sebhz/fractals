@@ -11,7 +11,7 @@ MAP = {
 	'__order': randint(2, 7),
 	'__code' : "",
 	'__dimension' : 2,
-	'__iterations' : 524288,
+	'__iterations' : 1048576,
 	'__lyapunov' : 0.0,
 	'__link' : "",
 	'__x_polynom' : "",
