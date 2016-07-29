@@ -361,8 +361,6 @@ def scaleRatio(wc, sc):
 # bounds: attractor bounds (xx0, yy0, xx1, yy1)
 # Returns the attractor points: dict indexed by (X, Y) and containing COLOR, 
 def projectAttractor(wc, sc, attractor, dim, bounds):
-	w = sc[2]-sc[0]
-	h = sc[3]-sc[1]
 
 	# Compute the histogram "a la Flame"
 	# Nested dict: histogram[(x,y)]['frequency'] and histogram[x][y]['color']
@@ -387,12 +385,10 @@ def projectAttractor(wc, sc, attractor, dim, bounds):
 
 	# Now equalize
 	lm = math.log(M)
-	gamma = 1.1
+	gamma = 1.0
 	for v in histogram.values():
 		alpha = math.log(v['frequency'])/lm
 		v['color'] = (v['color']*alpha)**(1/gamma)
-		if v['color'] >= 1.0:
-			print ">>>", v['color'], alpha, gamma
 
 	# Now create the projected attractor
 	projectedAttractor = dict()
