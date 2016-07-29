@@ -2,7 +2,7 @@
 
 # Generate and colorize various dimension polynomial strange attractors
 # Algo taken from Julian Sprott's book: http://sprott.physics.wisc.edu/sa.htm
-# Some coloring ideas (histogram equalization, gradient mapping) taken from
+# Some coloring ideas (histogram equalization) taken from
 # Ian Witham's blog
 # http://ianwitham.wordpress.com/category/graphics/strange-attractors-graphics/
 
@@ -194,10 +194,6 @@ class polynomialAttractor(object):
 						if self.opt['dim'] == 2:
 							result += c[n]*(p[0]**j)*(p[1]**i)
 							n += 1
-						elif self.opt['dim'] == 3:
-							for k in range(self.order-i-j+1):
-								result += c[n]*(p[0]**k)*(p[1]**j)*(p[2]**i)
-								n += 1
 				l.append(result)
 		except OverflowError:
 			print "Overflow during attractor computation."
@@ -357,9 +353,6 @@ def scaleRatio(wc, sc):
 
 	return wc
 
-def projectPoint(pt, *direction):
-	return (pt[0:2]) # Ignore Z and direction for now
-
 # Project attractor to screen coordinates
 # sc: screen bound e.g. (0,0,800,600)
 # wc: window containing attractor bound (x0,y0, x1, y1)
@@ -374,7 +367,7 @@ def projectAttractor(wc, sc, l, dim, bounds):
 	projectedAttractor = dict()
 	# First compute maximum number of time a pixel is visited
 	for pt in l:
-		projectedPixel = w_to_s(wc, sc, projectPoint(pt))
+		projectedPixel = w_to_s(wc, sc, pt[0:2])
 		if projectedPixel in projectedAttractor:
 			projectedAttractor[projectedPixel] += 1
 		else:
@@ -384,7 +377,7 @@ def projectAttractor(wc, sc, l, dim, bounds):
 	projectedAttractor = dict()
 	# Now perform the coloring based on parent position (for hue), and accumulating based on intensity
 	for pt in l:
-		projectedPixel = w_to_s(wc, sc, projectPoint(pt))
+		projectedPixel = w_to_s(wc, sc, pt[0:2])
 		# Move color in the [0,1] range
 		color = (pt[dim]-bounds[0])/(bounds[2]-bounds[0])
 		if args.render != "color":
@@ -426,38 +419,6 @@ def projectBound(at):
 		return (at.bound[0][0], at.bound[0][0], at.bound[1][0], at.bound[1][0])
 	elif at.opt['dim'] == 2:
 		return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
-	elif at.opt['dim'] == 3: # For now, ignore the Z part
-		return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
-
-# Create a gradient map
-# gdef: gradient definition: a list of ((R0, G0, B0), (R1, G1, B1), offset)
-# with (R0, G0, B0) being starting color, (R1, G1, B1) being end color and
-# offset the percentage of the range. All numbers are between 0 and 1.
-# mode: either "RGB" or "HSV". If HSV, the start and end color are assumed to be HSV
-# Returns an array of (R, G, B) values, with R, G and B between 0 and (1<<INTERNAL_BPC)-1.
-# Length of the array is also 1<<INTERNAL_BPC since it will be indexed using this length.
-def createGradient(gdef, mode):
-	g = [0]*(1<<INTERNAL_BPC)
-	b_range = (1<<INTERNAL_BPC)-1
-
-	colorspaceConvert = lambda(x): colorsys.rgb_to_hsv(x) if mode == "HSV" else x
-
-	r = 0
-	for g_range in gdef:
-		end_index = int(g_range[2]*(b_range+1))
-		for i in range(0, end_index-r):
-			pixel = [int(b_range*(x[0] + (x[1]-x[0])*i/end_index)) for x in zip(colorspaceConvert(g_range[0]), colorspaceConvert(g_range[1]))]
-			g[i+r] = tuple(pixel)
-		r=end_index
-
-	return g
-
-# Maps a color gradient to an attractor, using greyscale value as and index
-# Gradient is a table with INTERNAL_BPC indexes containing (R,G,B) tuples
-# p must be an attractor in greyscale with indexed colors
-def mapGradient(p, gradient):
-	for i in p:
-		p[i] = gradient[p[i]]
 
 # Performs histogram equalization on the attractor pixels
 def equalizeAttractor(p):
@@ -485,8 +446,6 @@ def renderAttractor(at, l, screen_c):
 	p = projectAttractor(window_c, screen_c, l, at.opt['dim'], b)
 	if args.equalize:
 		equalizeAttractor(p)
-	if args.render == "colormap":
-		mapGradient(p, GRADIENTS[0])
 	a = createImageArray(p, screen_c)
 	return a
 
@@ -494,7 +453,7 @@ def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
 	parser.add_argument('-b', '--bpc',       help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=(8, 16))
 	parser.add_argument('-c', '--code',      help='attractor code')
-	parser.add_argument('-d', '--dimension', help='attractor dimension (defaut = %d)' % defaultParameters['dim'], default=defaultParameters['dim'], type=int, choices=range(1,4))
+	parser.add_argument('-d', '--dimension', help='attractor dimension (defaut = %d)' % defaultParameters['dim'], default=defaultParameters['dim'], type=int, choices=range(1,3))
 	parser.add_argument('-D', '--depth',     help='attractor depth (for 1D only - default = %d)' % defaultParameters['depth'], default=defaultParameters['depth'], type=int)
 	parser.add_argument('-e', '--equalize',  help='perform histogram equalization on the attractor (default is not to equalize)', action='store_true', default=False)
 	parser.add_argument('-g', '--geometry',  help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
@@ -503,7 +462,7 @@ def parseArgs():
 	parser.add_argument('-o', '--order',     help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
 	parser.add_argument('-O', '--outdir',    help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
 	parser.add_argument('-q', '--quiet',     help='shut up !', action='store_true', default=False)
-	parser.add_argument('-r', '--render',    help='rendering mode (greyscale, color, colormap)', default = "color", type=str, choices=("greyscale", "color", "colormap"))
+	parser.add_argument('-r', '--render',    help='rendering mode (greyscale, color)', default = "color", type=str, choices=("greyscale", "color"))
 	args = parser.parse_args()
 	if args.equalize and args.render == "color":
 		print >> sys.stderr, "Warning: histogram equalization is only relevant for greyscale or colormap images. No equalization will be performed."
@@ -513,20 +472,14 @@ def parseArgs():
 args = parseArgs()
 g = args.geometry.split('x')
 screen_c = [0, 0] + [int(x) for x in g]
-GRADIENTS = (
-	createGradient( ( ( (0.5, 0.0, 0.0), (0.0, 0.0, 1.0), 0.75 ),
-                      ( (0.0, 0.0, 1.0), (0.8, 0.9, 1.0), 1.00 ),
-                    ), "RGB" ),
-            )
-
 random.seed()
 n = 0
 while True: # args.number = 0 -> infinite loop
-	at = polynomialAttractor({'dim':args.dimension,
-                              'order':args.order,
-							  'iter':args.iter,
-							  'depth': args.depth,
-							  'code' : args.code })
+	at = polynomialAttractor({'dim'  : args.dimension,
+	                          'order': args.order,
+	                          'iter' : args.iter,
+	                          'depth': args.depth,
+	                          'code' : args.code })
 	if args.code:
 		if not at.checkConvergence():
 			print >> sys.stderr, "Not an attractor it seems... but trying to display it anyway."
