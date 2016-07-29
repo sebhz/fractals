@@ -282,8 +282,8 @@ class polynomialAttractor(object):
 						l.append((mem[(i-prev)%prev][0], pnew[0]))
 				else:
 					l.append(pnew)
-				pmin = [min(pn, pm) for pn,pm in zip(pnew, pmin)]
-				pmax = [max(pn, pm) for pn,pm in zip(pnew, pmax)]
+				pmin = [min(pn, pm) for pn, pm in zip(pnew[0:2], pmin)]
+				pmax = [max(pn, pm) for pn, pm in zip(pnew[0:2], pmax)]
 
 			if self.opt['dim'] == 1: mem[i%prev] = pnew
 			p = pnew
