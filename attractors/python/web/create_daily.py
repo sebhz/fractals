@@ -49,7 +49,7 @@ __date
 <div id="info_div">
 Polynom order: <span class="code">__order</span>
 <br></br>
-Fractal dimension: <span class="code">__dimension</span>
+Correlation dimension: <span class="code">__dimension</span>
 <br></br>
 Number of iterations: <span class="code">__iterations</span>
 <br></br>
