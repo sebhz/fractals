@@ -27,7 +27,6 @@ defaultParameters = {
 	'bpc': 8,
 	'dim': 2,
 	'depth': 5,
-	'iter': 1<<18,
 	'geometry': "1280x1024",
 	'number': 1,
 	'order': 2,
@@ -361,51 +360,35 @@ def scaleRatio(wc, sc):
 # bounds: attractor bounds (xx0, yy0, xx1, yy1)
 # Returns the attractor points: dict indexed by (X, Y) and containing COLOR, 
 def projectAttractor(wc, sc, attractor, dim, bounds):
-
-	# Maps a color value in [0,1] interval to a RGB triplet
-	palette = [
-		lambda(x): colorsys.hsv_to_rgb(x,         0.8,          1.0),
-		lambda(x): colorsys.hsv_to_rgb(x/4,       0.8,          0.2 + x*0.79),
-		lambda(x): colorsys.hsv_to_rgb(1- x/4,    0.3 + x*0.69, 0.9),
-	]
-
-	# Compute the histogram "a la Flame"
+	# Compute the attractor frequency map (which is also a color map)
 	# Nested dict: histogram[(x,y)]['frequency'] and histogram[x][y]['color']
-	histogram=dict()
+	# Right now, color is computed based on frequency only
+	a=dict()
 
 	M = 0
 	for pt in l:
 		projectedPixel = w_to_s(wc, sc, pt[0:2])
-		# Move color in the [0,1] range
-		color = (pt[dim]-bounds[0])/(bounds[2]-bounds[0])
-		if projectedPixel in histogram:
-			histogram[projectedPixel]['frequency'] += 1
-#			histogram[projectedPixel]['color'] = (histogram[projectedPixel]['color'] + color)/2
+		if projectedPixel in a:
+			a[projectedPixel] += 1
 		else:
-			histogram[projectedPixel] = dict()
-			histogram[projectedPixel]['frequency'] = 1
-			histogram[projectedPixel]['color'] = color
-		M = max(M, histogram[projectedPixel]['frequency'])
+			a[projectedPixel] = 0
+		M = max(M, a[projectedPixel])
+
+	# Now send the map in the [0, (1<<INTERNAL_BPC)-1] range
+	for i, pt in a.iteritems():
+		a[i] = int (pt * ((1<<INTERNAL_BPC)-1)/M)
+
+	# Equalize the attractor (histogram equalization)
+	equalizeAttractor(a)
 
 	# TODO: Subsample here
 	pass
 
-	# Now equalize
-	lm = math.log(M)
-	gamma = 1.2
-	for v in histogram.values():
-		alpha = math.log(v['frequency'])/lm
-		v['color'] = (v['color']*alpha)**(1/gamma)
+	# TODO: colorize attractor
+	colorizeAttractor(a)
 
-	# Now create the projected attractor
-	projectedAttractor = dict()
-	for k, v in histogram.iteritems():
-		if args.render == "color":
-			projectedAttractor[k] = [int(((1<<INTERNAL_BPC)-1)*color) for color in palette[2](v['color'])]
-		else:
-			projectedAttractor[k] =  int(((1<<INTERNAL_BPC)-1)*v['color'])
-
-	return projectedAttractor
+	# Only greyscale works for now !
+	return a
 
 # Creates the final image array
 def createImageArray(p, sc, background):
@@ -433,8 +416,6 @@ def projectBound(at):
 
 # Performs histogram equalization on the attractor pixels
 def equalizeAttractor(p):
-	if args.render == "color": return
-
 	pools = [0]*(1<<INTERNAL_BPC)
 
 	# Create cumulative distribution
@@ -445,19 +426,34 @@ def equalizeAttractor(p):
 
 	# Stretch the values to the full range
 	for i, v in enumerate(pools):
-		pools[i] = ((1<<INTERNAL_BPC)-1)*(pools[i]-pools[0])/(pools[-1]-pools[0])
+		pools[i] = 1+((1<<INTERNAL_BPC)-2)*(pools[i]-pools[0])/(pools[-1]-pools[0])
 
 	# Now reapply the stretched values
 	for k in p:
-		p[k] = pools[p[k]]
+		p[k] = ((1<<INTERNAL_BPC)-1) - pools[p[k]]
+
+# Colorize the attractor
+# Input: a dict of attractor pixels, indexed by (X,Y) containing equalized color between
+# 0 and 1<<INTERNAL_BPC-1
+# Output: same dict as input, containing (R,G,B) colors between 0 and 1<<INTERNAL_BPC
+def colorizeAttractor(a):
+	pools=dict()
+	for v in a.values():
+		if v in pools: continue
+		else: pools[v] = 1
+
+	print "%d points in attractor. %d unique colors in attractor. Coloring ratio: %.2f." % (len(a.keys()), len(pools.keys()), float(len(pools.keys()))/len(a.keys()))
+
+	# To keep everything working for now
+	if args.render == "color":
+		for v in a:
+			a[v] = [a[v]]*3
 
 def renderAttractor(at, l, screen_c):
 	b = projectBound(at)
 	window_c = scaleRatio(b, screen_c)
 	p = projectAttractor(window_c, screen_c, l, at.opt['dim'], b)
-	if args.equalize:
-		equalizeAttractor(p)
-	a = createImageArray(p, screen_c, [0x0] if args.render == "greyscale" else [0x0, 0x0, 0x0])
+	a = createImageArray(p, screen_c, [0xFF] if args.render == "greyscale" else [0xFF, 0xFF, 0xFF])
 	return a
 
 def parseArgs():
@@ -466,22 +462,26 @@ def parseArgs():
 	parser.add_argument('-c', '--code',      help='attractor code')
 	parser.add_argument('-d', '--dimension', help='attractor dimension (defaut = %d)' % defaultParameters['dim'], default=defaultParameters['dim'], type=int, choices=range(1,3))
 	parser.add_argument('-D', '--depth',     help='attractor depth (for 1D only - default = %d)' % defaultParameters['depth'], default=defaultParameters['depth'], type=int)
-	parser.add_argument('-e', '--equalize',  help='perform histogram equalization on the attractor (default is not to equalize)', action='store_true', default=False)
 	parser.add_argument('-g', '--geometry',  help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
-	parser.add_argument('-i', '--iter',      help='attractor number of iterations (default = %d)' % defaultParameters['iter'], default=defaultParameters['iter'], type=int)
+	parser.add_argument('-i', '--iter',      help='attractor number of iterations', type=int)
 	parser.add_argument('-n', '--number',    help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
 	parser.add_argument('-o', '--order',     help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
 	parser.add_argument('-O', '--outdir',    help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
 	parser.add_argument('-q', '--quiet',     help='shut up !', action='store_true', default=False)
 	parser.add_argument('-r', '--render',    help='rendering mode (greyscale, color)', default = "color", type=str, choices=("greyscale", "color"))
 	args = parser.parse_args()
-	if args.equalize and args.render == "color":
-		print >> sys.stderr, "Warning: histogram equalization is only relevant for greyscale or colormap images. No equalization will be performed."
 	return args
 
 # ----------------------------- Main loop ----------------------------- #
 args = parseArgs()
 g = args.geometry.split('x')
+pxSize = int(g[0])*int(g[1])
+if args.iter == None:
+	args.iter = int(1.5*pxSize)
+	print >> sys.stderr, "Setting iteration number to %d." % (args.iter)
+if args.iter < pxSize:
+	print >> sys.stderr, "For better rendering, you should use at least %d iterations." % (pxSize)
+
 screen_c = [0, 0] + [int(x) for x in g]
 random.seed()
 n = 0
@@ -509,7 +509,7 @@ while True: # args.number = 0 -> infinite loop
 	w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = True if args.render == "greyscale" else False, bitdepth=args.bpc, interlace=True)
 	aa = w.array_scanlines(a)
 
-	suffix = str(args.bpc) + "e" if args.equalize else str(args.bpc)
+	suffix = str(args.bpc)
 	filepath = os.path.join(args.outdir, at.code + "_" + suffix + ".png")
 
 	with open(filepath, "wb") as f:
