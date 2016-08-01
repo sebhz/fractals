@@ -477,7 +477,7 @@ args = parseArgs()
 g = args.geometry.split('x')
 pxSize = int(g[0])*int(g[1])
 if args.iter == None:
-	args.iter = int(1.5*pxSize)
+	args.iter = int(4*pxSize)
 	print >> sys.stderr, "Setting iteration number to %d." % (args.iter)
 if args.iter < pxSize:
 	print >> sys.stderr, "For better rendering, you should use at least %d iterations." % (pxSize)
