@@ -442,7 +442,7 @@ def colorizeAttractor(a):
 		if v in pools: continue
 		else: pools[v] = 1
 
-	print "%d points in attractor. %d unique colors in attractor. Coloring ratio: %.2f." % (len(a.keys()), len(pools.keys()), float(len(pools.keys()))/len(a.keys()))
+	print >> sys.stderr, "%d points in attractor. %d unique colors in attractor. Coloring ratio: %.2f." % (len(a.keys()), len(pools.keys()), float(len(pools.keys()))/len(a.keys()))
 
 	# To keep everything working for now
 	if args.render == "color":
