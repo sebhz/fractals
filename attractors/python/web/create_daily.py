@@ -11,15 +11,14 @@ MAP = {
 	'__order': randint(2, 7),
 	'__code' : "",
 	'__dimension' : 2,
-	'__iterations' : 1048576,
 	'__lyapunov' : 0.0,
 	'__link' : "",
 	'__x_polynom' : "",
 	'__y_polynom' : "",
 }
 
-THUMB_CMD = "./attractors.py --geometry=800x600 --iter=%d --outdir=png_thumb" % (MAP['__iterations']/2)
-FINAL_CMD = "./attractors.py --geometry=1920x1080 --iter=%d --outdir=png" % (MAP['__iterations'])
+THUMB_CMD = "./attractors.py --geometry=800x600 --outdir=png_thumb"
+FINAL_CMD = "./attractors.py --geometry=1920x1080 --outdir=png"
 REFERENCE_DATE = datetime(2016, 7, 27)
 CURRENT_FILE = "strange_attractor.xhtml"
 
