@@ -437,14 +437,13 @@ def equalizeAttractor(p):
 # 0 and 1<<INTERNAL_BPC-1
 # Output: same dict as input, containing (R,G,B) colors between 0 and 1<<INTERNAL_BPC
 def colorizeAttractor(a):
-
 	if args.render == "greyscale":
 		return
 
-	patterns = [
-	            { 'h': (0.1, 0.3), 's': (0.9, 0.1), 'v': (0.2, 0.7), 'name': "test" }
-	           ]
-	pattern = patterns[random.randint(0, len(patterns)-1)]
+	hues = { 'red': 0.0, 'yellow': 1.0/6, 'green': 2.0/6, 'cyan': 3.0/6, 'blue': 4.0/6, 'magenta':5.0/6 }
+	hue = hues.keys()[random.randint(0, len(hues.keys())-1)]
+	print >> sys.stderr, "Rendering attractor in %s." % (hue)
+	h = hues[hue]
 
 	pools=dict()
 	for v in a.values():
@@ -452,16 +451,14 @@ def colorizeAttractor(a):
 		else: pools[v] = 1
 
 	ncolors = len(pools.keys())
-	print >> sys.stderr, "%d points in attractor. %d unique colors in attractor. Coloring ratio: %.2f." % (len(a.keys()), ncolors, float(len(pools.keys()))/len(a.keys()))
+	print >> sys.stderr, "%d points in attractor. %d unique %d-bits colors in attractor. Coloring ratio: %1.2f%%." % (len(a.keys()), ncolors, INTERNAL_BPC, float(len(pools.keys()))/len(a.keys())*100)
 
 	colormap = dict()
 
-	# Iterate on all values of colors (from lowest to highest) and create a nice linear gradient
-	# TODO: this is wrong. we equalized the attractor before, we should not linearalize it now !
-	for i, color in enumerate(sorted(pools.keys())):
+	# Convert greyscale to a color, by choosing a hue and mapping greyscale directly on value 
+	for color in pools.keys():
 		hsv = list()
-		for k in ('h', 's', 'v'):
-			hsv.append(pattern[k][0] + i*(pattern[k][1]-pattern[k][0])/ncolors)
+		hsv = (h, 0.3, float(color)/((1<<INTERNAL_BPC)-1))
 		colormap[color] = [int(((1<<INTERNAL_BPC)-1)*component) for component in colorsys.hsv_to_rgb(*hsv)]
 
 
@@ -469,12 +466,12 @@ def colorizeAttractor(a):
 	dt = dict()
 	for k in sorted(colormap.keys()):
 		dt[k>>shift] = True
-	print >> sys.stderr, "%d unique dithered greyscale." % (len(dt.keys()))
+	print >> sys.stderr, "%d unique %d-bits greyscale." % (len(dt.keys()), INTERNAL_BPC - args.bpc)
 
 	dt = dict()
 	for k in sorted(colormap.keys()):
 		dt[tuple([v >> shift for v in colormap[k]])] = True
-	print >> sys.stderr, "%d unique dithered color." % (len(dt.keys()))
+	print >> sys.stderr, "%d unique %d-bits color." % (len(dt.keys()), INTERNAL_BPC - args.bpc)
 
 	for v in a:
 		a[v] = colormap[a[v]]
