@@ -387,7 +387,6 @@ def projectAttractor(wc, sc, attractor, dim, bounds):
 	# TODO: colorize attractor
 	colorizeAttractor(a)
 
-	# Only greyscale works for now !
 	return a
 
 # Creates the final image array
@@ -424,11 +423,12 @@ def equalizeAttractor(p):
 	for i in range(len(pools) - 1):
 		pools[i+1] = pools[i+1] + pools[i]
 
-	# Stretch the values to the full range
+	# Stretch the values to the [1, (1<<INTERNAL_BPC)-1] range
 	for i, v in enumerate(pools):
 		pools[i] = 1+((1<<INTERNAL_BPC)-2)*(pools[i]-pools[0])/(pools[-1]-pools[0])
 
-	# Now reapply the stretched values
+	# Now reapply the stretched values (inverting them so that high order pixels are darker
+	# when viewed in greyscale)
 	for k in p:
 		p[k] = ((1<<INTERNAL_BPC)-1) - pools[p[k]]
 
@@ -437,17 +437,47 @@ def equalizeAttractor(p):
 # 0 and 1<<INTERNAL_BPC-1
 # Output: same dict as input, containing (R,G,B) colors between 0 and 1<<INTERNAL_BPC
 def colorizeAttractor(a):
+
+	if args.render == "greyscale":
+		return
+
+	patterns = [
+	            { 'h': (0.1, 0.3), 's': (0.9, 0.1), 'v': (0.2, 0.7), 'name': "test" }
+	           ]
+	pattern = patterns[random.randint(0, len(patterns)-1)]
+
 	pools=dict()
 	for v in a.values():
 		if v in pools: continue
 		else: pools[v] = 1
 
-	print >> sys.stderr, "%d points in attractor. %d unique colors in attractor. Coloring ratio: %.2f." % (len(a.keys()), len(pools.keys()), float(len(pools.keys()))/len(a.keys()))
+	ncolors = len(pools.keys())
+	print >> sys.stderr, "%d points in attractor. %d unique colors in attractor. Coloring ratio: %.2f." % (len(a.keys()), ncolors, float(len(pools.keys()))/len(a.keys()))
 
-	# To keep everything working for now
-	if args.render == "color":
-		for v in a:
-			a[v] = [a[v]]*3
+	colormap = dict()
+
+	# Iterate on all values of colors (from lowest to highest) and create a nice linear gradient
+	# TODO: this is wrong. we equalized the attractor before, we should not linearalize it now !
+	for i, color in enumerate(sorted(pools.keys())):
+		hsv = list()
+		for k in ('h', 's', 'v'):
+			hsv.append(pattern[k][0] + i*(pattern[k][1]-pattern[k][0])/ncolors)
+		colormap[color] = [int(((1<<INTERNAL_BPC)-1)*component) for component in colorsys.hsv_to_rgb(*hsv)]
+
+
+	shift = INTERNAL_BPC - args.bpc
+	dt = dict()
+	for k in sorted(colormap.keys()):
+		dt[k>>shift] = True
+	print >> sys.stderr, "%d unique dithered greyscale." % (len(dt.keys()))
+
+	dt = dict()
+	for k in sorted(colormap.keys()):
+		dt[tuple([v >> shift for v in colormap[k]])] = True
+	print >> sys.stderr, "%d unique dithered color." % (len(dt.keys()))
+
+	for v in a:
+		a[v] = colormap[a[v]]
 
 def renderAttractor(at, l, screen_c):
 	b = projectBound(at)
