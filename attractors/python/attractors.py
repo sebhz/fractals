@@ -503,7 +503,7 @@ while True: # args.number = 0 -> infinite loop
 		continue
 	if not args.quiet:
 		p = at.humanReadablePolynom(True)
-		print at, at.fdim, at.lyapunov['ly'], p[0], "" if args.dimension < 2 else p[1]
+		print at, at.fdim, at.lyapunov['ly'], args.iter, p[0], "" if args.dimension < 2 else p[1]
 
 	a = renderAttractor(at, l, screen_c)
 	w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = True if args.render == "greyscale" else False, bitdepth=args.bpc, interlace=True)

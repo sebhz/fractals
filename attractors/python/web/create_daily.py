@@ -10,6 +10,7 @@ MAP = {
 	'__date' : datetime.today().strftime("%Y, %b %d"),
 	'__order': randint(2, 7),
 	'__code' : "",
+	'__iterations' : 0,
 	'__dimension' : 2,
 	'__lyapunov' : 0.0,
 	'__link' : "",
@@ -123,7 +124,7 @@ with os.popen(THUMB_CMD + " --order=" + str(MAP['__order'])) as s:
 	v = s.read()
 print >> sys.stderr, "Thumbnail generated"
 
-MAP['__code'], MAP['__dimension'], MAP['__lyapunov'], MAP['__x_polynom'], MAP['__y_polynom'] = v.split()
+MAP['__code'], MAP['__dimension'], MAP['__lyapunov'], MAP['__iterations'], MAP['__x_polynom'], MAP['__y_polynom'] = v.split()
 
 os.system(FINAL_CMD + " --order=" + str(MAP['__order']) + " --code=" + MAP['__code'] + " >/dev/null")
 print >> sys.stderr, "Image generated"
