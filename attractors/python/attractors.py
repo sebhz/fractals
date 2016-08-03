@@ -466,12 +466,12 @@ def colorizeAttractor(a):
 	dt = dict()
 	for k in sorted(colormap.keys()):
 		dt[k>>shift] = True
-	print >> sys.stderr, "%d unique %d-bits greyscale." % (len(dt.keys()), INTERNAL_BPC - args.bpc)
+	print >> sys.stderr, "%d unique %d-bits greyscale." % (len(dt.keys()), args.bpc)
 
 	dt = dict()
 	for k in sorted(colormap.keys()):
 		dt[tuple([v >> shift for v in colormap[k]])] = True
-	print >> sys.stderr, "%d unique %d-bits color." % (len(dt.keys()), INTERNAL_BPC - args.bpc)
+	print >> sys.stderr, "%d unique %d-bits color." % (len(dt.keys()), args.bpc)
 
 	for v in a:
 		a[v] = colormap[a[v]]
