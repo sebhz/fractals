@@ -384,7 +384,7 @@ def projectAttractor(wc, sc, attractor, dim, bounds):
 	# TODO: Subsample here
 	pass
 
-	# TODO: colorize attractor
+	# Colorize attractor
 	colorizeAttractor(a)
 
 	return a
