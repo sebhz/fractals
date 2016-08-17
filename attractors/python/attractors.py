@@ -24,6 +24,7 @@ except:
 INTERNAL_BPC=16
 
 defaultParameters = {
+	'sub': 1,
 	'bpc': 8,
 	'dim': 2,
 	'depth': 5,
@@ -332,7 +333,7 @@ def w_to_s(wc, sc, p):
 
 # Enlarge window_c so that it has the same aspect ratio as screen_c 
 # sc: screen bound e.g. (0,0,800,600)
-# wc: attractor bound (x0,y0, x1, y1)
+# wc: attractor bound (x0,y0,x1,y1)
 def scaleRatio(wc, sc):
 	# Enlarge window by 5% in both directions
 	hoff = (wc[3]-wc[1])*0.025
@@ -361,12 +362,11 @@ def scaleRatio(wc, sc):
 # Returns the attractor points: dict indexed by (X, Y) and containing COLOR, 
 def projectAttractor(wc, sc, attractor, dim, bounds):
 	# Compute the attractor frequency map (which is also a color map)
-	# Nested dict: histogram[(x,y)]['frequency'] and histogram[x][y]['color']
 	# Right now, color is computed based on frequency only
 	a=dict()
 
 	M = 0
-	for pt in l:
+	for pt in attractor:
 		projectedPixel = w_to_s(wc, sc, pt[0:2])
 		if projectedPixel in a:
 			a[projectedPixel] += 1
@@ -381,8 +381,8 @@ def projectAttractor(wc, sc, attractor, dim, bounds):
 	# Equalize the attractor (histogram equalization)
 	equalizeAttractor(a)
 
-	# TODO: Subsample here
-	pass
+	# Subsample here
+	a = subsampleAttractor(a)
 
 	# Colorize attractor
 	colorizeAttractor(a)
@@ -391,8 +391,8 @@ def projectAttractor(wc, sc, attractor, dim, bounds):
 
 # Creates the final image array
 def createImageArray(p, sc, background):
-	w = sc[2]-sc[0]
-	h = sc[3]-sc[1]
+	w = int ((sc[2]-sc[0])/args.subsample)
+	h = int ((sc[3]-sc[1])/args.subsample)
 
 	a = background*w*h
 
@@ -451,7 +451,7 @@ def colorizeAttractor(a):
 		else: pools[v] = 1
 
 	ncolors = len(pools.keys())
-	print >> sys.stderr, "%d points in attractor. %d unique %d-bits colors in attractor. Coloring ratio: %1.2f%%." % (len(a.keys()), ncolors, INTERNAL_BPC, float(len(pools.keys()))/len(a.keys())*100)
+	print >> sys.stderr, "%d points in attractor. %d unique %d-bpc colors in attractor. Coloring ratio: %1.2f%%." % (len(a.keys()), ncolors, INTERNAL_BPC, float(len(pools.keys()))/len(a.keys())*100)
 
 	colormap = dict()
 
@@ -466,21 +466,51 @@ def colorizeAttractor(a):
 	dt = dict()
 	for k in sorted(colormap.keys()):
 		dt[k>>shift] = True
-	print >> sys.stderr, "%d unique %d-bits greyscale." % (len(dt.keys()), args.bpc)
+	print >> sys.stderr, "%d unique %d-bpc greyscale." % (len(dt.keys()), args.bpc)
 
 	dt = dict()
 	for k in sorted(colormap.keys()):
 		dt[tuple([v >> shift for v in colormap[k]])] = True
-	print >> sys.stderr, "%d unique %d-bits color." % (len(dt.keys()), args.bpc)
+	print >> sys.stderr, "%d unique %d-bpc color." % (len(dt.keys()), args.bpc)
 
 	for v in a:
 		a[v] = colormap[a[v]]
 
+def subsampleAttractor(at):
+
+	if args.subsample == 1: return at
+
+	nat = dict()
+
+	for pt, color in at.iteritems():
+		xsub = int(pt[0]/args.subsample)
+		ysub = int(pt[1]/args.subsample)
+		if (xsub,ysub) in nat: # We already subsampled this square
+			continue
+		n = 0
+		c = 0
+		x0 = xsub*args.subsample
+		y0 = ysub*args.subsample
+		for x in range(x0, x0+args.subsample):
+			for y in range(y0, y0+args.subsample):
+				if (x, y) in at:
+					n += 1
+					c += at[(x, y)]
+		# OK now we have accumulated all colors in the attractors
+		# Time to weight with the background color
+		v = 0xFFFF*(args.subsample*args.subsample-n)
+		c += v
+		c = int(c/(args.subsample*args.subsample))
+		nat[(xsub,ysub)] = c
+
+	return nat
+
 def renderAttractor(at, l, screen_c):
+	backgroundColor = [0xFF] if args.render == "greyscale" else [0xFF, 0xFF, 0xFF]
 	b = projectBound(at)
 	window_c = scaleRatio(b, screen_c)
 	p = projectAttractor(window_c, screen_c, l, at.opt['dim'], b)
-	a = createImageArray(p, screen_c, [0xFF] if args.render == "greyscale" else [0xFF, 0xFF, 0xFF])
+	a = createImageArray(p, screen_c, backgroundColor)
 	return a
 
 def parseArgs():
@@ -496,20 +526,22 @@ def parseArgs():
 	parser.add_argument('-O', '--outdir',    help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
 	parser.add_argument('-q', '--quiet',     help='shut up !', action='store_true', default=False)
 	parser.add_argument('-r', '--render',    help='rendering mode (greyscale, color)', default = "color", type=str, choices=("greyscale", "color"))
+	parser.add_argument('-s', '--subsample', help='subsampling rate (default  = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3))
 	args = parser.parse_args()
 	return args
 
 # ----------------------------- Main loop ----------------------------- #
 args = parseArgs()
 g = args.geometry.split('x')
-pxSize = int(g[0])*int(g[1])
+pxSize = args.subsample*args.subsample*int(g[0])*int(g[1])
+
 if args.iter == None:
 	args.iter = int(4*pxSize)
 	print >> sys.stderr, "Setting iteration number to %d." % (args.iter)
 if args.iter < pxSize:
 	print >> sys.stderr, "For better rendering, you should use at least %d iterations." % (pxSize)
 
-screen_c = [0, 0] + [int(x) for x in g]
+screen_c = [0, 0] + [args.subsample*int(x) for x in g]
 random.seed()
 n = 0
 while True: # args.number = 0 -> infinite loop
@@ -518,11 +550,14 @@ while True: # args.number = 0 -> infinite loop
 	                          'iter' : args.iter,
 	                          'depth': args.depth,
 	                          'code' : args.code })
+
 	if args.code:
 		if not at.checkConvergence():
 			print >> sys.stderr, "Not an attractor it seems... but trying to display it anyway."
 	else:
 		at.explore()
+
+	if not args.quiet: print >> sys.stderr, "Found converging attractor. Now computing it."
 	l = at.iterateMap()
 	if not l:
 		n += 1
@@ -532,13 +567,13 @@ while True: # args.number = 0 -> infinite loop
 		p = at.humanReadablePolynom(True)
 		print at, at.fdim, at.lyapunov['ly'], args.iter, p[0], "" if args.dimension < 2 else p[1]
 
+	if not args.quiet: print >> sys.stderr, "Time to render the attractor."
 	a = renderAttractor(at, l, screen_c)
+
 	w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = True if args.render == "greyscale" else False, bitdepth=args.bpc, interlace=True)
 	aa = w.array_scanlines(a)
-
 	suffix = str(args.bpc)
 	filepath = os.path.join(args.outdir, at.code + "_" + suffix + ".png")
-
 	with open(filepath, "wb") as f:
 		w.write(f, aa)
 
