@@ -22,6 +22,7 @@ except:
     raise SystemExit
 
 INTERNAL_BPC=16
+OVERITERATE_FACTOR=4
 
 defaultParameters = {
 	'sub': 1,
@@ -315,13 +316,13 @@ class polynomialAttractor(object):
 
 		self.fdim = math.log10(n2/n1)
 
-# Project point on windows coordinate, and compute its color based on
+# Project point on screen coordinate
 # its parent x coordinate
 # sc: screen bound (0,0,800,600)
-# wc: attractor bound (x0,y0, x1, y1)
+# wc: attractor bound (x0,y0,x1,y1)
 # p: point in the attractor (x, y, xfather)
 # bounds: bounds of the attractor
-# Returns a triplet (x, y, [R, G, B])
+# Returns a tuple (x, y)
 def w_to_s(wc, sc, p):
 	x, y = p
 
@@ -355,12 +356,10 @@ def scaleRatio(wc, sc):
 
 # Project attractor to screen coordinates and colorize it
 # sc: screen bound e.g. (0,0,800,600)
-# wc: window containing attractor bound (x0,y0, x1, y1)
-# attractor: attractor points (list of x, y, [z], x_parent)
-# dim: attractor dimension
-# bounds: attractor bounds (xx0, yy0, xx1, yy1)
+# wc: attractor bound (x0,y0,x1,y1)
+# attractor: attractor points (list of x, y, x_parent)
 # Returns the attractor points: dict indexed by (X, Y) and containing COLOR, 
-def projectAttractor(wc, sc, attractor, dim, bounds):
+def projectAttractor(wc, sc, attractor):
 	# Compute the attractor frequency map (which is also a color map)
 	# Right now, color is computed based on frequency only
 	a=dict()
@@ -509,9 +508,23 @@ def renderAttractor(at, l, screen_c):
 	backgroundColor = [0xFF] if args.render == "greyscale" else [0xFF, 0xFF, 0xFF]
 	b = projectBound(at)
 	window_c = scaleRatio(b, screen_c)
-	p = projectAttractor(window_c, screen_c, l, at.opt['dim'], b)
+	p = projectAttractor(window_c, screen_c, l)
 	a = createImageArray(p, screen_c, backgroundColor)
 	return a
+
+def walkthroughAttractor(at):
+
+	if not args.quiet: print >> sys.stderr, "Found converging attractor. Now computing it."
+	l = at.iterateMap()
+	if not l: return l
+
+	if not args.quiet:
+		p = at.humanReadablePolynom(True)
+		print at, at.fdim, at.lyapunov['ly'], args.iter, p[0], "" if args.dimension < 2 else p[1]
+
+	if not args.quiet: print >> sys.stderr, "Time to render the attractor."
+	return renderAttractor(at, l, screen_c)
+
 
 def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
@@ -536,10 +549,10 @@ g = args.geometry.split('x')
 pxSize = args.subsample*args.subsample*int(g[0])*int(g[1])
 
 if args.iter == None:
-	args.iter = int(4*pxSize)
-	print >> sys.stderr, "Setting iteration number to %d." % (args.iter)
-if args.iter < pxSize:
-	print >> sys.stderr, "For better rendering, you should use at least %d iterations." % (pxSize)
+	args.iter = int(OVERITERATE_FACTOR*pxSize)
+	if not args.quiet: print >> sys.stderr, "Setting iteration number to %d." % (args.iter)
+if args.iter < int(OVERITERATE_FACTOR*pxSize):
+	if not args.quiet: print >> sys.stderr, "For better rendering, you should use at least %d iterations." % (pxSize)
 
 screen_c = [0, 0] + [args.subsample*int(x) for x in g]
 random.seed()
@@ -557,19 +570,13 @@ while True: # args.number = 0 -> infinite loop
 	else:
 		at.explore()
 
-	if not args.quiet: print >> sys.stderr, "Found converging attractor. Now computing it."
-	l = at.iterateMap()
-	if not l:
+	a = walkthroughAttractor(at)
+	if not a:
 		n += 1
 		if n == args.number or args.code: break
 		continue
-	if not args.quiet:
-		p = at.humanReadablePolynom(True)
-		print at, at.fdim, at.lyapunov['ly'], args.iter, p[0], "" if args.dimension < 2 else p[1]
 
-	if not args.quiet: print >> sys.stderr, "Time to render the attractor."
-	a = renderAttractor(at, l, screen_c)
-
+	if not args.quiet: print >> sys.stderr, "Now writing attractor on disk."
 	w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = True if args.render == "greyscale" else False, bitdepth=args.bpc, interlace=True)
 	aa = w.array_scanlines(a)
 	suffix = str(args.bpc)
