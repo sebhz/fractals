@@ -60,8 +60,8 @@ class polynomialAttractor(object):
 	dimTransient = 1024  # Ignore the first dimTransient points when computing dimension
 	dimDepth     = 500   # Use the dimDepth predecessors of each point to compute the dimension
 	dimIgnore    = 20    # but ignore dimIgnore predecessors (presumably too correlated)
-	codelist     = range(48,58) + range(65,91) + range(97,123)
-	codeStep     = .125
+	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
+	codeStep     = .125 # Step to use to map ASCII character to coef
 
 	def __init__(self, *opt):
 		if opt:
@@ -230,6 +230,7 @@ class polynomialAttractor(object):
 
 	def checkConvergence(self):
 		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
+		pmin, pmax = ([1000000]*self.opt['dim'], [-1000000]*self.opt['dim'])
 		p = self.init
 		pe = [x + 0.000001 if i==0 else x for i,x in enumerate(p)]
 		modulus = lambda x, y: abs(x) + abs(y)
@@ -248,8 +249,12 @@ class polynomialAttractor(object):
 			pe = self.computeLyapunov(pnew, pe)
 			if self.lyapunov['ly'] < 0.005 and i > self.convDelay: # Limit cycle
 				return False
+			if i > self.convDelay:
+				pmin = [min(pn, pm) for pn, pm in zip(pnew, pmin)]
+				pmax = [max(pn, pm) for pn, pm in zip(pnew, pmax)]
 			p = pnew
 
+		self.bound = (pmin, pmax)
 		return True
 
 	def explore(self):
@@ -264,7 +269,6 @@ class polynomialAttractor(object):
 	def iterateMap(self):
 		l = list()
 		p = self.init
-		pmin, pmax = ([1000000]*self.opt['dim'], [-1000000]*self.opt['dim'])
 		if self.opt['dim'] == 1:
 			prev = self.opt['depth']
 			mem  = [p]*prev
@@ -283,13 +287,10 @@ class polynomialAttractor(object):
 						l.append((mem[(i-prev)%prev][0], pnew[0]))
 				else:
 					l.append(pnew)
-				pmin = [min(pn, pm) for pn, pm in zip(pnew[0:2], pmin)]
-				pmax = [max(pn, pm) for pn, pm in zip(pnew[0:2], pmax)]
 
 			if self.opt['dim'] == 1: mem[i%prev] = pnew
 			p = pnew
 
-		self.bound = (pmin, pmax)
 		self.computeDimension(l)
 
 		return l
