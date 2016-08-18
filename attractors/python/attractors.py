@@ -22,7 +22,7 @@ except:
     raise SystemExit
 
 INTERNAL_BPC=16
-OVERITERATE_FACTOR=2.5
+OVERITERATE_FACTOR=4
 
 defaultParameters = {
 	'sub': 1,
@@ -113,6 +113,21 @@ class polynomialAttractor(object):
 	def __str__(self):
 		return self.code
 
+	# Project point on screen coordinate
+	# its parent x coordinate
+	# sc: screen bound (0,0,800,600)
+	# wc: attractor bound (x0,y0,x1,y1)
+	# p: point in the attractor (x, y, xfather)
+	# Returns a tuple (x, y)
+	def w_to_s(self, wc, sc, p):
+		x, y = p
+
+		if x < wc[0] or x > wc[2] or y < wc[1] or y > wc[3]:
+			return None
+
+		return ( (int(sc[0] + (x-wc[0])/(wc[2]-wc[0])*(sc[2]-sc[0])),
+				  int(sc[1] + (sc[3]-sc[1])-(y-wc[1])/(wc[3]-wc[1])*(sc[3]-sc[1])),) )
+
 	def decodeCode(self):
 		self.opt['dim'] = int(self.code[0])
 		self.order = int(self.code[1])
@@ -202,7 +217,7 @@ class polynomialAttractor(object):
 			return None
 
 		# Append the x father as extra coordinate, for colorization
-		l.append(p[0])
+		# l.append(p[0])
 		return l
 
 	def computeLyapunov(self, p, pe):
@@ -266,8 +281,8 @@ class polynomialAttractor(object):
 		# Found one -> create corresponding code
 		self.createCode()
 
-	def iterateMap(self):
-		l = list()
+	def iterateMap(self, screen_c, window_c):
+		a = dict()
 		p = self.init
 		if self.opt['dim'] == 1:
 			prev = self.opt['depth']
@@ -282,18 +297,23 @@ class polynomialAttractor(object):
 
 			# Ignore the first points to get a proper convergence
 			if i >= self.convDelay:
+				projectedPixel = None
 				if self.opt['dim'] == 1:
 					if i >= prev:
-						l.append((mem[(i-prev)%prev][0], pnew[0]))
+						projectedPixel = self.w_to_s(window_c, screen_c,(mem[(i-prev)%prev][0], pnew[0]))
 				else:
-					l.append(pnew)
+					projectedPixel = self.w_to_s(window_c, screen_c, pnew)
+
+				if projectedPixel and projectedPixel in a:
+					a[projectedPixel] += 1
+				else:
+					a[projectedPixel] = 0
 
 			if self.opt['dim'] == 1: mem[i%prev] = pnew
 			p = pnew
 
-		self.computeDimension(l)
-
-		return l
+		# self.computeDimension(a)
+		return a
 
 	def computeDimension(self, l):
 	# An estimate of the correlation dimension: accumulate the values of the distances between
@@ -317,26 +337,11 @@ class polynomialAttractor(object):
 
 		self.fdim = math.log10(n2/n1)
 
-# Project point on screen coordinate
-# its parent x coordinate
-# sc: screen bound (0,0,800,600)
-# wc: attractor bound (x0,y0,x1,y1)
-# p: point in the attractor (x, y, xfather)
-# bounds: bounds of the attractor
-# Returns a tuple (x, y)
-def w_to_s(wc, sc, p):
-	x, y = p
 
-	if x < wc[0] or x > wc[2] or y < wc[1] or y > wc[3]:
-		return None
-
-	return ( (int(sc[0] + (x-wc[0])/(wc[2]-wc[0])*(sc[2]-sc[0])),
-			  int(sc[1] + (sc[3]-sc[1])-(y-wc[1])/(wc[3]-wc[1])*(sc[3]-sc[1])),) )
-
-# Enlarge window_c so that it has the same aspect ratio as screen_c 
+# Enlarge attractor bounds so that it has the same aspect ratio as screen_c 
 # sc: screen bound e.g. (0,0,800,600)
 # wc: attractor bound (x0,y0,x1,y1)
-def scaleRatio(wc, sc):
+def scaleBounds(wc, sc):
 	# Enlarge window by 5% in both directions
 	hoff = (wc[3]-wc[1])*0.025
 	woff = (wc[2]-wc[0])*0.025
@@ -355,39 +360,28 @@ def scaleRatio(wc, sc):
 
 	return wc
 
-# Project attractor to screen coordinates and colorize it
-# sc: screen bound e.g. (0,0,800,600)
-# wc: attractor bound (x0,y0,x1,y1)
-# attractor: attractor points (list of x, y, x_parent)
+# Equalize and colorize attractor
+# attractor: attractor points: dict (X,Y) and containing frequency
 # Returns the attractor points: dict indexed by (X, Y) and containing COLOR, 
-def projectAttractor(wc, sc, attractor):
-	# Compute the attractor frequency map (which is also a color map)
-	# Right now, color is computed based on frequency only
-	a=dict()
-
+def postprocessAttractor(attractor):
 	M = 0
-	for pt in attractor:
-		projectedPixel = w_to_s(wc, sc, pt[0:2])
-		if projectedPixel in a:
-			a[projectedPixel] += 1
-		else:
-			a[projectedPixel] = 0
-		M = max(M, a[projectedPixel])
+	for v in attractor.values():
+		M = max(M, v)
 
 	# Now send the map in the [0, (1<<INTERNAL_BPC)-1] range
-	for i, pt in a.iteritems():
-		a[i] = int (pt * ((1<<INTERNAL_BPC)-1)/M)
+	for i, pt in attractor.iteritems():
+		attractor[i] = int (pt * ((1<<INTERNAL_BPC)-1)/M)
 
 	# Equalize the attractor (histogram equalization)
-	equalizeAttractor(a)
+	equalizeAttractor(attractor)
 
 	# Subsample here
-	a = subsampleAttractor(a)
+	attractor = subsampleAttractor(attractor)
 
 	# Colorize attractor
-	colorizeAttractor(a)
+	colorizeAttractor(attractor)
 
-	return a
+	return attractor
 
 # Creates the final image array
 def createImageArray(p, sc, background):
@@ -407,7 +401,8 @@ def createImageArray(p, sc, background):
 
 	return a
 
-def projectBound(at):
+# Project bounds to screen... do we really need this anymore ?
+def projectBounds(at):
 	if at.opt['dim'] == 1:
 		return (at.bound[0][0], at.bound[0][0], at.bound[1][0], at.bound[1][0])
 	elif at.opt['dim'] == 2:
@@ -505,26 +500,27 @@ def subsampleAttractor(at):
 
 	return nat
 
-def renderAttractor(at, l, screen_c):
+def renderAttractor(a, screen_c):
 	backgroundColor = [0xFF] if args.render == "greyscale" else [0xFF, 0xFF, 0xFF]
-	b = projectBound(at)
-	window_c = scaleRatio(b, screen_c)
-	p = projectAttractor(window_c, screen_c, l)
-	a = createImageArray(p, screen_c, backgroundColor)
-	return a
+	p = postprocessAttractor(a)
+	i = createImageArray(p, screen_c, backgroundColor)
+	return i
 
-def walkthroughAttractor(at):
-
+def walkthroughAttractor(at, screen_c):
 	if not args.quiet: print >> sys.stderr, "Found converging attractor. Now computing it."
-	l = at.iterateMap()
-	if not l: return l
+
+	b = projectBounds(at)
+	window_c = scaleBounds(b, screen_c)
+
+	a = at.iterateMap(screen_c, window_c)
+	if not a: return a
 
 	if not args.quiet:
 		p = at.humanReadablePolynom(True)
 		print at, at.fdim, at.lyapunov['ly'], args.iter, p[0], "" if args.dimension < 2 else p[1]
 
 	if not args.quiet: print >> sys.stderr, "Time to render the attractor."
-	return renderAttractor(at, l, screen_c)
+	return renderAttractor(a, screen_c)
 
 
 def parseArgs():
@@ -558,6 +554,7 @@ if args.iter < int(OVERITERATE_FACTOR*pxSize):
 screen_c = [0, 0] + [args.subsample*int(x) for x in g]
 random.seed()
 n = 0
+
 while True: # args.number = 0 -> infinite loop
 	at = polynomialAttractor({'dim'  : args.dimension,
 	                          'order': args.order,
@@ -571,7 +568,7 @@ while True: # args.number = 0 -> infinite loop
 	else:
 		at.explore()
 
-	a = walkthroughAttractor(at)
+	a = walkthroughAttractor(at, screen_c)
 	if not a:
 		n += 1
 		if n == args.number or args.code: break
