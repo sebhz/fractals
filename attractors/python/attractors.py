@@ -57,9 +57,6 @@ class polynomialAttractor(object):
 	convDelay    = 128   # Number of points to ignore before checking convergence
 	convMaxIter  = 16384 # Check convergence on convMaxIter points only
 	initVal      = 0.1   # Starting coordinate to use to check convergence
-	dimTransient = 1024  # Ignore the first dimTransient points when computing dimension
-	dimDepth     = 500   # Use the dimDepth predecessors of each point to compute the dimension
-	dimIgnore    = 20    # but ignore dimIgnore predecessors (presumably too correlated)
 	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
 	codeStep     = .125 # Step to use to map ASCII character to coef
 
@@ -312,30 +309,24 @@ class polynomialAttractor(object):
 			if self.opt['dim'] == 1: mem[i%prev] = pnew
 			p = pnew
 
-		# self.computeDimension(a)
+		self.computeDimension(a, screen_c, window_c)
 		return a
 
-	def computeDimension(self, l):
-	# An estimate of the correlation dimension: accumulate the values of the distances between
-	# point p and one of its predecessors, ignoring the points right before p
+	# An estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
+	# See https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension
+	def computeDimension(self, a, screen_c, window_c):
 		if not self.bound: return None
-		if len(l) <= self.dimTransient+self.dimDepth: return None
 
-		n1, n2 = (0, 0)
-		twod   = 2**self.opt['dim']
-		dist = lambda x,y: x*x+y*y
-		d2max = reduce(dist, [mx - mn for mn, mx in zip(*self.bound)], 0)
+		sideLength = 2 # Box side length, in pixels
+		pixelSize = (window_c[2]-window_c[0])/(screen_c[2]-screen_c[0])
 
-		for i in range(self.dimTransient + self.dimDepth, len(l)):
-			j  = random.randint(i-self.dimDepth, i-self.dimIgnore)
-			d2 = reduce(dist, [x-y for x, y in zip(l[i], l[j])])
-			if d2 < .001*twod*d2max:
-				n2 += 1
-			if d2 > .00001*twod*d2max:
-				continue
-			n1 += 1
+		boxes = dict()
+		for pt in a.keys():
+			boxCoordinates = (int(pt[0]/sideLength), int(pt[1]/sideLength))
+			boxes[boxCoordinates] = True
+		n = len(boxes.keys())
 
-		self.fdim = math.log10(n2/n1)
+		self.fdim = math.log(n)/math.log(1/(sideLength*pixelSize))
 
 
 # Enlarge attractor bounds so that it has the same aspect ratio as screen_c 
