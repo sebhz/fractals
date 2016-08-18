@@ -18,8 +18,8 @@ MAP = {
 	'__y_polynom' : "",
 }
 
-THUMB_CMD = "./attractors.py --geometry=800x600 --outdir=png_thumb --render=greyscale"
-FINAL_CMD = "./attractors.py --geometry=1920x1080 --outdir=png --render=greyscale"
+THUMB_CMD = "./attractors.py --geometry=800x600 --outdir=png_thumb --render=greyscale --subsample=2"
+FINAL_CMD = "./attractors.py --geometry=1920x1080 --outdir=png --render=greyscale --subsample=2"
 REFERENCE_DATE = datetime(2016, 7, 27)
 CURRENT_FILE = "strange_attractor.xhtml"
 

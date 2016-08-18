@@ -22,7 +22,7 @@ except:
     raise SystemExit
 
 INTERNAL_BPC=16
-OVERITERATE_FACTOR=4
+OVERITERATE_FACTOR=2.5
 
 defaultParameters = {
 	'sub': 1,
