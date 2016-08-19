@@ -6,8 +6,8 @@ import argparse
 from random import randint
 from datetime import datetime, timedelta
 
-THUMB_CMD = "./attractors.py --geometry=800x600 --outdir=png_thumb --render=greyscale --subsample=2"
-FINAL_CMD = "./attractors.py --geometry=1920x1080 --outdir=png --render=greyscale --subsample=2"
+THUMB_CMD = "./attractors.py --geometry=800x600 --outdir=png_thumb --render=greyscale --subsample=2 -H --loglevel=0"
+FINAL_CMD = "./attractors.py --geometry=1920x1080 --outdir=png --render=greyscale --subsample=2 -H --loglevel=0"
 REFERENCE_DATE = datetime(2016, 7, 27)
 CURRENT_FILE = "strange_attractor.xhtml"
 
@@ -128,7 +128,6 @@ for attractorNum in attractorRange:
 	MAP['__date'] = dt.strftime("%Y, %b %d")
 
 	print >> sys.stderr, "Today is %s. %dth attractor generation starts." % (MAP['__date'], attractorNum)
-	print >> sys.stderr, "Attractor order: %d" % MAP['__order']
 
 	with os.popen(THUMB_CMD + " --order=" + str(MAP['__order'])) as s:
 		v = s.read()

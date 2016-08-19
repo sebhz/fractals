@@ -17,8 +17,8 @@ import re
 try:
     import png
 except:
-    print "this program requires the pyPNG module"
-    print "available at https://github.com/drj11/pypng"
+    print >> sys.stderr, "this program requires the pyPNG module"
+    print >> sys.stderr, "available at https://github.com/drj11/pypng"
     raise SystemExit
 
 INTERNAL_BPC=16
@@ -33,7 +33,40 @@ defaultParameters = {
 	'number': 1,
 	'order': 2,
 	'outdir': "png",
+	'loglevel':4
 }
+
+class log(object):
+	LOG_VERBOSE=4
+	LOG_DEBUG=3
+	LOG_INFO=2
+	LOG_WARNING=1
+	LOG_ERROR=0
+
+	def __init__(self, logLevel=4):
+		if logLevel < self.LOG_ERROR: logLevel = self.LOG_ERROR
+		if logLevel > self.LOG_VERBOSE: logLevel = self.LOG_VERBOSE
+		self.logLevel = logLevel
+
+	def v(self, string):
+		if self.logLevel < self.LOG_VERBOSE: return
+		print >> sys.stderr, string
+
+	def d(self, string):
+		if self.logLevel < self.LOG_DEBUG: return
+		print >> sys.stderr, string
+
+	def i(self, string):
+		if self.logLevel < self.LOG_INFO: return
+		print >> sys.stderr, string
+
+	def w(self, string):
+		if self.logLevel < self.LOG_WARNING: return
+		print >> sys.stderr, string
+
+	def e(self, string):
+		if self.logLevel < self.LOG_ERROR: return
+		print >> sys.stderr, string
 
 class polynom(object):
 	def __init__(self, a):
@@ -209,8 +242,8 @@ class polynomialAttractor(object):
 							n += 1
 				l.append(result)
 		except OverflowError:
-			print "Overflow during attractor computation."
-			print "Either this is a very slowly diverging attractor, or you used a wrong code"
+			Log.e("Overflow during attractor computation.")
+			Log.e("Either this is a very slowly diverging attractor, or you used a wrong code")
 			return None
 
 		# Append the x father as extra coordinate, for colorization
@@ -221,7 +254,7 @@ class polynomialAttractor(object):
 		if self.opt['dim'] == 1:
 			df = abs(self.derive(p[0]))
 			if df == 0:
-				print >> sys.stderr, "Unable to compute Lyapunov exponent, but trying to go on..."
+				Log.w("Unable to compute Lyapunov exponent, but trying to go on...")
 				return pe
 		else:
 			p2   = self.evalCoef(pe)
@@ -229,7 +262,7 @@ class polynomialAttractor(object):
 			dl   = [d-x for d,x in zip(p2, p)]
 			dl2  = reduce(lambda x,y: x*x + y*y, dl)
 			if dl2 == 0:
-				print >> sys.stderr, "Unable to compute Lyapunov exponent, but trying to go on..."
+				Log.w("Unable to compute Lyapunov exponent, but trying to go on...")
 				return pe
 			df = 1000000000000*dl2
 			rs = 1/math.sqrt(df)
@@ -428,7 +461,7 @@ def colorizeAttractor(a):
 
 	hues = { 'red': 0.0, 'yellow': 1.0/6, 'green': 2.0/6, 'cyan': 3.0/6, 'blue': 4.0/6, 'magenta':5.0/6 }
 	hue = hues.keys()[random.randint(0, len(hues.keys())-1)]
-	print >> sys.stderr, "Rendering attractor in %s." % (hue)
+	Log.v("Rendering attractor in %s." % (hue))
 	h = hues[hue]
 
 	pools=dict()
@@ -437,7 +470,7 @@ def colorizeAttractor(a):
 		else: pools[v] = 1
 
 	ncolors = len(pools.keys())
-	print >> sys.stderr, "%d points in attractor. %d unique %d-bpc colors in attractor. Coloring ratio: %1.2f%%." % (len(a.keys()), ncolors, INTERNAL_BPC, float(len(pools.keys()))/len(a.keys())*100)
+	Log.d("%d points in attractor. %d unique %d-bpc colors in attractor. Coloring ratio: %1.2f%%." % (len(a.keys()), ncolors, INTERNAL_BPC, float(len(pools.keys()))/len(a.keys())*100))
 
 	colormap = dict()
 
@@ -452,12 +485,12 @@ def colorizeAttractor(a):
 	dt = dict()
 	for k in sorted(colormap.keys()):
 		dt[k>>shift] = True
-	print >> sys.stderr, "%d unique %d-bpc greyscale." % (len(dt.keys()), args.bpc)
+	Log.d("%d unique %d-bpc greyscale." % (len(dt.keys()), args.bpc))
 
 	dt = dict()
 	for k in sorted(colormap.keys()):
 		dt[tuple([v >> shift for v in colormap[k]])] = True
-	print >> sys.stderr, "%d unique %d-bpc color." % (len(dt.keys()), args.bpc)
+	Log.d("%d unique %d-bpc color." % (len(dt.keys()), args.bpc))
 
 	for v in a:
 		a[v] = colormap[a[v]]
@@ -498,7 +531,7 @@ def renderAttractor(a, screen_c):
 	return i
 
 def walkthroughAttractor(at, screen_c):
-	if not args.quiet: print >> sys.stderr, "Found converging attractor. Now computing it."
+	Log.v("Found converging attractor. Now computing it.")
 
 	b = projectBounds(at)
 	window_c = scaleBounds(b, screen_c)
@@ -506,47 +539,51 @@ def walkthroughAttractor(at, screen_c):
 	a = at.iterateMap(screen_c, window_c)
 	if not a: return a
 
-	if not args.quiet:
+	if args.display_at:
 		p = at.humanReadablePolynom(True)
 		print at, at.fdim, at.lyapunov['ly'], args.iter, p[0], "" if args.dimension < 2 else p[1]
 
-	if not args.quiet: print >> sys.stderr, "Time to render the attractor."
+	Log.v("Time to render the attractor.")
 	return renderAttractor(a, screen_c)
 
 
 def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
-	parser.add_argument('-b', '--bpc',       help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=(8, 16))
-	parser.add_argument('-c', '--code',      help='attractor code')
-	parser.add_argument('-d', '--dimension', help='attractor dimension (defaut = %d)' % defaultParameters['dim'], default=defaultParameters['dim'], type=int, choices=range(1,3))
-	parser.add_argument('-D', '--depth',     help='attractor depth (for 1D only - default = %d)' % defaultParameters['depth'], default=defaultParameters['depth'], type=int)
-	parser.add_argument('-g', '--geometry',  help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
-	parser.add_argument('-i', '--iter',      help='attractor number of iterations', type=int)
-	parser.add_argument('-n', '--number',    help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
-	parser.add_argument('-o', '--order',     help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
-	parser.add_argument('-O', '--outdir',    help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
-	parser.add_argument('-q', '--quiet',     help='shut up !', action='store_true', default=False)
-	parser.add_argument('-r', '--render',    help='rendering mode (greyscale, color)', default = "color", type=str, choices=("greyscale", "color"))
-	parser.add_argument('-s', '--subsample', help='subsampling rate (default  = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3))
+	parser.add_argument('-b', '--bpc',          help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=(8, 16))
+	parser.add_argument('-c', '--code',         help='attractor code')
+	parser.add_argument('-d', '--dimension',    help='attractor dimension (defaut = %d)' % defaultParameters['dim'], default=defaultParameters['dim'], type=int, choices=range(1,3))
+	parser.add_argument('-D', '--depth',        help='attractor depth (for 1D only - default = %d)' % defaultParameters['depth'], default=defaultParameters['depth'], type=int)
+	parser.add_argument('-g', '--geometry',     help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
+	parser.add_argument('-H', '--display_at',   help='Output parameters for post processing', action='store_true', default=False)
+	parser.add_argument('-l', '--loglevel',     help='Sets log level (default %d)' % defaultParameters['loglevel'], default=defaultParameters['loglevel'], type=int, choices=range(0,5))
+	parser.add_argument('-i', '--iter',         help='attractor number of iterations', type=int)
+	parser.add_argument('-n', '--number',       help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
+	parser.add_argument('-o', '--order',        help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
+	parser.add_argument('-O', '--outdir',       help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
+	parser.add_argument('-r', '--render',       help='rendering mode (greyscale, color)', default = "color", type=str, choices=("greyscale", "color"))
+	parser.add_argument('-s', '--subsample',    help='subsampling rate (default  = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3))
 	args = parser.parse_args()
 	return args
 
 # ----------------------------- Main loop ----------------------------- #
 args = parseArgs()
+Log = log(args.loglevel)
+random.seed()
+
 g = args.geometry.split('x')
 pxSize = args.subsample*args.subsample*int(g[0])*int(g[1])
 
 if args.iter == None:
 	args.iter = int(OVERITERATE_FACTOR*pxSize)
-	if not args.quiet: print >> sys.stderr, "Setting iteration number to %d." % (args.iter)
+	Log.v("Setting iteration number to %d." % (args.iter))
 if args.iter < int(OVERITERATE_FACTOR*pxSize):
-	if not args.quiet: print >> sys.stderr, "For better rendering, you should use at least %d iterations." % (pxSize)
+	Log.w("For better rendering, you should use at least %d iterations." % (pxSize))
 
 screen_c = [0, 0] + [args.subsample*int(x) for x in g]
-random.seed()
-n = 0
 
-while True: # args.number = 0 -> infinite loop
+if args.code: args.number = 1
+
+for i in range(0, args.number):
 	at = polynomialAttractor({'dim'  : args.dimension,
 	                          'order': args.order,
 	                          'iter' : args.iter,
@@ -555,17 +592,14 @@ while True: # args.number = 0 -> infinite loop
 
 	if args.code:
 		if not at.checkConvergence():
-			print >> sys.stderr, "Not an attractor it seems... but trying to display it anyway."
+			Log.w("Not an attractor it seems... but trying to display it anyway.")
 	else:
 		at.explore()
 
 	a = walkthroughAttractor(at, screen_c)
-	if not a:
-		n += 1
-		if n == args.number or args.code: break
-		continue
+	if not a: continue
 
-	if not args.quiet: print >> sys.stderr, "Now writing attractor on disk."
+	Log.v("Now writing attractor on disk.")
 	w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = True if args.render == "greyscale" else False, bitdepth=args.bpc, interlace=True)
 	aa = w.array_scanlines(a)
 	suffix = str(args.bpc)
@@ -573,5 +607,9 @@ while True: # args.number = 0 -> infinite loop
 	with open(filepath, "wb") as f:
 		w.write(f, aa)
 
-	n += 1
-	if n == args.number or args.code: break
+	Log.i("Attractor type: polynomial")
+	Log.i("Polynom order: %d" % (int(at.code[1])))
+	Log.i("Minkowski-Bouligand dimension: %.3f" % (at.fdim))
+	Log.i("Lyapunov exponent: %.3f" % (at.lyapunov['ly']))
+	Log.i("Code: %s" % (at.code))
+	Log.i("Iterations: %d" % (args.iter))
