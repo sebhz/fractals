@@ -3,8 +3,15 @@
 import os
 import sys
 import argparse
+import smtplib
+
 from random import randint
 from datetime import datetime, timedelta
+from os.path import basename
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.utils import COMMASPACE, formatdate
 
 THUMB_CMD = "./attractors.py --geometry=800x600 --outdir=png_thumb --render=greyscale --subsample=2 -H --loglevel=0"
 FINAL_CMD = "./attractors.py --geometry=1920x1080 --outdir=png --render=greyscale --subsample=2 -H --loglevel=0"
@@ -92,13 +99,47 @@ def modifyPreviousFile(fileName, curName):
 
 def parseArgs():
 	parser = argparse.ArgumentParser(description='generation of strange attractor web page')
-	parser.add_argument('-d', '--date', help='Forces date. Format of input: YYYY-MM-DD', type=str)
 	parser.add_argument('-a', '--all',  help='Regenerates all pages from the beginning on time (2016-07-27) until today', action='store_true', default=False)
+	parser.add_argument('-d', '--date', help='Forces date. Format of input: YYYY-MM-DD', type=str)
+	parser.add_argument('-m', '--mail', help='Mail the attractor(s)', action='store_true', default=False)
+	parser.add_argument('-r', '--recipients', help='Recipient list for mails (comma separated)', type=str)
+	parser.add_argument('-s', '--server', help='SMTP server to use', type=str)
 	args = parser.parse_args()
 	return args
 
-os.chdir("/home/shaezebr/work/pjt/attractor_web")
+def send_mail(server, send_from, send_to, subject, text, files=None):
+	if not isinstance(send_to, list):
+		print >> sys.stderr, "Badly formed recipient list. Not sending any mail."
+		return
 
+	msg = MIMEMultipart()
+	msg['From'] = send_from
+	msg['To'] = COMMASPACE.join(send_to)
+	msg['Date'] = formatdate(localtime=True)
+	msg['Subject'] = subject
+
+	msg.attach(MIMEText(text))
+
+	for f in files or []:
+		with open(f, "rb") as fil:
+			part = MIMEApplication(
+				fil.read(),
+				Name=basename(f)
+			)
+			part['Content-Disposition'] = 'attachment; filename="%s"' % basename(f)
+			msg.attach(part)
+
+	try:
+		smtp = smtplib.SMTP(server)
+	except smtplib.SMTPConnectError:
+		print >> sys.stderr, "Unable to connect to SMTP server. Not sending any mail."
+		return
+
+	smtp.sendmail(send_from, send_to, msg.as_string())
+	smtp.quit()
+#
+# Main program
+#
 args = parseArgs()
 if args.date:
 	d = datetime.strptime(args.date,"%Y-%m-%d")
@@ -167,4 +208,20 @@ for attractorNum in attractorRange:
 			modifyPreviousFile(prevName, curName)
 			break
 
-# Now we only have to upload the last two HTML files and the new images
+	# Send mails...
+	if args.mail and args.recipients and args.server:
+		print >> sys.stderr, "Sending emails to %s, using SMTP server %s." % (args.recipients, args.server)
+		fromaddr = 'strangeattractor@attractor.org'
+		body     = '''Please find your strange attractor.
+
+	- Type: polynomial
+	- Order: %d
+	- # Iterations: %d
+	- Minkowski-Bouligand (=box-counting) dimension: %s
+
+Have a good day.
+''' % (MAP['__order'], MAP['__iterations'], MAP['__dimension'])
+
+		toaddr = args.recipients.split(',') # Hopefully the won't be any comma in the addresses
+		send_mail(args.server, fromaddr, toaddr, "%s : Strange attractor of the day" % (MAP['__date']), body, ("png/"+MAP['__link'],))
+
