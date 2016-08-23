@@ -181,11 +181,11 @@ class polynomialAttractor(object):
 	# Outputs a human readable string of the polynom. If isHTML is True
 	# outputs an HTML blurb of the equation. Else output a plain text.
 	def humanReadablePolynom(self, isHTML):
-		variables = ('x', 'y', 'z') # Limit ourselves to 3 dimensions for now
+		variables = ('xn', 'yn', 'zn') # Limit ourselves to 3 dimensions for now
 		equation = [""]*self.opt['dim']
 		for v, c in enumerate(self.coef): # Iterate on each dimension
 			n = 0
-			equation[v] = variables[v]+"="
+			equation[v] = variables[v]+"+1="
 			for i in range(self.order+1):
 				if self.opt['dim'] == 1:
 					if c[n] == 0:
@@ -218,6 +218,8 @@ class polynomialAttractor(object):
 
 			if isHTML: # Convert this in a nice HTML equation
 				equation[v] = re.sub(r'\^(\d+)',r'<sup>\1</sup>', equation[v])
+				equation[v] = re.sub(r'n\+1=',r'<sub>n+1</sub>=', equation[v])
+				equation[v] = re.sub(r'(x|y|z)n',r'\1<sub>n</sub>', equation[v])
 
 		return equation
 
@@ -440,7 +442,7 @@ def equalizeAttractor(p):
 	for v in p.itervalues():
 		pools[v] += 1
 	for i in range(len(pools) - 1):
-		pools[i+1] = pools[i+1] + pools[i]
+		pools[i+1] += pools[i]
 
 	# Stretch the values to the [1, (1<<INTERNAL_BPC)-1] range
 	for i, v in enumerate(pools):
@@ -461,7 +463,7 @@ def colorizeAttractor(a):
 
 	hues = { 'red': 0.0, 'yellow': 1.0/6, 'green': 2.0/6, 'cyan': 3.0/6, 'blue': 4.0/6, 'magenta':5.0/6 }
 	hue = hues.keys()[random.randint(0, len(hues.keys())-1)]
-	Log.v("Rendering attractor in %s." % (hue))
+	# Log.v("Rendering attractor in %s." % (hue))
 	h = hues[hue]
 
 	pools=dict()
@@ -474,10 +476,11 @@ def colorizeAttractor(a):
 
 	colormap = dict()
 
-	# Convert greyscale to a color, by choosing a hue and mapping greyscale directly on value 
+	# We want to create a gradient between orangish and yellowish, with a unique color mapping.
 	for color in pools.keys():
-		hsv = list()
-		hsv = (h, 0.3, float(color)/((1<<INTERNAL_BPC)-1))
+		hh = 1.0/12 + float(color)*(1.0/8 - 1.0/12)/((1<<INTERNAL_BPC)-1)
+		vv = 0.75 + 0.25*float(color)/((1<<INTERNAL_BPC)-1)
+		hsv = (hh, 0.3, vv)
 		colormap[color] = [int(((1<<INTERNAL_BPC)-1)*component) for component in colorsys.hsv_to_rgb(*hsv)]
 
 
@@ -573,11 +576,12 @@ random.seed()
 g = args.geometry.split('x')
 pxSize = args.subsample*args.subsample*int(g[0])*int(g[1])
 
+idealIter = int(OVERITERATE_FACTOR*pxSize)
 if args.iter == None:
-	args.iter = int(OVERITERATE_FACTOR*pxSize)
+	args.iter = idealIter
 	Log.v("Setting iteration number to %d." % (args.iter))
-if args.iter < int(OVERITERATE_FACTOR*pxSize):
-	Log.w("For better rendering, you should use at least %d iterations." % (pxSize))
+if args.iter < idealIter:
+	Log.w("For better rendering, you should use at least %d iterations." % idealIter)
 
 screen_c = [0, 0] + [args.subsample*int(x) for x in g]
 
