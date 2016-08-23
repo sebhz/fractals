@@ -311,6 +311,7 @@ class polynomialAttractor(object):
 			n += 1
 			self.getRandom()
 		# Found one -> create corresponding code
+		Log.v("Attractor found after %d trials." % n)
 		self.createCode()
 
 	def iterateMap(self, screen_c, window_c):
