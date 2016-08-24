@@ -80,6 +80,57 @@ __y_polynom
 </html>
 '''
 
+MAIL_HTML_TEMPLATE='''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head dir="ltr" id="head-id" lang="EN" profile="http://gmpg.org/xfn/11">
+	<title>Strange attractor of the day</title>
+	<style media="screen" type="text/css">
+	.code {
+	font-family: Courier;
+	font-variant: normal;
+    }
+    body {
+	font-size:11px;
+	font-variant:small-caps;
+	font-family:Lucida,Helvetica,sans-serif;
+	font-weight:500;
+	text-decoration: none;
+	line-height: 1.2em;
+	position: absolute;
+    }
+	.polite {
+	font-variant:normal;
+	}
+</style>
+</head>
+
+<body>
+<p class="polite">Please find your strange attractor !</p>
+<p></p>
+<div id="info_div">
+Polynom order: <span class="code">__order</span>
+<br></br>
+Minkowski-Bouligand (=box-counting) dimension: <span class="code">__dimension</span>
+<br></br>
+Number of iterations: <span class="code">__iterations</span>
+<br></br>
+Equations:
+<div>
+<span class="code">
+__x_polynom
+</span>
+<p class="code">
+__y_polynom
+</p>
+</div>
+</div>
+<p class="polite">Have a good day.</p>
+</body>
+</html>
+'''
+
 def daysBetween(d1, d2):
 	return abs((d2 - d1).days)
 
@@ -107,18 +158,45 @@ def parseArgs():
 	args = parser.parse_args()
 	return args
 
-def send_mail(server, send_from, send_to, subject, text, files=None):
+def fillTemplate(template, MAP):
+	out_page=""
+	for line in template.split('\n'):
+		for k, v in MAP.iteritems():
+			if k in line:
+				line = line.replace(k, str(v))
+		out_page += line + '\n'
+
+	return out_page
+
+def getMailText(MAP):
+	return('''Please find your strange attractor.
+
+	- Type: polynomial
+	- Order: %d
+	- # Iterations: %d
+	- Minkowski-Bouligand (=box-counting) dimension: %s
+
+Have a good day.
+''' % (MAP['__order'], MAP['__iterations'], MAP['__dimension']))
+
+def getMailHTML(MAP):
+	return (fillTemplate(MAIL_HTML_TEMPLATE, MAP))
+
+def send_mail(MAP, server, send_from, send_to, subject, files=None):
 	if not isinstance(send_to, list):
 		print >> sys.stderr, "Badly formed recipient list. Not sending any mail."
 		return
 
-	msg = MIMEMultipart()
+	msg = MIMEMultipart('alternative')
 	msg['From'] = send_from
 	msg['To'] = COMMASPACE.join(send_to)
 	msg['Date'] = formatdate(localtime=True)
 	msg['Subject'] = subject
 
-	msg.attach(MIMEText(text))
+	text = getMailText(MAP)
+	html = getMailHTML(MAP)
+	msg.attach(MIMEText(text, 'plain'))
+	msg.attach(MIMEText(html, 'html'))
 
 	for f in files or []:
 		with open(f, "rb") as fil:
@@ -143,6 +221,33 @@ def send_mail(server, send_from, send_to, subject, text, files=None):
 		if refused:
 			print >> sys.stderr, "Some mails could not be delivered:", refused
 	smtp.quit()
+
+def processHTML(attractorNum, MAP):
+	out_page = fillTemplate(PAGE_TEMPLATE, MAP)
+
+	curName = str(attractorNum)+".xhtml"
+	with open(curName, "w") as f:
+		f.writelines(out_page)
+
+	if os.path.islink(CURRENT_FILE):
+		os.remove(CURRENT_FILE)
+	os.symlink(curName, CURRENT_FILE)
+
+	# Modify previous filename to point on the current one.
+	for i in range(attractorNum-1, 0, -1):
+		prevName = "%d.xhtml" % (i)
+		if os.path.isfile(prevName):
+			modifyPreviousFile(prevName, curName)
+			break
+
+def processMail(MAP):
+	if args.mail and args.recipients and args.server:
+		print >> sys.stderr, "Sending emails to %s, using SMTP server %s." % (args.recipients, args.server)
+		fromaddr = 'strangeattractor@attractor.org'
+		toaddr   = args.recipients.split(',') # Hopefully there won't be any comma in the addresses
+		subject  = "%s : Strange attractor of the day" % (MAP['__date'])
+		send_mail(MAP, args.server, fromaddr, toaddr, subject, ("png/"+MAP['__link'],))
+
 #
 # Main program
 #
@@ -192,42 +297,6 @@ for attractorNum in attractorRange:
 	MAP['__link'] = MAP['__code'] + "_8.png"
 	MAP['__prev'] = "#" if attractorNum == 1 else "%d.xhtml" % (attractorNum-1)
 
-	out_page=""
-	for line in PAGE_TEMPLATE.split('\n'):
-		for k, v in MAP.iteritems():
-			if k in line:
-				line = line.replace(k, str(v))
-		out_page += line
-
-	curName = str(attractorNum)+".xhtml"
-	with open(curName, "w") as f:
-		f.writelines(out_page)
-
-	if os.path.islink(CURRENT_FILE):
-		os.remove(CURRENT_FILE)
-	os.symlink(curName, CURRENT_FILE)
-
-	# Modify previous filename to point on the current one.
-	for i in range(attractorNum-1, 0, -1):
-		prevName = "%d.xhtml" % (i)
-		if os.path.isfile(prevName):
-			modifyPreviousFile(prevName, curName)
-			break
-
-	# Send mails...
-	if args.mail and args.recipients and args.server:
-		print >> sys.stderr, "Sending emails to %s, using SMTP server %s." % (args.recipients, args.server)
-		fromaddr = 'strangeattractor@attractor.org'
-		body     = '''Please find your strange attractor.
-
-	- Type: polynomial
-	- Order: %d
-	- # Iterations: %d
-	- Minkowski-Bouligand (=box-counting) dimension: %s
-
-Have a good day.
-''' % (MAP['__order'], MAP['__iterations'], MAP['__dimension'])
-
-		toaddr = args.recipients.split(',') # Hopefully the won't be any comma in the addresses
-		send_mail(args.server, fromaddr, toaddr, "%s : Strange attractor of the day" % (MAP['__date']), body, ("png/"+MAP['__link'],))
+	processHTML(attractorNum, MAP)
+	processMail(MAP)
 
