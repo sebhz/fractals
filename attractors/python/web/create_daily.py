@@ -135,7 +135,13 @@ def send_mail(server, send_from, send_to, subject, text, files=None):
 		print >> sys.stderr, "Unable to connect to SMTP server. Not sending any mail."
 		return
 
-	smtp.sendmail(send_from, send_to, msg.as_string())
+	try:
+		refused = smtp.sendmail(send_from, send_to, msg.as_string())
+	except smtplib.SMTPException as e:
+		print >> sys.stderr, "Error sending mail:", repr(e)
+	else:
+		if refused:
+			print >> sys.stderr, "Some mails could not be delivered:", refused
 	smtp.quit()
 #
 # Main program
