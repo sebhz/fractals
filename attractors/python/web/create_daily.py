@@ -131,6 +131,10 @@ __y_polynom
 </html>
 '''
 
+def numeral(n):
+	suffix = ('th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th')
+	return str(n) + suffix[n%10]
+
 def daysBetween(d1, d2):
 	return abs((d2 - d1).days)
 
@@ -279,7 +283,7 @@ for attractorNum in attractorRange:
 	dt = REFERENCE_DATE + timedelta(days=attractorNum-1)
 	MAP['__date'] = dt.strftime("%Y, %b %d")
 
-	print >> sys.stderr, "Today is %s. %dth attractor generation starts." % (MAP['__date'], attractorNum)
+	print >> sys.stderr, "Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum))
 
 	with os.popen(THUMB_CMD + " --order=" + str(MAP['__order'])) as s:
 		v = s.read()
