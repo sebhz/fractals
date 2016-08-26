@@ -13,9 +13,10 @@ from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import COMMASPACE, formatdate
+from subprocess import Popen, PIPE, STDOUT
 
-THUMB_CMD = "./attractors.py --geometry=800x600 --outdir=png_thumb --render=greyscale --subsample=2 -H --loglevel=0"
-FINAL_CMD = "./attractors.py --geometry=1920x1080 --outdir=png --render=greyscale --subsample=2 -H --loglevel=0"
+THUMB_CMD = ['./attractors.py', '--geometry=800x600', '--outdir=png_thumb', '--render=greyscale', '--subsample=2', '-H', '--loglevel=0']
+FINAL_CMD = ['./attractors.py', '--geometry=1920x1080', '--outdir=png', '--render=greyscale', '--subsample=2', '-H', '--loglevel=0']
 REFERENCE_DATE = datetime(2016, 7, 27)
 CURRENT_FILE = "strange_attractor.xhtml"
 
@@ -183,8 +184,8 @@ def getMailText(MAP):
 	return('''Please find your strange attractor.
 
 	- Type: polynomial
-	- Order: %d
-	- # Iterations: %d
+	- Order: %s
+	- # Iterations: %s
 	- Minkowski-Bouligand (=box-counting) dimension: %s
 
 Have a good day.
@@ -298,17 +299,18 @@ for attractorNum in attractorRange:
 
 	print >> sys.stderr, "Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum))
 
-	with os.popen(THUMB_CMD + " --order=" + str(MAP['__order'])) as s:
-		v = s.read()
+	cmd = THUMB_CMD + ["--order=" + str(MAP['__order'])]
+	p = Popen(cmd, stdout=PIPE, stderr=PIPE)
+	stdout, stderr = p.communicate()
+	MAP['__code'], MAP['__dimension'], MAP['__lyapunov'], MAP['__iterations'], MAP['__x_polynom'], MAP['__y_polynom'] = stdout.split()
 	print >> sys.stderr, "Thumbnail generated"
 
-	MAP['__code'], MAP['__dimension'], MAP['__lyapunov'], MAP['__iterations'], MAP['__x_polynom'], MAP['__y_polynom'] = v.split()
-
-	# Iterations will depend on the size of the image... hardcoding the scaling factor for now
-	MAP['__iterations'] = int(MAP['__iterations'])*1920*1080/800/600
+	cmd = FINAL_CMD + ["--order=" + str(MAP['__order']), "--code=" + MAP['__code']]
 	t0 = time()
-	os.system(FINAL_CMD + " --order=" + str(MAP['__order']) + " --code=" + MAP['__code'] + " >/dev/null")
+	p = Popen(cmd, stdout=PIPE, stderr=PIPE)
+	stdout, stderr = p.communicate()
 	t1 = time()
+	MAP['__code'], MAP['__dimension'], MAP['__lyapunov'], MAP['__iterations'], MAP['__x_polynom'], MAP['__y_polynom'] = stdout.split()
 	print >> sys.stderr, "Image generated"
 
 	MAP['__dimension'] = "%.3f" % (float(MAP['__dimension']))
