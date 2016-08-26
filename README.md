@@ -7,7 +7,7 @@ For the record you will find here:
 
 - `mandelbrot/yambe`: "Yet Another MandelBrot Explorer". Written in C. Can use MPFR library for high precision computation. Uses SDL1.2 for rendering. Single threaded. Can display Julia sets too.
 - `mandelbrot/other scripts`: plain simple mandelbrot explorers/renderers in other languages (Python and Lua). Can also display Collatz fractal.
-- `lsystems`: [lsystems] [1] generator written in C
+- `lsystems`: [lsystems] [1] generator written in C.
 - `attractors`: Strange attractors in 2D and 3D, in  C and Python. Only `python/attractors.py` is probably a bit interesting. Its performance is pretty poor though.
 
 The only one I am still playing with is the python polynomial strange attractors generator, which is able to generate some pretty nice pictures like the one below.
