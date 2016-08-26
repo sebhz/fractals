@@ -302,6 +302,8 @@ class polynomialAttractor(object):
 			p = pnew
 
 		self.bound = (pmin, pmax)
+		Log.v("Attractor boundaries: %s" % (str(self.bound)))
+
 		return True
 
 	def explore(self):
@@ -314,6 +316,7 @@ class polynomialAttractor(object):
 		Log.v("Attractor found after %d trials." % n)
 		self.createCode()
 
+#	@profile
 	def iterateMap(self, screen_c, window_c):
 		a = dict()
 		p = self.init
@@ -337,14 +340,16 @@ class polynomialAttractor(object):
 				else:
 					projectedPixel = self.w_to_s(window_c, screen_c, pnew)
 
-				if projectedPixel and projectedPixel in a:
-					a[projectedPixel] += 1
-				else:
-					a[projectedPixel] = 0
+				if projectedPixel:
+					if projectedPixel in a:
+						a[projectedPixel] += 1
+					else:
+						a[projectedPixel] = 0
 
 			if self.opt['dim'] == 1: mem[i%prev] = pnew
 			p = pnew
 
+		Log.v("%d points in the attractor before any dithering done." % (len(a.keys())))
 		self.computeDimension(a, screen_c, window_c)
 		return a
 
