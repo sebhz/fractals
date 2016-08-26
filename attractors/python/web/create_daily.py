@@ -5,6 +5,7 @@ import sys
 import argparse
 import smtplib
 
+from time import time
 from random import randint
 from datetime import datetime, timedelta
 from os.path import basename
@@ -61,6 +62,9 @@ __x_polynom
 <p class="code">
 __y_polynom
 </p>
+</div>
+<div>
+Generation and rendering time: __time
 </div>
 </div>
 </div>
@@ -124,6 +128,9 @@ __x_polynom
 <p class="code">
 __y_polynom
 </p>
+</div>
+<div>
+Generation and rendering time: __time
 </div>
 </div>
 <p class="polite">Have a good day.</p>
@@ -252,6 +259,11 @@ def processMail(MAP):
 		subject  = "%s : Strange attractor of the day" % (MAP['__date'])
 		send_mail(MAP, args.server, fromaddr, toaddr, subject, ("png/"+MAP['__link'],))
 
+def sec2hms(seconds):
+	m, s = divmod(seconds, 60)
+	h, m = divmod(m, 60)
+	return "%dh%02dm%02ds" % (h, m, s)
+
 #
 # Main program
 #
@@ -278,6 +290,7 @@ for attractorNum in attractorRange:
 		'__link' : "",
 		'__x_polynom' : "",
 		'__y_polynom' : "",
+		'__time' : "",
 	}
 
 	dt = REFERENCE_DATE + timedelta(days=attractorNum-1)
@@ -293,13 +306,16 @@ for attractorNum in attractorRange:
 
 	# Iterations will depend on the size of the image... hardcoding the scaling factor for now
 	MAP['__iterations'] = int(MAP['__iterations'])*1920*1080/800/600
+	t0 = time()
 	os.system(FINAL_CMD + " --order=" + str(MAP['__order']) + " --code=" + MAP['__code'] + " >/dev/null")
+	t1 = time()
 	print >> sys.stderr, "Image generated"
 
 	MAP['__dimension'] = "%.3f" % (float(MAP['__dimension']))
 	MAP['__lyapunov'] = "%.3f" % (float(MAP['__lyapunov']))
 	MAP['__link'] = MAP['__code'] + "_8.png"
 	MAP['__prev'] = "#" if attractorNum == 1 else "%d.xhtml" % (attractorNum-1)
+	MAP['__time'] = sec2hms(t1-t0)
 
 	processHTML(attractorNum, MAP)
 	processMail(MAP)

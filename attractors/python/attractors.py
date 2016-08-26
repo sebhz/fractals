@@ -27,6 +27,7 @@ import colorsys
 import sys
 import os
 import re
+import time
 
 try:
     import png
@@ -562,13 +563,13 @@ def walkthroughAttractor(at, screen_c):
 	a = at.iterateMap(screen_c, window_c)
 	if not a: return a
 
-	if args.display_at:
-		p = at.humanReadablePolynom(True)
-		print at, at.fdim, at.lyapunov['ly'], args.iter, p[0], "" if args.dimension < 2 else p[1]
-
 	Log.v("Time to render the attractor.")
 	return renderAttractor(a, screen_c)
 
+def sec2hms(seconds):
+	m, s = divmod(seconds, 60)
+	h, m = divmod(m, 60)
+	return "%dh%02dm%02ds" % (h, m, s)
 
 def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
@@ -589,6 +590,7 @@ def parseArgs():
 	return args
 
 # ----------------------------- Main loop ----------------------------- #
+
 args = parseArgs()
 Log = log(args.loglevel)
 random.seed()
@@ -608,6 +610,7 @@ screen_c = [0, 0] + [args.subsample*int(x) for x in g]
 if args.code: args.number = 1
 
 for i in range(0, args.number):
+	t0 = time.time()
 	at = polynomialAttractor({'dim'  : args.dimension,
 	                          'order': args.order,
 	                          'iter' : args.iter,
@@ -631,9 +634,17 @@ for i in range(0, args.number):
 	with open(filepath, "wb") as f:
 		w.write(f, aa)
 
+	t1 = time.time()
+
 	Log.i("Attractor type: polynomial")
 	Log.i("Polynom order: %d" % (int(at.code[1])))
 	Log.i("Minkowski-Bouligand dimension: %.3f" % (at.fdim))
 	Log.i("Lyapunov exponent: %.3f" % (at.lyapunov['ly']))
 	Log.i("Code: %s" % (at.code))
 	Log.i("Iterations: %d" % (args.iter))
+	Log.i("Attractor generation and rendering took %s." % (sec2hms(t1-t0)))
+
+	if args.display_at:
+		p = at.humanReadablePolynom(True)
+		print at, at.fdim, at.lyapunov['ly'], args.iter, p[0], "" if args.dimension < 2 else p[1]
+
