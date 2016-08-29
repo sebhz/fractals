@@ -27,7 +27,9 @@ import colorsys
 import sys
 import os
 import re
-import time
+import threading
+
+from time import time
 
 try:
     import png
@@ -48,7 +50,8 @@ defaultParameters = {
 	'number': 1,
 	'order': 2,
 	'outdir': "png",
-	'loglevel':4
+	'loglevel':4,
+	'threads':1,
 }
 
 class log(object):
@@ -104,7 +107,6 @@ class polynomialAttractor(object):
 
 	convDelay    = 128   # Number of points to ignore before checking convergence
 	convMaxIter  = 16384 # Check convergence on convMaxIter points only
-	initVal      = 0.1   # Starting coordinate to use to check convergence
 	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
 	codeStep     = .125 # Step to use to map ASCII character to coef
 
@@ -117,10 +119,6 @@ class polynomialAttractor(object):
 		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
 		self.fdim      = 0
 		self.bound     = None
-
-		# Parameters not in the code first
-		if not 'init' in self.opt:
-			self.init = [self.initVal]*self.opt['dim']
 
 		if not 'iter' in self.opt:
 			self.opt['iter'] = defaultParameters['iter']
@@ -290,10 +288,10 @@ class polynomialAttractor(object):
 		if self.opt['dim'] != 1:
 			return [p[i]-rs*x for i,x in enumerate(dl)]
 
-	def checkConvergence(self):
+	def checkConvergence(self, initPoint=(0.1, 0.1)):
 		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
 		pmin, pmax = ([1000000]*self.opt['dim'], [-1000000]*self.opt['dim'])
-		p = self.init
+		p = initPoint
 		pe = [x + 0.000001 if i==0 else x for i,x in enumerate(p)]
 		modulus = lambda x, y: abs(x) + abs(y)
 
@@ -317,7 +315,6 @@ class polynomialAttractor(object):
 			p = pnew
 
 		self.bound = (pmin, pmax)
-		Log.v("Attractor boundaries: %s" % (str(self.bound)))
 
 		return True
 
@@ -331,10 +328,9 @@ class polynomialAttractor(object):
 		Log.v("Attractor found after %d trials." % n)
 		self.createCode()
 
-#	@profile
-	def iterateMap(self, screen_c, window_c):
+	def iterateMap(self, screen_c, window_c, aContainer, index, initPoint=(0.1, 0.1)):
 		a = dict()
-		p = self.init
+		p = initPoint
 		if self.opt['dim'] == 1:
 			prev = self.opt['depth']
 			mem  = [p]*prev
@@ -344,7 +340,9 @@ class polynomialAttractor(object):
 				pnew = [polynom(self.coef[0])(p[0])]
 			else:
 				pnew = self.evalCoef(p)
-				if not pnew: return None
+				if not pnew:
+					aContainer[index] = None
+					return
 
 			# Ignore the first points to get a proper convergence
 			if i >= self.convDelay:
@@ -364,9 +362,8 @@ class polynomialAttractor(object):
 			if self.opt['dim'] == 1: mem[i%prev] = pnew
 			p = pnew
 
-		Log.v("%d points in the attractor before any dithering done." % (len(a.keys())))
 		self.computeDimension(a, screen_c, window_c)
-		return a
+		aContainer[index] = a
 
 	# An estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
 	# See https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension
@@ -554,22 +551,93 @@ def renderAttractor(a, screen_c):
 	i = createImageArray(p, screen_c, backgroundColor)
 	return i
 
-def walkthroughAttractor(at, screen_c):
-	Log.v("Found converging attractor. Now computing it.")
+def mergeAttractors(a):
+	v = a[0]
+	for vv in a[1:]:
+		for k, e in vv.iteritems():
+			if k in v:
+				v[k] += e
+			else:
+				v[k] = e
+	Log.v("%d points in the attractor before any dithering done." % (len(v.keys())))
+	return v
 
+def getInitPoints(at, n):
+	initPoints = list()
+	i = 0
+	while True:
+		r = random.random()
+		p = (r, r)
+		if at.checkConvergence(p):
+			initPoints.append(p)
+			i += 1
+		if i == n: return initPoints
+
+def walkthroughAttractor(at, screen_c):
+	threads = [None]*args.threads
+	a = [None]*args.threads
+	initPoints = getInitPoints(at, args.threads)
+	Log.v("Found converging attractor. Now computing it.")
+	Log.v("Attractor boundaries: %s" % (str(at.bound)))
 	b = projectBounds(at)
 	window_c = scaleBounds(b, screen_c)
 
-	a = at.iterateMap(screen_c, window_c)
-	if not a: return a
+	for i in range(args.threads):
+		threads[i] = threading.Thread(group=None, name='t'+str(i), target=at.iterateMap, args=(screen_c, window_c, a, i, initPoints[i]))
+		threads[i].start()
+
+	for i in range(args.threads):
+		threads[i].join()
+
+	aMerge = mergeAttractors(a)
+	if not aMerge: return aMerge
 
 	Log.v("Time to render the attractor.")
-	return renderAttractor(a, screen_c)
+	return renderAttractor(aMerge, screen_c)
 
 def sec2hms(seconds):
 	m, s = divmod(seconds, 60)
 	h, m = divmod(m, 60)
 	return "%dh%02dm%02ds" % (h, m, s)
+
+def generateAttractor():
+	t0 = time()
+	at = polynomialAttractor({'dim'  : args.dimension,
+	                          'order': args.order,
+	                          'iter' : int(args.iter/args.threads),
+	                          'depth': args.depth,
+	                          'code' : args.code })
+
+	if args.code:
+		if not at.checkConvergence():
+			Log.w("Not an attractor it seems... but trying to display it anyway.")
+	else:
+		at.explore()
+
+	a = walkthroughAttractor(at, screen_c)
+	if not a: return
+
+	Log.v("Now writing attractor on disk.")
+	w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = True if args.render == "greyscale" else False, bitdepth=args.bpc, interlace=True)
+	aa = w.array_scanlines(a)
+	suffix = str(args.bpc)
+	filepath = os.path.join(args.outdir, at.code + "_" + suffix + ".png")
+	with open(filepath, "wb") as f:
+		w.write(f, aa)
+
+	t1 = time()
+
+	Log.i("Attractor type: polynomial")
+	Log.i("Polynom order: %d" % (int(at.code[1])))
+	Log.i("Minkowski-Bouligand dimension: %.3f" % (at.fdim))
+	Log.i("Lyapunov exponent: %.3f" % (at.lyapunov['ly']))
+	Log.i("Code: %s" % (at.code))
+	Log.i("Iterations: %d" % (args.iter))
+	Log.i("Attractor generation and rendering took %s." % (sec2hms(t1-t0)))
+
+	if args.display_at:
+		p = at.humanReadablePolynom(True)
+		print at, at.fdim, at.lyapunov['ly'], args.iter, p[0], "" if args.dimension < 2 else p[1]
 
 def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
@@ -579,6 +647,7 @@ def parseArgs():
 	parser.add_argument('-D', '--depth',        help='attractor depth (for 1D only - default = %d)' % defaultParameters['depth'], default=defaultParameters['depth'], type=int)
 	parser.add_argument('-g', '--geometry',     help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
 	parser.add_argument('-H', '--display_at',   help='Output parameters for post processing', action='store_true', default=False)
+	parser.add_argument('-j', '--threads',      help='Number of threads to use (default=%d)' % defaultParameters['threads'], type=int, default=defaultParameters['threads'])
 	parser.add_argument('-l', '--loglevel',     help='Sets log level (default %d)' % defaultParameters['loglevel'], default=defaultParameters['loglevel'], type=int, choices=range(0,5))
 	parser.add_argument('-i', '--iter',         help='attractor number of iterations', type=int)
 	parser.add_argument('-n', '--number',       help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
@@ -610,41 +679,4 @@ screen_c = [0, 0] + [args.subsample*int(x) for x in g]
 if args.code: args.number = 1
 
 for i in range(0, args.number):
-	t0 = time.time()
-	at = polynomialAttractor({'dim'  : args.dimension,
-	                          'order': args.order,
-	                          'iter' : args.iter,
-	                          'depth': args.depth,
-	                          'code' : args.code })
-
-	if args.code:
-		if not at.checkConvergence():
-			Log.w("Not an attractor it seems... but trying to display it anyway.")
-	else:
-		at.explore()
-
-	a = walkthroughAttractor(at, screen_c)
-	if not a: continue
-
-	Log.v("Now writing attractor on disk.")
-	w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = True if args.render == "greyscale" else False, bitdepth=args.bpc, interlace=True)
-	aa = w.array_scanlines(a)
-	suffix = str(args.bpc)
-	filepath = os.path.join(args.outdir, at.code + "_" + suffix + ".png")
-	with open(filepath, "wb") as f:
-		w.write(f, aa)
-
-	t1 = time.time()
-
-	Log.i("Attractor type: polynomial")
-	Log.i("Polynom order: %d" % (int(at.code[1])))
-	Log.i("Minkowski-Bouligand dimension: %.3f" % (at.fdim))
-	Log.i("Lyapunov exponent: %.3f" % (at.lyapunov['ly']))
-	Log.i("Code: %s" % (at.code))
-	Log.i("Iterations: %d" % (args.iter))
-	Log.i("Attractor generation and rendering took %s." % (sec2hms(t1-t0)))
-
-	if args.display_at:
-		p = at.humanReadablePolynom(True)
-		print at, at.fdim, at.lyapunov['ly'], args.iter, p[0], "" if args.dimension < 2 else p[1]
-
+	generateAttractor()
