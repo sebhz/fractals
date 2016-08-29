@@ -219,7 +219,7 @@ def send_mail(MAP, server, send_from, send_to, subject, files=None):
 				fil.read(),
 				Name=basename(f)
 			)
-			part['Content-Disposition'] = 'attachment; filename="%s"' % basename(f)
+			part['Content-Disposition'] = 'attachment; filename=%s' % basename(f)
 			msg.attach(part)
 
 	try:
@@ -235,6 +235,7 @@ def send_mail(MAP, server, send_from, send_to, subject, files=None):
 	else:
 		if refused:
 			print >> sys.stderr, "Some mails could not be delivered:", refused
+
 	smtp.quit()
 
 def processHTML(attractorNum, MAP):
