@@ -139,6 +139,17 @@ Generation and rendering time: __time
 </html>
 '''
 
+MAIL_TXT_TEMPLATE = '''Please find your strange attractor.
+
+	- Type: polynomial
+	- Order: __order
+	- # Iterations: _iterations
+	- Minkowski-Bouligand (=box-counting) dimension: __dimension
+	- Generation and rendering time: __time
+
+Have a good day.
+'''
+
 def numeral(n):
 	suffix = ('th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th')
 	return str(n) + suffix[n%10]
@@ -181,15 +192,7 @@ def fillTemplate(template, MAP):
 	return out_page
 
 def getMailText(MAP):
-	return('''Please find your strange attractor.
-
-	- Type: polynomial
-	- Order: %s
-	- # Iterations: %s
-	- Minkowski-Bouligand (=box-counting) dimension: %s
-
-Have a good day.
-''' % (MAP['__order'], MAP['__iterations'], MAP['__dimension']))
+	return (fillTemplate(MAIL_TXT_TEMPLATE, MAP))
 
 def getMailHTML(MAP):
 	return (fillTemplate(MAIL_HTML_TEMPLATE, MAP))
