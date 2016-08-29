@@ -28,7 +28,7 @@ import sys
 import os
 import re
 import threading
-
+import logging
 from time import time
 
 try:
@@ -40,6 +40,7 @@ except:
 
 INTERNAL_BPC=16
 OVERITERATE_FACTOR=4
+LOGLEVELS = (logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG, logging.NOTSET)
 
 defaultParameters = {
 	'sub': 1,
@@ -53,38 +54,6 @@ defaultParameters = {
 	'loglevel':4,
 	'threads':1,
 }
-
-class log(object):
-	LOG_VERBOSE=4
-	LOG_DEBUG=3
-	LOG_INFO=2
-	LOG_WARNING=1
-	LOG_ERROR=0
-
-	def __init__(self, logLevel=4):
-		if logLevel < self.LOG_ERROR: logLevel = self.LOG_ERROR
-		if logLevel > self.LOG_VERBOSE: logLevel = self.LOG_VERBOSE
-		self.logLevel = logLevel
-
-	def v(self, string):
-		if self.logLevel < self.LOG_VERBOSE: return
-		print >> sys.stderr, string
-
-	def d(self, string):
-		if self.logLevel < self.LOG_DEBUG: return
-		print >> sys.stderr, string
-
-	def i(self, string):
-		if self.logLevel < self.LOG_INFO: return
-		print >> sys.stderr, string
-
-	def w(self, string):
-		if self.logLevel < self.LOG_WARNING: return
-		print >> sys.stderr, string
-
-	def e(self, string):
-		if self.logLevel < self.LOG_ERROR: return
-		print >> sys.stderr, string
 
 class polynom(object):
 	def __init__(self, a):
@@ -257,8 +226,8 @@ class polynomialAttractor(object):
 							n += 1
 				l.append(result)
 		except OverflowError:
-			Log.e("Overflow during attractor computation.")
-			Log.e("Either this is a very slowly diverging attractor, or you used a wrong code")
+			logging.error("Overflow during attractor computation.")
+			logging.error("Either this is a very slowly diverging attractor, or you used a wrong code")
 			return None
 
 		# Append the x father as extra coordinate, for colorization
@@ -269,7 +238,7 @@ class polynomialAttractor(object):
 		if self.opt['dim'] == 1:
 			df = abs(self.derive(p[0]))
 			if df == 0:
-				Log.w("Unable to compute Lyapunov exponent, but trying to go on...")
+				logging.warning("Unable to compute Lyapunov exponent, but trying to go on...")
 				return pe
 		else:
 			p2   = self.evalCoef(pe)
@@ -277,7 +246,7 @@ class polynomialAttractor(object):
 			dl   = [d-x for d,x in zip(p2, p)]
 			dl2  = reduce(lambda x,y: x*x + y*y, dl)
 			if dl2 == 0:
-				Log.w("Unable to compute Lyapunov exponent, but trying to go on...")
+				logging.warning("Unable to compute Lyapunov exponent, but trying to go on...")
 				return pe
 			df = 1000000000000*dl2
 			rs = 1/math.sqrt(df)
@@ -325,7 +294,7 @@ class polynomialAttractor(object):
 			n += 1
 			self.getRandom()
 		# Found one -> create corresponding code
-		Log.v("Attractor found after %d trials." % n)
+		logging.debug("Attractor found after %d trials." % n)
 		self.createCode()
 
 	def iterateMap(self, screen_c, window_c, aContainer, index, initPoint=(0.1, 0.1)):
@@ -481,7 +450,7 @@ def colorizeAttractor(a):
 
 	hues = { 'red': 0.0, 'yellow': 1.0/6, 'green': 2.0/6, 'cyan': 3.0/6, 'blue': 4.0/6, 'magenta':5.0/6 }
 	hue = hues.keys()[random.randint(0, len(hues.keys())-1)]
-	# Log.v("Rendering attractor in %s." % (hue))
+	# logging.debug("Rendering attractor in %s." % (hue))
 	h = hues[hue]
 
 	pools=dict()
@@ -490,7 +459,7 @@ def colorizeAttractor(a):
 		else: pools[v] = 1
 
 	ncolors = len(pools.keys())
-	Log.d("%d points in attractor. %d unique %d-bpc colors in attractor. Coloring ratio: %1.2f%%." % (len(a.keys()), ncolors, INTERNAL_BPC, float(len(pools.keys()))/len(a.keys())*100))
+	logging.debug("%d points in attractor. %d unique %d-bpc colors in attractor. Coloring ratio: %1.2f%%." % (len(a.keys()), ncolors, INTERNAL_BPC, float(len(pools.keys()))/len(a.keys())*100))
 
 	colormap = dict()
 
@@ -506,12 +475,12 @@ def colorizeAttractor(a):
 	dt = dict()
 	for k in sorted(colormap.keys()):
 		dt[k>>shift] = True
-	Log.d("%d unique %d-bpc greyscale." % (len(dt.keys()), args.bpc))
+	logging.debug("%d unique %d-bpc greyscale." % (len(dt.keys()), args.bpc))
 
 	dt = dict()
 	for k in sorted(colormap.keys()):
 		dt[tuple([v >> shift for v in colormap[k]])] = True
-	Log.d("%d unique %d-bpc color." % (len(dt.keys()), args.bpc))
+	logging.debug("%d unique %d-bpc color." % (len(dt.keys()), args.bpc))
 
 	for v in a:
 		a[v] = colormap[a[v]]
@@ -559,7 +528,7 @@ def mergeAttractors(a):
 				v[k] += e
 			else:
 				v[k] = e
-	Log.v("%d points in the attractor before any dithering done." % (len(v.keys())))
+	logging.debug("%d points in the attractor before any dithering done." % (len(v.keys())))
 	return v
 
 def getInitPoints(at, n):
@@ -577,8 +546,8 @@ def walkthroughAttractor(at, screen_c):
 	threads = [None]*args.threads
 	a = [None]*args.threads
 	initPoints = getInitPoints(at, args.threads)
-	Log.v("Found converging attractor. Now computing it.")
-	Log.v("Attractor boundaries: %s" % (str(at.bound)))
+	logging.debug("Found converging attractor. Now computing it.")
+	logging.debug("Attractor boundaries: %s" % (str(at.bound)))
 	b = projectBounds(at)
 	window_c = scaleBounds(b, screen_c)
 
@@ -592,7 +561,7 @@ def walkthroughAttractor(at, screen_c):
 	aMerge = mergeAttractors(a)
 	if not aMerge: return aMerge
 
-	Log.v("Time to render the attractor.")
+	logging.debug("Time to render the attractor.")
 	return renderAttractor(aMerge, screen_c)
 
 def sec2hms(seconds):
@@ -610,14 +579,14 @@ def generateAttractor():
 
 	if args.code:
 		if not at.checkConvergence():
-			Log.w("Not an attractor it seems... but trying to display it anyway.")
+			logging.warning("Not an attractor it seems... but trying to display it anyway.")
 	else:
 		at.explore()
 
 	a = walkthroughAttractor(at, screen_c)
 	if not a: return
 
-	Log.v("Now writing attractor on disk.")
+	logging.debug("Now writing attractor on disk.")
 	w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = True if args.render == "greyscale" else False, bitdepth=args.bpc, interlace=True)
 	aa = w.array_scanlines(a)
 	suffix = str(args.bpc)
@@ -627,13 +596,13 @@ def generateAttractor():
 
 	t1 = time()
 
-	Log.i("Attractor type: polynomial")
-	Log.i("Polynom order: %d" % (int(at.code[1])))
-	Log.i("Minkowski-Bouligand dimension: %.3f" % (at.fdim))
-	Log.i("Lyapunov exponent: %.3f" % (at.lyapunov['ly']))
-	Log.i("Code: %s" % (at.code))
-	Log.i("Iterations: %d" % (args.iter))
-	Log.i("Attractor generation and rendering took %s." % (sec2hms(t1-t0)))
+	logging.info("Attractor type: polynomial")
+	logging.info("Polynom order: %d" % (int(at.code[1])))
+	logging.info("Minkowski-Bouligand dimension: %.3f" % (at.fdim))
+	logging.info("Lyapunov exponent: %.3f" % (at.lyapunov['ly']))
+	logging.info("Code: %s" % (at.code))
+	logging.info("Iterations: %d" % (args.iter))
+	logging.info("Attractor generation and rendering took %s." % (sec2hms(t1-t0)))
 
 	if args.display_at:
 		p = at.humanReadablePolynom(True)
@@ -648,7 +617,7 @@ def parseArgs():
 	parser.add_argument('-g', '--geometry',     help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
 	parser.add_argument('-H', '--display_at',   help='Output parameters for post processing', action='store_true', default=False)
 	parser.add_argument('-j', '--threads',      help='Number of threads to use (default=%d)' % defaultParameters['threads'], type=int, default=defaultParameters['threads'])
-	parser.add_argument('-l', '--loglevel',     help='Sets log level (default %d)' % defaultParameters['loglevel'], default=defaultParameters['loglevel'], type=int, choices=range(0,5))
+	parser.add_argument('-l', '--loglevel',     help='Sets log level (default %d)' % defaultParameters['loglevel'], default=defaultParameters['loglevel'], type=int, choices=range(0,len(LOGLEVELS)))
 	parser.add_argument('-i', '--iter',         help='attractor number of iterations', type=int)
 	parser.add_argument('-n', '--number',       help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
 	parser.add_argument('-o', '--order',        help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
@@ -661,7 +630,7 @@ def parseArgs():
 # ----------------------------- Main loop ----------------------------- #
 
 args = parseArgs()
-Log = log(args.loglevel)
+logging.basicConfig(stream=sys.stderr, level=LOGLEVELS[args.loglevel])
 random.seed()
 
 g = args.geometry.split('x')
@@ -670,9 +639,9 @@ pxSize = args.subsample*args.subsample*int(g[0])*int(g[1])
 idealIter = int(OVERITERATE_FACTOR*pxSize)
 if args.iter == None:
 	args.iter = idealIter
-	Log.v("Setting iteration number to %d." % (args.iter))
+	logging.debug("Setting iteration number to %d." % (args.iter))
 if args.iter < idealIter:
-	Log.w("For better rendering, you should use at least %d iterations." % idealIter)
+	logging.warning("For better rendering, you should use at least %d iterations." % idealIter)
 
 screen_c = [0, 0] + [args.subsample*int(x) for x in g]
 
