@@ -43,6 +43,7 @@ OVERITERATE_FACTOR=4
 LOGLEVELS = (logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG, logging.NOTSET)
 
 defaultParameters = {
+	'iter': 1280*1024*OVERITERATE_FACTOR,
 	'sub': 1,
 	'bpc': 8,
 	'dim': 2,
@@ -53,6 +54,7 @@ defaultParameters = {
 	'outdir': "png",
 	'loglevel':4,
 	'threads':1,
+	'atype':'polynomial',
 }
 
 class polynom(object):
@@ -72,73 +74,54 @@ class polynom(object):
 	def __str__(self):
 		return self.a.__str__()
 
-class polynomialAttractor(object):
+#class PolynomialAttractor(Attractor):
+#	pass
+
+#class DeJongAttractor(Attractor):
+#	pass
+
+class Attractor(object):
 
 	convDelay    = 128   # Number of points to ignore before checking convergence
 	convMaxIter  = 16384 # Check convergence on convMaxIter points only
 	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
 	codeStep     = .125 # Step to use to map ASCII character to coef
 
-	def __init__(self, *opt):
-		if opt:
-			self.opt = opt[0]
-		else:
-			self.opt = dict()
-
+	def __init__(self, **opt):
+		self.iterations = defaultParameters['iter']
+		self.dimension  = defaultParameters['dim']
+		self.depth      = defaultParameters['depth']
+		self.order      = defaultParameters['order']
+		self.coef       = None
+		self.derive     = None
+		self.code       = None
+		self.getPolynomLength()
 		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
 		self.fdim      = 0
 		self.bound     = None
-
-		if not 'iter' in self.opt:
-			self.opt['iter'] = defaultParameters['iter']
-
-		# Then derive other parameters from code if a code is supplied
-		if 'code' in self.opt and self.opt['code']:
-			self.code = self.opt['code']
-			self.decodeCode()
-			return
-
-		# If no code supplied parse options and derive the parameters from there
-		if not 'dim' in self.opt:
-			self.opt['dim'] = defaultParameters['dim']
-
-		if not 'depth' in self.opt:
-			self.opt['depth'] = defaultParameters['depth']
-
-		if 'order' in self.opt:
-			self.order = self.opt['order']
-		else:
-			self.order = defaultParameters['order'] # Quadratic by default
-
-		if not 'coef' in self.opt:
-			self.coef   = None
-			self.derive = None
-			self.code   = None
-			self.getPolynomLength()
-		else:
-			self.coef   = self.opt['coef']
-			self.derive = polynom(self.coef[0]).derive()
-			self.code   = self.createCode()
-			self.pl     = len(self.coef[0])
-			# TODO: override order here, or throw an error if not coherent
+		if opt:
+			if 'code' in opt and opt['code'] != None:
+				self.code = opt['code']
+				self.decodeCode() # Will populate dimension, order, polynom, length, depth, polynom, coef and derive
+			self.iterations = opt['iter'] if 'iter' in opt else defaultParameters['iter']
 
 	def __str__(self):
 		return self.code
 
 	def decodeCode(self):
-		self.opt['dim'] = int(self.code[0])
+		self.dimension = int(self.code[0])
 		self.order = int(self.code[1])
-		if self.opt['dim'] == 1: self.opt['depth'] = int(self.code[2])
+		if self.dimension == 1: self.depth = int(self.code[2])
 		self.getPolynomLength()
 
 		d = dict([(self.codelist[i], i) for i in range(0, len(self.codelist))])
-		self.coef = [[(d[ord(_)]-30)*self.codeStep for _ in self.code[3+__*self.pl:3+(__+1)*self.pl]] for __ in range(self.opt['dim'])]
+		self.coef = [[(d[ord(_)]-30)*self.codeStep for _ in self.code[3+__*self.pl:3+(__+1)*self.pl]] for __ in range(self.dimension)]
 		self.derive = polynom(self.coef[0]).derive()
 
 	def createCode(self):
-		self.code = str(self.opt['dim'])+str(self.order)
-		if self.opt['dim'] == 1:
-			 self.code += str(self.opt['depth'])
+		self.code = str(self.dimension)+str(self.order)
+		if self.dimension == 1:
+			 self.code += str(self.depth)
 		else:
 			self.code += "_"
 		# ASCII codes of digits and letters
@@ -149,12 +132,12 @@ class polynomialAttractor(object):
 	# outputs an HTML blurb of the equation. Else output a plain text.
 	def humanReadablePolynom(self, isHTML):
 		variables = ('xn', 'yn', 'zn') # Limit ourselves to 3 dimensions for now
-		equation = [""]*self.opt['dim']
+		equation = [""]*self.dimension
 		for v, c in enumerate(self.coef): # Iterate on each dimension
 			n = 0
 			equation[v] = variables[v]+"+1="
 			for i in range(self.order+1):
-				if self.opt['dim'] == 1:
+				if self.dimension == 1:
 					if c[n] == 0:
 						n+=1
 						continue
@@ -162,7 +145,7 @@ class polynomialAttractor(object):
 					n+=1
 					continue
 				for j in range(self.order-i+1):
-					if self.opt['dim'] == 2:
+					if self.dimension == 2:
 						if c[n] == 0:
 							n+=1
 							continue
@@ -170,7 +153,7 @@ class polynomialAttractor(object):
 						n += 1
 						continue
 						for k in range(self.order-i-j+1):
-							if self.opt['dim'] == 3:
+							if self.dimension == 3:
 								if c[n] == 0:
 									n+=1
 									continue
@@ -191,12 +174,12 @@ class polynomialAttractor(object):
 		return equation
 
 	def getPolynomLength(self):
-		self.pl = math.factorial(self.order+self.opt['dim'])/(
-				  math.factorial(self.order)*math.factorial(self.opt['dim']))
+		self.pl = math.factorial(self.order+self.dimension)/(
+				  math.factorial(self.order)*math.factorial(self.dimension))
 
 	def getRandom(self):
-		self.coef = [[random.randint(-30, 31)*self.codeStep for _ in range(0, self.pl)] for __ in range(self.opt['dim'])]
-		if self.opt['dim'] == 1: self.derive = polynom(self.coef[0]).derive()
+		self.coef = [[random.randint(-30, 31)*self.codeStep for _ in range(0, self.pl)] for __ in range(self.dimension)]
+		if self.dimension == 1: self.derive = polynom(self.coef[0]).derive()
 
 	def evalCoef(self, p):
 		l = list()
@@ -206,7 +189,7 @@ class polynomialAttractor(object):
 				n = 0
 				for i in range(self.order+1):
 					for j in range(self.order-i+1):
-						if self.opt['dim'] == 2:
+						if self.dimension == 2:
 							result += c[n]*(p[0]**j)*(p[1]**i)
 							n += 1
 				l.append(result)
@@ -220,7 +203,7 @@ class polynomialAttractor(object):
 		return l
 
 	def computeLyapunov(self, p, pe):
-		if self.opt['dim'] == 1:
+		if self.dimension == 1:
 			df = abs(self.derive(p[0]))
 			if df == 0:
 				logging.warning("Unable to compute Lyapunov exponent, but trying to go on...")
@@ -239,18 +222,18 @@ class polynomialAttractor(object):
 		self.lyapunov['lsum'] += math.log(df, 2)
 		self.lyapunov['nl']   += 1
 		self.lyapunov['ly'] = self.lyapunov['lsum'] / self.lyapunov['nl']
-		if self.opt['dim'] != 1:
+		if self.dimension != 1:
 			return [p[i]-rs*x for i,x in enumerate(dl)]
 
 	def checkConvergence(self, initPoint=(0.1, 0.1)):
 		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
-		pmin, pmax = ([1000000]*self.opt['dim'], [-1000000]*self.opt['dim'])
+		pmin, pmax = ([1000000]*self.dimension, [-1000000]*self.dimension)
 		p = initPoint
 		pe = [x + 0.000001 if i==0 else x for i,x in enumerate(p)]
 		modulus = lambda x, y: abs(x) + abs(y)
 
 		for i in range(self.convMaxIter):
-			if self.opt['dim'] == 1:
+			if self.dimension == 1:
 				pnew = [polynom(self.coef[0])(p[0])]
 			else:
 				pnew = self.evalCoef(p)
@@ -293,12 +276,12 @@ class polynomialAttractor(object):
 			int(screen_c[0] + (p[0]-window_c[0])*ratioX),
 			int(screen_c[1] + sh-(p[1]-window_c[1])*ratioY) )
 
-		if self.opt['dim'] == 1:
-			prev = self.opt['depth']
+		if self.dimension == 1:
+			prev = self.depth
 			mem  = [p]*prev
 
-		for i in range(self.opt['iter']):
-			if self.opt['dim'] == 1:
+		for i in range(self.iterations):
+			if self.dimension == 1:
 				pnew = [polynom(self.coef[0])(p[0])]
 			else:
 				pnew = self.evalCoef(p)
@@ -309,7 +292,7 @@ class polynomialAttractor(object):
 			# Ignore the first points to get a proper convergence
 			if i >= self.convDelay:
 				projectedPixel = None
-				if self.opt['dim'] == 1:
+				if self.dimension == 1:
 					if i >= prev:
 						projectedPixel = w_to_s((mem[(i-prev)%prev][0], pnew[0]))
 				else:
@@ -321,7 +304,7 @@ class polynomialAttractor(object):
 					else:
 						a[projectedPixel] = 0
 
-			if self.opt['dim'] == 1: mem[i%prev] = pnew
+			if self.dimension == 1: mem[i%prev] = pnew
 			p = pnew
 
 		aContainer[index] = a
@@ -408,9 +391,9 @@ def createImageArray(p, sc, background):
 
 # Project bounds to screen... do we really need this anymore ?
 def projectBounds(at):
-	if at.opt['dim'] == 1:
+	if at.dimension == 1:
 		return (at.bound[0][0], at.bound[0][0], at.bound[1][0], at.bound[1][0])
-	elif at.opt['dim'] == 2:
+	elif at.dimension == 2:
 		return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
 
 # Performs histogram equalization on the attractor pixels
@@ -531,7 +514,7 @@ def getInitPoints(at, n):
 			p = (random.random(), random.random())
 		else:
 			rx = at.bound[0][0] + random.random()*(at.bound[1][0]-at.bound[0][0])
-			if at.opt['dim'] == 1:
+			if at.dimension == 1:
 				p = (rx,)
 			else:
 				ry = at.bound[0][1] + random.random()*(at.bound[1][1]-at.bound[0][1])
@@ -573,11 +556,11 @@ def sec2hms(seconds):
 
 def generateAttractor():
 	t0 = time()
-	at = polynomialAttractor({'dim'  : args.dimension,
-	                          'order': args.order,
-	                          'iter' : int(args.iter/args.threads),
-	                          'depth': args.depth,
-	                          'code' : args.code })
+	at = Attractor(**{'dim'  : args.dimension,
+	                'order': args.order,
+	                'iter' : int(args.iter/args.threads),
+	                'depth': args.depth,
+	                'code' : args.code })
 
 	if args.code:
 		if not at.checkConvergence():
@@ -625,7 +608,8 @@ def parseArgs():
 	parser.add_argument('-o', '--order',        help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
 	parser.add_argument('-O', '--outdir',       help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
 	parser.add_argument('-r', '--render',       help='rendering mode (greyscale, color)', default = "color", type=str, choices=("greyscale", "color"))
-	parser.add_argument('-s', '--subsample',    help='subsampling rate (default  = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3))
+	parser.add_argument('-s', '--subsample',    help='subsampling rate (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3))
+	parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['atype'], type=str, choices=("polynomial", "dejong"))
 	args = parser.parse_args()
 	return args
 
