@@ -91,27 +91,20 @@ class Attractor(object):
 		return self.code
 
 	def computeLyapunov(self, p, pe):
-		if self.dimension == 1:
-			df = abs(self.derive(p[0]))
-			if df == 0:
-				logging.warning("Unable to compute Lyapunov exponent, but trying to go on...")
-				return pe
-		else:
-			p2   = self.evalCoef(pe)
-			if not p2: return pe
-			dl   = [d-x for d,x in zip(p2, p)]
-			dl2  = reduce(lambda x,y: x*x + y*y, dl)
-			if dl2 == 0:
-				logging.warning("Unable to compute Lyapunov exponent, but trying to go on...")
-				return pe
-			df = 1000000000000*dl2
-			rs = 1/math.sqrt(df)
+		p2   = self.getNextPoint(pe)
+		if not p2: return pe
+		dl   = [d-x for d,x in zip(p2, p)]
+		dl2  = reduce(lambda x,y: x*x + y*y, dl)
+		if dl2 == 0:
+			logging.warning("Unable to compute Lyapunov exponent, but trying to go on...")
+			return pe
+		df = 1000000000000*dl2
+		rs = 1/math.sqrt(df)
 
 		self.lyapunov['lsum'] += math.log(df, 2)
 		self.lyapunov['nl']   += 1
 		self.lyapunov['ly'] = self.lyapunov['lsum'] / self.lyapunov['nl']
-		if self.dimension != 1:
-			return [p[i]-rs*x for i,x in enumerate(dl)]
+		return [p[i]-rs*x for i,x in enumerate(dl)]
 
 	def checkConvergence(self, initPoint=(0.1, 0.1)):
 		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
@@ -121,11 +114,8 @@ class Attractor(object):
 		modulus = lambda x, y: abs(x) + abs(y)
 
 		for i in range(self.convMaxIter):
-			if self.dimension == 1:
-				pnew = [polynom(self.coef[0])(p[0])]
-			else:
-				pnew = self.evalCoef(p)
-				if not pnew: return False
+			pnew = self.getNextPoint(p)
+			if not pnew: return False
 			if reduce(modulus, pnew, 0) > 1000000: # Unbounded - not an SA
 				return False
 			if reduce(modulus, [pn-pc for pn, pc in zip(pnew, p)], 0) < 0.00000001:
@@ -144,12 +134,12 @@ class Attractor(object):
 
 	def explore(self):
 		n = 0;
-		self.getRandom()
+		self.getRandomCoef()
 		while not self.checkConvergence():
 			n += 1
-			self.getRandom()
+			self.getRandomCoef()
 		# Found one -> create corresponding code
-		logging.debug("Attractor found after %d trials." % n)
+		logging.debug("Attractor found after %d trials." % (n+1))
 		self.createCode()
 
 	def iterateMap(self, screen_c, window_c, aContainer, index, initPoint=(0.1, 0.1)):
@@ -163,42 +153,28 @@ class Attractor(object):
 			int(screen_c[0] + (p[0]-window_c[0])*ratioX),
 			int(screen_c[1] + sh-(p[1]-window_c[1])*ratioY) )
 
-		if self.dimension == 1:
-			prev = self.depth
-			mem  = [p]*prev
-
 		for i in range(self.iterations):
-			if self.dimension == 1:
-				pnew = [polynom(self.coef[0])(p[0])]
-			else:
-				pnew = self.evalCoef(p)
-				if not pnew:
-					aContainer[index] = None
-					return
+			pnew = self.getNextPoint(p)
+			if not pnew:
+				aContainer[index] = None
+				return
 
 			# Ignore the first points to get a proper convergence
 			if i >= self.convDelay:
-				projectedPixel = None
-				if self.dimension == 1:
-					if i >= prev:
-						projectedPixel = w_to_s((mem[(i-prev)%prev][0], pnew[0]))
-				else:
-					projectedPixel = w_to_s(pnew)
+				projectedPixel = w_to_s(pnew)
 
 				if projectedPixel:
 					if projectedPixel in a:
 						a[projectedPixel] += 1
 					else:
 						a[projectedPixel] = 0
-
-			if self.dimension == 1: mem[i%prev] = pnew
 			p = pnew
 
 		aContainer[index] = a
 
 	# An estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
 	# See https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension
-	def computeDimension(self, a, screen_c, window_c):
+	def computeFractalDimension(self, a, screen_c, window_c):
 		if not self.bound: return None
 
 		sideLength = 2 # Box side length, in pixels
@@ -246,12 +222,12 @@ class PolynomialAttractor(Attractor):
 		else:
 			self.code += "_"
 		# ASCII codes of digits and letters
-		c = [self.codelist[int(x/self.codeStep)+30] for c in self.coef for x in c]
-		self.code +="".join(map(chr,c))
+		cl = [self.codelist[int(x/self.codeStep)+30] for c in self.coef for x in c]
+		self.code +="".join(map(chr,cl))
 
 	# Outputs a human readable string of the polynom. If isHTML is True
 	# outputs an HTML blurb of the equation. Else output a plain text.
-	def humanReadablePolynom(self, isHTML):
+	def humanReadable(self, isHTML):
 		variables = ('xn', 'yn', 'zn') # Limit ourselves to 3 dimensions for now
 		equation = [""]*self.dimension
 		for v, c in enumerate(self.coef): # Iterate on each dimension
@@ -298,11 +274,14 @@ class PolynomialAttractor(Attractor):
 		self.pl = math.factorial(self.order+self.dimension)/(
 				  math.factorial(self.order)*math.factorial(self.dimension))
 
-	def getRandom(self):
+	def getRandomCoef(self):
 		self.coef = [[random.randint(-30, 31)*self.codeStep for _ in range(0, self.pl)] for __ in range(self.dimension)]
 		if self.dimension == 1: self.derive = polynom(self.coef[0]).derive()
 
-	def evalCoef(self, p):
+	def getNextPoint(self, p):
+		if self.dimension == 1:
+			return [polynom(self.coef[0])(p[0])]
+
 		l = list()
 		try:
 			for c in self.coef:
@@ -323,10 +302,93 @@ class PolynomialAttractor(Attractor):
 		# l.append(p[0])
 		return l
 
-#class DeJongAttractor(Attractor):
-#	pass
+	def computeLyapunov(self, p, pe):
+		if self.dimension == 1:
+			df = abs(self.derive(p[0]))
+			if df == 0:
+				logging.warning("Unable to compute Lyapunov exponent, but trying to go on...")
+				return pe
+			self.lyapunov['lsum'] += math.log(df, 2)
+			self.lyapunov['nl']   += 1
+			self.lyapunov['ly'] = self.lyapunov['lsum'] / self.lyapunov['nl']
+		else:
+			return super(PolynomialAttractor, self).computeLyapunov(p, pe)
 
+	def iterateMap(self, screen_c, window_c, aContainer, index, initPoint=(0.1, 0.1)):
+		if self.dimension == 1:
+			a = dict()
+			p = initPoint
 
+			sh = screen_c[3]-screen_c[1]
+			ratioY = sh/(window_c[3]-window_c[1])
+			ratioX = (screen_c[2]-screen_c[0])/(window_c[2]-window_c[0])
+			w_to_s = lambda p: (
+				int(screen_c[0] + (p[0]-window_c[0])*ratioX),
+				int(screen_c[1] + sh-(p[1]-window_c[1])*ratioY) )
+
+			prev = self.depth
+			mem  = [p]*prev
+			for i in range(self.iterations):
+				pnew = [polynom(self.coef[0])(p[0])]
+
+				# Ignore the first points to get a proper convergence
+				if i >= self.convDelay:
+					projectedPixel = None
+					if i >= prev:
+						projectedPixel = w_to_s((mem[(i-prev)%prev][0], pnew[0]))
+					if projectedPixel:
+						if projectedPixel in a:
+							a[projectedPixel] += 1
+						else:
+							a[projectedPixel] = 0
+
+				mem[i%prev] = pnew
+				p = pnew
+
+			aContainer[index] = a
+		else:
+			super(PolynomialAttractor, self).iterateMap(screen_c, window_c, aContainer, index, initPoint)
+
+class DeJongAttractor(Attractor):
+	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
+	codeStep     = .125 # Step to use to map ASCII character to coef
+
+	def __init__(self, **opt):
+		super(DeJongAttractor, self).__init__(**opt)
+		if opt:
+			if 'code' in opt and opt['code'] != None:
+				self.code = opt['code']
+				self.decodeCode() # Will populate dimension, order, polynom, length, depth, polynom, coef and derive
+
+	def createCode(self):
+		self.code = "j"
+		# ASCII codes of digits and letters
+		c = [self.codelist[int(x/self.codeStep)+30] for x in self.coef]
+		self.code +="".join(map(chr,c))
+		
+	def decodeCode(self):
+		d = dict([(self.codelist[i], i) for i in range(0, len(self.codelist))])
+		self.coef = [(d[ord(_)]-30)*self.codeStep for _ in self.code[1:]]
+
+	def getRandomCoef(self):
+		self.coef = [random.randint(-30, 31)*self.codeStep for _ in range(4)]
+
+	def getNextPoint(self, p):
+		return ( math.sin(self.coef[0]*p[1]) - math.cos(self.coef[1]*p[0]),
+		         math.sin(self.coef[2]*p[0]) - math.cos(self.coef[3]*p[1]), )
+
+	def humanReadable(self, isHTML):
+		equation = list()
+		equation.append('xn+1=sin(%.3f*yn)-cos(%.3f*xn)' % (self.coef[0], self.coef[1]))
+		equation.append('yn+1=sin(%.3f*xn)-cos(%.3f*yn)' % (self.coef[2], self.coef[3]))
+
+		if isHTML: # Convert this in a nice HTML equation
+			for v in range(0,2):
+				equation[v] = re.sub(r'\^(\d+)',r'<sup>\1</sup>', equation[v])
+				equation[v] = re.sub(r'n\+1=',r'<sub>n+1</sub>=', equation[v])
+				equation[v] = re.sub(r'(x|y|z)n',r'\1<sub>n</sub>', equation[v])
+
+		return equation
 
 # Enlarge attractor bounds so that it has the same aspect ratio as screen_c 
 # sc: screen bound e.g. (0,0,800,600)
@@ -546,7 +608,7 @@ def walkthroughAttractor(at, screen_c):
 
 	aMerge = mergeAttractors(a)
 	if not aMerge: return aMerge
-	at.computeDimension(aMerge, screen_c, window_c)
+	at.computeFractalDimension(aMerge, screen_c, window_c)
 
 	logging.debug("Time to render the attractor.")
 	return renderAttractor(aMerge, screen_c)
@@ -558,12 +620,19 @@ def sec2hms(seconds):
 
 def generateAttractor():
 	t0 = time()
-	at = PolynomialAttractor(**{'dim'  : args.dimension,
+	if args.type == 'polynomial':
+		at = PolynomialAttractor(**{'dim'  : args.dimension,
 	                'order': args.order,
 	                'iter' : int(args.iter/args.threads),
 	                'depth': args.depth,
 	                'code' : args.code })
-
+	else:
+		at = DeJongAttractor(**{'dim'  : args.dimension,
+	                'order': args.order,
+	                'iter' : int(args.iter/args.threads),
+	                'depth': args.depth,
+	                'code' : args.code })
+		
 	if args.code:
 		if not at.checkConvergence():
 			logging.warning("Not an attractor it seems... but trying to display it anyway.")
@@ -583,16 +652,17 @@ def generateAttractor():
 
 	t1 = time()
 
-	logging.info("Attractor type: polynomial")
-	logging.info("Polynom order: %d" % (int(at.code[1])))
-	logging.info("Minkowski-Bouligand dimension: %.3f" % (at.fdim))
-	logging.info("Lyapunov exponent: %.3f" % (at.lyapunov['ly']))
-	logging.info("Code: %s" % (at.code))
-	logging.info("Iterations: %d" % (args.iter))
-	logging.info("Attractor generation and rendering took %s." % (sec2hms(t1-t0)))
+	logging.info("Attractor type: %s" % args.type)
+	if args.type == 'polynomial':
+		logging.info("Polynom order: %d" % int(at.code[1]))
+	logging.info("Minkowski-Bouligand dimension: %.3f" % at.fdim)
+	logging.info("Lyapunov exponent: %.3f" % at.lyapunov['ly'])
+	logging.info("Code: %s" % at.code)
+	logging.info("Iterations: %d" % args.iter)
+	logging.info("Attractor generation and rendering took %s." % sec2hms(t1-t0))
 
 	if args.display_at:
-		p = at.humanReadablePolynom(True)
+		p = at.humanReadable(True)
 		print at, at.fdim, at.lyapunov['ly'], args.iter, p[0], "" if args.dimension < 2 else p[1]
 
 def parseArgs():
