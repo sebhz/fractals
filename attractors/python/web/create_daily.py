@@ -15,8 +15,8 @@ from email.mime.text import MIMEText
 from email.utils import COMMASPACE, formatdate
 from subprocess import Popen, PIPE, STDOUT
 
-THUMB_CMD = ['./attractors.py', '--geometry=800x600', '--outdir=png_thumb', '--render=greyscale', '--subsample=2', '-H', '--loglevel=0']
-FINAL_CMD = ['./attractors.py', '--geometry=1920x1080', '--outdir=png', '--render=greyscale', '--subsample=2', '-H', '--loglevel=0']
+THUMB_CMD = ['./attractors.py', '--geometry=800x600', '--outdir=png_thumb', '--render=greyscale', '--subsample=2', '-H', '--loglevel=0', '--threads=4']
+FINAL_CMD = ['./attractors.py', '--geometry=1920x1080', '--outdir=png', '--render=greyscale', '--subsample=2', '-H', '--loglevel=0', '--threads=4']
 REFERENCE_DATE = datetime(2016, 7, 27)
 CURRENT_FILE = "strange_attractor.xhtml"
 
