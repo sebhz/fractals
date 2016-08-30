@@ -531,8 +531,11 @@ def getInitPoints(at, n):
 			p = (random.random(), random.random())
 		else:
 			rx = at.bound[0][0] + random.random()*(at.bound[1][0]-at.bound[0][0])
-			ry = at.bound[0][1] + random.random()*(at.bound[1][1]-at.bound[0][1])
-			p = (rx, ry)
+			if at.opt['dim'] == 1:
+				p = (rx,)
+			else:
+				ry = at.bound[0][1] + random.random()*(at.bound[1][1]-at.bound[0][1])
+				p = (rx, ry)
 		if at.checkConvergence(p):
 			initPoints.append(p)
 			i += 1
