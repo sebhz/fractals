@@ -534,8 +534,13 @@ def getInitPoints(at, n):
 	initPoints = list()
 	i = 0
 	while True:
-		r = random.random()
-		p = (r, r)
+		if not at.bound:
+			p = (random.random(), random.random())
+		else:
+			rx = at.bound[0][0] + random.random()*(at.bound[1][0]-at.bound[0][0])
+			ry = at.bound[0][1] + random.random()*(at.bound[1][1]-at.bound[0][1])
+			p = (rx, ry)
+		print p
 		if at.checkConvergence(p):
 			initPoints.append(p)
 			i += 1
