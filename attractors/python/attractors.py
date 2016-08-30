@@ -74,39 +74,160 @@ class polynom(object):
 	def __str__(self):
 		return self.a.__str__()
 
-#class PolynomialAttractor(Attractor):
-#	pass
-
-#class DeJongAttractor(Attractor):
-#	pass
-
 class Attractor(object):
-
 	convDelay    = 128   # Number of points to ignore before checking convergence
 	convMaxIter  = 16384 # Check convergence on convMaxIter points only
-	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
-	codeStep     = .125 # Step to use to map ASCII character to coef
 
 	def __init__(self, **opt):
 		self.iterations = defaultParameters['iter']
 		self.dimension  = defaultParameters['dim']
+		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
+		self.fdim      = 0
+		self.bound     = None
+		if opt:
+			self.iterations = opt['iter'] if 'iter' in opt else defaultParameters['iter']
+
+	def __str__(self):
+		return self.code
+
+	def computeLyapunov(self, p, pe):
+		if self.dimension == 1:
+			df = abs(self.derive(p[0]))
+			if df == 0:
+				logging.warning("Unable to compute Lyapunov exponent, but trying to go on...")
+				return pe
+		else:
+			p2   = self.evalCoef(pe)
+			if not p2: return pe
+			dl   = [d-x for d,x in zip(p2, p)]
+			dl2  = reduce(lambda x,y: x*x + y*y, dl)
+			if dl2 == 0:
+				logging.warning("Unable to compute Lyapunov exponent, but trying to go on...")
+				return pe
+			df = 1000000000000*dl2
+			rs = 1/math.sqrt(df)
+
+		self.lyapunov['lsum'] += math.log(df, 2)
+		self.lyapunov['nl']   += 1
+		self.lyapunov['ly'] = self.lyapunov['lsum'] / self.lyapunov['nl']
+		if self.dimension != 1:
+			return [p[i]-rs*x for i,x in enumerate(dl)]
+
+	def checkConvergence(self, initPoint=(0.1, 0.1)):
+		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
+		pmin, pmax = ([1000000]*self.dimension, [-1000000]*self.dimension)
+		p = initPoint
+		pe = [x + 0.000001 if i==0 else x for i,x in enumerate(p)]
+		modulus = lambda x, y: abs(x) + abs(y)
+
+		for i in range(self.convMaxIter):
+			if self.dimension == 1:
+				pnew = [polynom(self.coef[0])(p[0])]
+			else:
+				pnew = self.evalCoef(p)
+				if not pnew: return False
+			if reduce(modulus, pnew, 0) > 1000000: # Unbounded - not an SA
+				return False
+			if reduce(modulus, [pn-pc for pn, pc in zip(pnew, p)], 0) < 0.00000001:
+				return False
+			# Compute Lyapunov exponent... sort of
+			pe = self.computeLyapunov(pnew, pe)
+			if self.lyapunov['ly'] < 0.005 and i > self.convDelay: # Limit cycle
+				return False
+			if i > self.convDelay:
+				pmin = [min(pn, pm) for pn, pm in zip(pnew, pmin)]
+				pmax = [max(pn, pm) for pn, pm in zip(pnew, pmax)]
+			p = pnew
+
+		self.bound = (pmin, pmax)
+		return True
+
+	def explore(self):
+		n = 0;
+		self.getRandom()
+		while not self.checkConvergence():
+			n += 1
+			self.getRandom()
+		# Found one -> create corresponding code
+		logging.debug("Attractor found after %d trials." % n)
+		self.createCode()
+
+	def iterateMap(self, screen_c, window_c, aContainer, index, initPoint=(0.1, 0.1)):
+		a = dict()
+		p = initPoint
+
+		sh = screen_c[3]-screen_c[1]
+		ratioY = sh/(window_c[3]-window_c[1])
+		ratioX = (screen_c[2]-screen_c[0])/(window_c[2]-window_c[0])
+		w_to_s = lambda p: (
+			int(screen_c[0] + (p[0]-window_c[0])*ratioX),
+			int(screen_c[1] + sh-(p[1]-window_c[1])*ratioY) )
+
+		if self.dimension == 1:
+			prev = self.depth
+			mem  = [p]*prev
+
+		for i in range(self.iterations):
+			if self.dimension == 1:
+				pnew = [polynom(self.coef[0])(p[0])]
+			else:
+				pnew = self.evalCoef(p)
+				if not pnew:
+					aContainer[index] = None
+					return
+
+			# Ignore the first points to get a proper convergence
+			if i >= self.convDelay:
+				projectedPixel = None
+				if self.dimension == 1:
+					if i >= prev:
+						projectedPixel = w_to_s((mem[(i-prev)%prev][0], pnew[0]))
+				else:
+					projectedPixel = w_to_s(pnew)
+
+				if projectedPixel:
+					if projectedPixel in a:
+						a[projectedPixel] += 1
+					else:
+						a[projectedPixel] = 0
+
+			if self.dimension == 1: mem[i%prev] = pnew
+			p = pnew
+
+		aContainer[index] = a
+
+	# An estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
+	# See https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension
+	def computeDimension(self, a, screen_c, window_c):
+		if not self.bound: return None
+
+		sideLength = 2 # Box side length, in pixels
+		pixelSize = (window_c[2]-window_c[0])/(screen_c[2]-screen_c[0])
+
+		boxes = dict()
+		for pt in a.keys():
+			boxCoordinates = (int(pt[0]/sideLength), int(pt[1]/sideLength))
+			boxes[boxCoordinates] = True
+		n = len(boxes.keys())
+
+		self.fdim = math.log(n)/math.log(1/(sideLength*pixelSize))
+
+class PolynomialAttractor(Attractor):
+	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
+	codeStep     = .125 # Step to use to map ASCII character to coef
+
+	def __init__(self, **opt):
+		super(PolynomialAttractor, self).__init__(**opt)
 		self.depth      = defaultParameters['depth']
 		self.order      = defaultParameters['order']
 		self.coef       = None
 		self.derive     = None
 		self.code       = None
 		self.getPolynomLength()
-		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
-		self.fdim      = 0
-		self.bound     = None
 		if opt:
 			if 'code' in opt and opt['code'] != None:
 				self.code = opt['code']
 				self.decodeCode() # Will populate dimension, order, polynom, length, depth, polynom, coef and derive
-			self.iterations = opt['iter'] if 'iter' in opt else defaultParameters['iter']
-
-	def __str__(self):
-		return self.code
 
 	def decodeCode(self):
 		self.dimension = int(self.code[0])
@@ -202,128 +323,9 @@ class Attractor(object):
 		# l.append(p[0])
 		return l
 
-	def computeLyapunov(self, p, pe):
-		if self.dimension == 1:
-			df = abs(self.derive(p[0]))
-			if df == 0:
-				logging.warning("Unable to compute Lyapunov exponent, but trying to go on...")
-				return pe
-		else:
-			p2   = self.evalCoef(pe)
-			if not p2: return pe
-			dl   = [d-x for d,x in zip(p2, p)]
-			dl2  = reduce(lambda x,y: x*x + y*y, dl)
-			if dl2 == 0:
-				logging.warning("Unable to compute Lyapunov exponent, but trying to go on...")
-				return pe
-			df = 1000000000000*dl2
-			rs = 1/math.sqrt(df)
+#class DeJongAttractor(Attractor):
+#	pass
 
-		self.lyapunov['lsum'] += math.log(df, 2)
-		self.lyapunov['nl']   += 1
-		self.lyapunov['ly'] = self.lyapunov['lsum'] / self.lyapunov['nl']
-		if self.dimension != 1:
-			return [p[i]-rs*x for i,x in enumerate(dl)]
-
-	def checkConvergence(self, initPoint=(0.1, 0.1)):
-		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
-		pmin, pmax = ([1000000]*self.dimension, [-1000000]*self.dimension)
-		p = initPoint
-		pe = [x + 0.000001 if i==0 else x for i,x in enumerate(p)]
-		modulus = lambda x, y: abs(x) + abs(y)
-
-		for i in range(self.convMaxIter):
-			if self.dimension == 1:
-				pnew = [polynom(self.coef[0])(p[0])]
-			else:
-				pnew = self.evalCoef(p)
-				if not pnew: return False
-			if reduce(modulus, pnew, 0) > 1000000: # Unbounded - not an SA
-				return False
-			if reduce(modulus, [pn-pc for pn, pc in zip(pnew, p)], 0) < 0.00000001:
-				return False
-			# Compute Lyapunov exponent... sort of
-			pe = self.computeLyapunov(pnew, pe)
-			if self.lyapunov['ly'] < 0.005 and i > self.convDelay: # Limit cycle
-				return False
-			if i > self.convDelay:
-				pmin = [min(pn, pm) for pn, pm in zip(pnew, pmin)]
-				pmax = [max(pn, pm) for pn, pm in zip(pnew, pmax)]
-			p = pnew
-
-		self.bound = (pmin, pmax)
-
-		return True
-
-	def explore(self):
-		n = 0;
-		self.getRandom()
-		while not self.checkConvergence():
-			n += 1
-			self.getRandom()
-		# Found one -> create corresponding code
-		logging.debug("Attractor found after %d trials." % n)
-		self.createCode()
-
-	def iterateMap(self, screen_c, window_c, aContainer, index, initPoint=(0.1, 0.1)):
-		a = dict()
-		p = initPoint
-
-		sh = screen_c[3]-screen_c[1]
-		ratioY = sh/(window_c[3]-window_c[1])
-		ratioX = (screen_c[2]-screen_c[0])/(window_c[2]-window_c[0])
-		w_to_s = lambda p: (
-			int(screen_c[0] + (p[0]-window_c[0])*ratioX),
-			int(screen_c[1] + sh-(p[1]-window_c[1])*ratioY) )
-
-		if self.dimension == 1:
-			prev = self.depth
-			mem  = [p]*prev
-
-		for i in range(self.iterations):
-			if self.dimension == 1:
-				pnew = [polynom(self.coef[0])(p[0])]
-			else:
-				pnew = self.evalCoef(p)
-				if not pnew:
-					aContainer[index] = None
-					return
-
-			# Ignore the first points to get a proper convergence
-			if i >= self.convDelay:
-				projectedPixel = None
-				if self.dimension == 1:
-					if i >= prev:
-						projectedPixel = w_to_s((mem[(i-prev)%prev][0], pnew[0]))
-				else:
-					projectedPixel = w_to_s(pnew)
-
-				if projectedPixel:
-					if projectedPixel in a:
-						a[projectedPixel] += 1
-					else:
-						a[projectedPixel] = 0
-
-			if self.dimension == 1: mem[i%prev] = pnew
-			p = pnew
-
-		aContainer[index] = a
-
-	# An estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
-	# See https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension
-	def computeDimension(self, a, screen_c, window_c):
-		if not self.bound: return None
-
-		sideLength = 2 # Box side length, in pixels
-		pixelSize = (window_c[2]-window_c[0])/(screen_c[2]-screen_c[0])
-
-		boxes = dict()
-		for pt in a.keys():
-			boxCoordinates = (int(pt[0]/sideLength), int(pt[1]/sideLength))
-			boxes[boxCoordinates] = True
-		n = len(boxes.keys())
-
-		self.fdim = math.log(n)/math.log(1/(sideLength*pixelSize))
 
 
 # Enlarge attractor bounds so that it has the same aspect ratio as screen_c 
@@ -556,7 +558,7 @@ def sec2hms(seconds):
 
 def generateAttractor():
 	t0 = time()
-	at = Attractor(**{'dim'  : args.dimension,
+	at = PolynomialAttractor(**{'dim'  : args.dimension,
 	                'order': args.order,
 	                'iter' : int(args.iter/args.threads),
 	                'depth': args.depth,
