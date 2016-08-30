@@ -125,21 +125,6 @@ class polynomialAttractor(object):
 	def __str__(self):
 		return self.code
 
-	# Project point on screen coordinate
-	# its parent x coordinate
-	# sc: screen bound (0,0,800,600)
-	# wc: attractor bound (x0,y0,x1,y1)
-	# p: point in the attractor (x, y, xfather)
-	# Returns a tuple (x, y)
-	def w_to_s(self, wc, sc, p):
-		x, y = p
-
-		if x < wc[0] or x > wc[2] or y < wc[1] or y > wc[3]:
-			return None
-
-		return ( (int(sc[0] + (x-wc[0])/(wc[2]-wc[0])*(sc[2]-sc[0])),
-				  int(sc[1] + (sc[3]-sc[1])-(y-wc[1])/(wc[3]-wc[1])*(sc[3]-sc[1])),) )
-
 	def decodeCode(self):
 		self.opt['dim'] = int(self.code[0])
 		self.order = int(self.code[1])
@@ -300,6 +285,14 @@ class polynomialAttractor(object):
 	def iterateMap(self, screen_c, window_c, aContainer, index, initPoint=(0.1, 0.1)):
 		a = dict()
 		p = initPoint
+
+		sh = screen_c[3]-screen_c[1]
+		ratioY = sh/(window_c[3]-window_c[1])
+		ratioX = (screen_c[2]-screen_c[0])/(window_c[2]-window_c[0])
+		w_to_s = lambda p: (
+			int(screen_c[0] + (p[0]-window_c[0])*ratioX),
+			int(screen_c[1] + sh-(p[1]-window_c[1])*ratioY) )
+
 		if self.opt['dim'] == 1:
 			prev = self.opt['depth']
 			mem  = [p]*prev
@@ -318,9 +311,9 @@ class polynomialAttractor(object):
 				projectedPixel = None
 				if self.opt['dim'] == 1:
 					if i >= prev:
-						projectedPixel = self.w_to_s(window_c, screen_c,(mem[(i-prev)%prev][0], pnew[0]))
+						projectedPixel = w_to_s((mem[(i-prev)%prev][0], pnew[0]))
 				else:
-					projectedPixel = self.w_to_s(window_c, screen_c, pnew)
+					projectedPixel = w_to_s(pnew)
 
 				if projectedPixel:
 					if projectedPixel in a:
@@ -540,7 +533,6 @@ def getInitPoints(at, n):
 			rx = at.bound[0][0] + random.random()*(at.bound[1][0]-at.bound[0][0])
 			ry = at.bound[0][1] + random.random()*(at.bound[1][1]-at.bound[0][1])
 			p = (rx, ry)
-		print p
 		if at.checkConvergence(p):
 			initPoints.append(p)
 			i += 1
