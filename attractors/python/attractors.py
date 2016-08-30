@@ -27,9 +27,9 @@ import colorsys
 import sys
 import os
 import re
-import threading
 import logging
 from time import time
+from multiprocessing import Manager, Process
 
 try:
     import png
@@ -331,7 +331,6 @@ class polynomialAttractor(object):
 			if self.opt['dim'] == 1: mem[i%prev] = pnew
 			p = pnew
 
-		self.computeDimension(a, screen_c, window_c)
 		aContainer[index] = a
 
 	# An estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
@@ -543,23 +542,26 @@ def getInitPoints(at, n):
 		if i == n: return initPoints
 
 def walkthroughAttractor(at, screen_c):
-	threads = [None]*args.threads
-	a = [None]*args.threads
+	jobs = list()
 	initPoints = getInitPoints(at, args.threads)
 	logging.debug("Found converging attractor. Now computing it.")
 	logging.debug("Attractor boundaries: %s" % (str(at.bound)))
 	b = projectBounds(at)
 	window_c = scaleBounds(b, screen_c)
 
+	manager = Manager()
+	a = manager.list([None]*args.threads)
 	for i in range(args.threads):
-		threads[i] = threading.Thread(group=None, name='t'+str(i), target=at.iterateMap, args=(screen_c, window_c, a, i, initPoints[i]))
-		threads[i].start()
+		job = Process(group=None, name='t'+str(i), target=at.iterateMap, args=(screen_c, window_c, a, i, initPoints[i]))
+		jobs.append(job)
+		job.start()
 
-	for i in range(args.threads):
-		threads[i].join()
+	for job in jobs:
+		job.join()
 
 	aMerge = mergeAttractors(a)
 	if not aMerge: return aMerge
+	at.computeDimension(aMerge, screen_c, window_c)
 
 	logging.debug("Time to render the attractor.")
 	return renderAttractor(aMerge, screen_c)
