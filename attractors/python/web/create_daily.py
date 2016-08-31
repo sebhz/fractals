@@ -15,6 +15,7 @@ from email.mime.text import MIMEText
 from email.utils import COMMASPACE, formatdate
 from subprocess import Popen, PIPE, STDOUT
 
+TYPES = ('polynomial', 'dejong')
 THUMB_CMD = ['./attractors.py', '--geometry=800x600', '--outdir=png_thumb', '--render=greyscale', '--subsample=2', '-H', '--loglevel=0', '--threads=4']
 FINAL_CMD = ['./attractors.py', '--geometry=1920x1080', '--outdir=png', '--render=greyscale', '--subsample=2', '-H', '--loglevel=0', '--threads=4']
 REFERENCE_DATE = datetime(2016, 7, 27)
@@ -296,20 +297,25 @@ for attractorNum in attractorRange:
 		'__x_polynom' : "",
 		'__y_polynom' : "",
 		'__time' : "",
+		'__type' : "polynomial",
 	}
+
+	MAP['__type'] = TYPES[randint(0,1)]
+	if MAP['__type'] == 'dejong':
+		MAP['__order'] = "irrelevant"
 
 	dt = REFERENCE_DATE + timedelta(days=attractorNum-1)
 	MAP['__date'] = dt.strftime("%Y, %b %d")
 
 	print >> sys.stderr, "Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum))
 
-	cmd = THUMB_CMD + ["--order=" + str(MAP['__order'])]
+	cmd = THUMB_CMD + ["--order=" + str(MAP['__order']), "--type=" + str(MAP['__type'])]
 	p = Popen(cmd, stdout=PIPE, stderr=PIPE)
 	stdout, stderr = p.communicate()
 	MAP['__code'], MAP['__dimension'], MAP['__lyapunov'], MAP['__iterations'], MAP['__x_polynom'], MAP['__y_polynom'] = stdout.split()
 	print >> sys.stderr, "Thumbnail generated"
 
-	cmd = FINAL_CMD + ["--order=" + str(MAP['__order']), "--code=" + MAP['__code']]
+	cmd = FINAL_CMD + ["--order=" + str(MAP['__order']), "--type=" + str(MAP['__type']), "--code=" + MAP['__code']]
 	t0 = time()
 	p = Popen(cmd, stdout=PIPE, stderr=PIPE)
 	stdout, stderr = p.communicate()

@@ -266,8 +266,6 @@ class PolynomialAttractor(Attractor):
 			logging.error("Either this is a very slowly diverging attractor, or you used a wrong code")
 			return None
 
-		# Append the x father as extra coordinate, for colorization
-		# l.append(p[0])
 		return l
 
 class DeJongAttractor(Attractor):
