@@ -301,21 +301,27 @@ for attractorNum in attractorRange:
 	}
 
 	MAP['__type'] = TYPES[randint(0,1)]
-	if MAP['__type'] == 'dejong':
-		MAP['__order'] = "irrelevant"
 
 	dt = REFERENCE_DATE + timedelta(days=attractorNum-1)
 	MAP['__date'] = dt.strftime("%Y, %b %d")
 
 	print >> sys.stderr, "Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum))
 
-	cmd = THUMB_CMD + ["--order=" + str(MAP['__order']), "--type=" + str(MAP['__type'])]
+	if MAP['__type'] == 'polynomial':
+		cmd = THUMB_CMD + ["--order=" + str(MAP['__order']), "--type=" + str(MAP['__type'])]
+	else:
+		cmd = THUMB_CMD + ["--type=" + str(MAP['__type'])]
+
 	p = Popen(cmd, stdout=PIPE, stderr=PIPE)
 	stdout, stderr = p.communicate()
 	MAP['__code'], MAP['__dimension'], MAP['__lyapunov'], MAP['__iterations'], MAP['__x_polynom'], MAP['__y_polynom'] = stdout.split()
 	print >> sys.stderr, "Thumbnail generated"
 
-	cmd = FINAL_CMD + ["--order=" + str(MAP['__order']), "--type=" + str(MAP['__type']), "--code=" + MAP['__code']]
+	if MAP['__type'] == 'polynomial':
+		cmd = FINAL_CMD + ["--order=" + str(MAP['__order']), "--type=" + str(MAP['__type']), "--code=" + MAP['__code']]
+	else:
+		cmd = FINAL_CMD + ["--type=" + str(MAP['__type']), "--code=" + MAP['__code']]
+
 	t0 = time()
 	p = Popen(cmd, stdout=PIPE, stderr=PIPE)
 	stdout, stderr = p.communicate()
@@ -328,6 +334,9 @@ for attractorNum in attractorRange:
 	MAP['__link'] = MAP['__code'] + "_8.png"
 	MAP['__prev'] = "#" if attractorNum == 1 else "%d.xhtml" % (attractorNum-1)
 	MAP['__time'] = sec2hms(t1-t0)
+
+	if MAP['__type'] == 'dejong':
+		MAP['__order'] = "irrelevant"
 
 	processHTML(attractorNum, MAP)
 	processMail(MAP)
