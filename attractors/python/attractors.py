@@ -75,6 +75,7 @@ class polynom(object):
 class Attractor(object):
 	convDelay    = 128   # Number of points to ignore before checking convergence
 	convMaxIter  = 16384 # Check convergence on convMaxIter points only
+	epsilon      = 1e-6
 
 	def __init__(self, **opt):
 		self.iterations = defaultParameters['iter']
@@ -95,19 +96,19 @@ class Attractor(object):
 		if dl2 == 0:
 			logging.warning("Unable to compute Lyapunov exponent, but trying to go on...")
 			return pe
-		df = 1000000000000*dl2
+		df = dl2/self.epsilon/self.epsilon
 		rs = 1/math.sqrt(df)
 
 		self.lyapunov['lsum'] += math.log(df, 2)
 		self.lyapunov['nl']   += 1
 		self.lyapunov['ly'] = self.lyapunov['lsum'] / self.lyapunov['nl']
-		return [p[i]-rs*x for i,x in enumerate(dl)]
+		return [p[i]+rs*x for i,x in enumerate(dl)]
 
 	def checkConvergence(self, initPoint=(0.1, 0.1)):
 		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
-		pmin, pmax = ([1000000,100000], [-1000000,-1000000])
+		pmin, pmax = ([100000,100000], [-100000,-100000])
 		p = initPoint
-		pe = [x + 0.000001 if i==0 else x for i,x in enumerate(p)]
+		pe = [x + self.epsilon if i==0 else x for i,x in enumerate(p)]
 		modulus = lambda x, y: abs(x) + abs(y)
 
 		for i in range(self.convMaxIter):
@@ -115,7 +116,7 @@ class Attractor(object):
 			if not pnew: return False
 			if reduce(modulus, pnew, 0) > 1000000: # Unbounded - not an SA
 				return False
-			if reduce(modulus, [pn-pc for pn, pc in zip(pnew, p)], 0) < 0.00000001:
+			if reduce(modulus, [pn-pc for pn, pc in zip(pnew, p)], 0) < self.epsilon:
 				return False
 			# Compute Lyapunov exponent... sort of
 			pe = self.computeLyapunov(pnew, pe)
