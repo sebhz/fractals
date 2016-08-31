@@ -46,8 +46,6 @@ defaultParameters = {
 	'iter': 1280*1024*OVERITERATE_FACTOR,
 	'sub': 1,
 	'bpc': 8,
-	'dim': 2,
-	'depth': 5,
 	'geometry': "1280x1024",
 	'number': 1,
 	'order': 2,
@@ -80,13 +78,11 @@ class Attractor(object):
 
 	def __init__(self, **opt):
 		self.iterations = defaultParameters['iter']
-		self.dimension  = defaultParameters['dim']
 		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
 		self.fdim      = 0
 		self.bound     = None
 		if opt:
 			self.iterations = opt['iter'] if 'iter' in opt else defaultParameters['iter']
-			self.dimension  = opt['dim'] if 'iter' in opt else defaultParameters['dim']
 
 	def __str__(self):
 		return self.code
@@ -109,7 +105,7 @@ class Attractor(object):
 
 	def checkConvergence(self, initPoint=(0.1, 0.1)):
 		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
-		pmin, pmax = ([1000000]*self.dimension, [-1000000]*self.dimension)
+		pmin, pmax = ([1000000,100000], [-1000000,-1000000])
 		p = initPoint
 		pe = [x + 0.000001 if i==0 else x for i,x in enumerate(p)]
 		modulus = lambda x, y: abs(x) + abs(y)
@@ -195,33 +191,25 @@ class PolynomialAttractor(Attractor):
 
 	def __init__(self, **opt):
 		super(PolynomialAttractor, self).__init__(**opt)
-		self.depth      = defaultParameters['depth']
 		self.order      = defaultParameters['order']
 		self.coef       = None
-		self.derive     = None
 		self.code       = None
 		self.getPolynomLength()
 		if opt:
 			if 'code' in opt and opt['code'] != None:
 				self.code = opt['code']
-				self.decodeCode() # Will populate dimension, order, polynom, length, depth, polynom, coef and derive
+				self.decodeCode() # Will populate order, polynom, length, polynom, coef and derive
 
 	def decodeCode(self):
-		self.dimension = int(self.code[0])
 		self.order = int(self.code[1])
-		if self.dimension == 1: self.depth = int(self.code[2])
 		self.getPolynomLength()
 
 		d = dict([(self.codelist[i], i) for i in range(0, len(self.codelist))])
-		self.coef = [[(d[ord(_)]-30)*self.codeStep for _ in self.code[3+__*self.pl:3+(__+1)*self.pl]] for __ in range(self.dimension)]
-		self.derive = polynom(self.coef[0]).derive()
+		self.coef = [[(d[ord(_)]-30)*self.codeStep for _ in self.code[3+__*self.pl:3+(__+1)*self.pl]] for __ in range(2)]
 
 	def createCode(self):
-		self.code = str(self.dimension)+str(self.order)
-		if self.dimension == 1:
-			 self.code += str(self.depth)
-		else:
-			self.code += "_"
+		self.code = str(2)+str(self.order)
+		self.code += "_"
 		# ASCII codes of digits and letters
 		cl = [self.codelist[int(x/self.codeStep)+30] for c in self.coef for x in c]
 		self.code +="".join(map(chr,cl))
@@ -229,34 +217,19 @@ class PolynomialAttractor(Attractor):
 	# Outputs a human readable string of the polynom. If isHTML is True
 	# outputs an HTML blurb of the equation. Else output a plain text.
 	def humanReadable(self, isHTML):
-		variables = ('xn', 'yn', 'zn') # Limit ourselves to 3 dimensions for now
-		equation = [""]*self.dimension
+		variables = ('xn', 'yn')
+		equation = ["", ""]
 		for v, c in enumerate(self.coef): # Iterate on each dimension
 			n = 0
 			equation[v] = variables[v]+"+1="
 			for i in range(self.order+1):
-				if self.dimension == 1:
+				for j in range(self.order-i+1):
 					if c[n] == 0:
 						n+=1
 						continue
-					equation[v] += "%.3f*%s^%d+" % (c[n], variables[0], i)
-					n+=1
+					equation[v] += "%.3f*%s^%d*%s^%d+" % (c[n], variables[0], j, variables[1], i)
+					n += 1
 					continue
-				for j in range(self.order-i+1):
-					if self.dimension == 2:
-						if c[n] == 0:
-							n+=1
-							continue
-						equation[v] += "%.3f*%s^%d*%s^%d+" % (c[n], variables[0], j, variables[1], i)
-						n += 1
-						continue
-						for k in range(self.order-i-j+1):
-							if self.dimension == 3:
-								if c[n] == 0:
-									n+=1
-									continue
-								equation[v] += "%.3f*%s^%d*%s^%d*%s^d+" % (c[n], variables[0], k, variables[1], j, variables[2], i)
-								n += 1
 			# Some cleanup
 			for r in variables:
 				equation[v] = equation[v].replace("*%s^0" % (r), "")
@@ -272,17 +245,12 @@ class PolynomialAttractor(Attractor):
 		return equation
 
 	def getPolynomLength(self):
-		self.pl = math.factorial(self.order+self.dimension)/(
-				  math.factorial(self.order)*math.factorial(self.dimension))
+		self.pl = math.factorial(self.order+2)/(math.factorial(self.order)*2)
 
 	def getRandomCoef(self):
-		self.coef = [[random.randint(-30, 31)*self.codeStep for _ in range(0, self.pl)] for __ in range(self.dimension)]
-		if self.dimension == 1: self.derive = polynom(self.coef[0]).derive()
+		self.coef = [[random.randint(-30, 31)*self.codeStep for _ in range(0, self.pl)] for __ in range(2)]
 
 	def getNextPoint(self, p):
-		if self.dimension == 1:
-			return [polynom(self.coef[0])(p[0])]
-
 		l = list()
 		try:
 			for c in self.coef:
@@ -290,9 +258,8 @@ class PolynomialAttractor(Attractor):
 				n = 0
 				for i in range(self.order+1):
 					for j in range(self.order-i+1):
-						if self.dimension == 2:
-							result += c[n]*(p[0]**j)*(p[1]**i)
-							n += 1
+						result += c[n]*(p[0]**j)*(p[1]**i)
+						n += 1
 				l.append(result)
 		except OverflowError:
 			logging.error("Overflow during attractor computation.")
@@ -303,53 +270,6 @@ class PolynomialAttractor(Attractor):
 		# l.append(p[0])
 		return l
 
-	def computeLyapunov(self, p, pe):
-		if self.dimension == 1:
-			df = abs(self.derive(p[0]))
-			if df == 0:
-				logging.warning("Unable to compute Lyapunov exponent, but trying to go on...")
-				return pe
-			self.lyapunov['lsum'] += math.log(df, 2)
-			self.lyapunov['nl']   += 1
-			self.lyapunov['ly'] = self.lyapunov['lsum'] / self.lyapunov['nl']
-		else:
-			return super(PolynomialAttractor, self).computeLyapunov(p, pe)
-
-	def iterateMap(self, screen_c, window_c, aContainer, index, initPoint=(0.1, 0.1)):
-		if self.dimension == 1:
-			a = dict()
-			p = initPoint
-
-			sh = screen_c[3]-screen_c[1]
-			ratioY = sh/(window_c[3]-window_c[1])
-			ratioX = (screen_c[2]-screen_c[0])/(window_c[2]-window_c[0])
-			w_to_s = lambda p: (
-				int(screen_c[0] + (p[0]-window_c[0])*ratioX),
-				int(screen_c[1] + sh-(p[1]-window_c[1])*ratioY) )
-
-			prev = self.depth
-			mem  = [p]*prev
-			for i in range(self.iterations):
-				pnew = [polynom(self.coef[0])(p[0])]
-
-				# Ignore the first points to get a proper convergence
-				if i >= self.convDelay:
-					projectedPixel = None
-					if i >= prev:
-						projectedPixel = w_to_s((mem[(i-prev)%prev][0], pnew[0]))
-					if projectedPixel:
-						if projectedPixel in a:
-							a[projectedPixel] += 1
-						else:
-							a[projectedPixel] = 0
-
-				mem[i%prev] = pnew
-				p = pnew
-
-			aContainer[index] = a
-		else:
-			super(PolynomialAttractor, self).iterateMap(screen_c, window_c, aContainer, index, initPoint)
-
 class DeJongAttractor(Attractor):
 	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
 	codeStep     = .125 # Step to use to map ASCII character to coef
@@ -359,14 +279,14 @@ class DeJongAttractor(Attractor):
 		if opt:
 			if 'code' in opt and opt['code'] != None:
 				self.code = opt['code']
-				self.decodeCode() # Will populate dimension, order, polynom, length, depth, polynom, coef and derive
+				self.decodeCode() # Will populate order, polynom, length, polynom, coef and derive
 
 	def createCode(self):
 		self.code = "j"
 		# ASCII codes of digits and letters
 		c = [self.codelist[int(x/self.codeStep)+30] for x in self.coef]
 		self.code +="".join(map(chr,c))
-		
+
 	def decodeCode(self):
 		d = dict([(self.codelist[i], i) for i in range(0, len(self.codelist))])
 		self.coef = [(d[ord(_)]-30)*self.codeStep for _ in self.code[1:]]
@@ -456,10 +376,7 @@ def createImageArray(p, sc, background):
 
 # Project bounds to screen... do we really need this anymore ?
 def projectBounds(at):
-	if at.dimension == 1:
-		return (at.bound[0][0], at.bound[0][0], at.bound[1][0], at.bound[1][0])
-	elif at.dimension == 2:
-		return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
+	return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
 
 # Performs histogram equalization on the attractor pixels
 def equalizeAttractor(p):
@@ -579,11 +496,8 @@ def getInitPoints(at, n):
 			p = (random.random(), random.random())
 		else:
 			rx = at.bound[0][0] + random.random()*(at.bound[1][0]-at.bound[0][0])
-			if at.dimension == 1:
-				p = (rx,)
-			else:
-				ry = at.bound[0][1] + random.random()*(at.bound[1][1]-at.bound[0][1])
-				p = (rx, ry)
+			ry = at.bound[0][1] + random.random()*(at.bound[1][1]-at.bound[0][1])
+			p = (rx, ry)
 		if at.checkConvergence(p):
 			initPoints.append(p)
 			i += 1
@@ -622,18 +536,13 @@ def sec2hms(seconds):
 def generateAttractor():
 	t0 = time()
 	if args.type == 'polynomial':
-		at = PolynomialAttractor(**{'dim'  : args.dimension,
-	                'order': args.order,
+		at = PolynomialAttractor(**{'order': args.order,
 	                'iter' : int(args.iter/args.threads),
-	                'depth': args.depth,
 	                'code' : args.code })
 	else:
-		at = DeJongAttractor(**{'dim'  : args.dimension,
-	                'order': args.order,
-	                'iter' : int(args.iter/args.threads),
-	                'depth': args.depth,
+		at = DeJongAttractor(**{'iter' : int(args.iter/args.threads),
 	                'code' : args.code })
-		
+
 	if args.code:
 		if not at.checkConvergence():
 			logging.warning("Not an attractor it seems... but trying to display it anyway.")
@@ -664,14 +573,12 @@ def generateAttractor():
 
 	if args.display_at:
 		p = at.humanReadable(True)
-		print at, at.fdim, at.lyapunov['ly'], args.iter, p[0], "" if args.dimension < 2 else p[1]
+		print at, at.fdim, at.lyapunov['ly'], args.iter, p[0], p[1]
 
 def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
 	parser.add_argument('-b', '--bpc',          help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=(8, 16))
 	parser.add_argument('-c', '--code',         help='attractor code')
-	parser.add_argument('-d', '--dimension',    help='attractor dimension (defaut = %d)' % defaultParameters['dim'], default=defaultParameters['dim'], type=int, choices=range(1,3))
-	parser.add_argument('-D', '--depth',        help='attractor depth (for 1D only - default = %d)' % defaultParameters['depth'], default=defaultParameters['depth'], type=int)
 	parser.add_argument('-g', '--geometry',     help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
 	parser.add_argument('-H', '--display_at',   help='Output parameters for post processing', action='store_true', default=False)
 	parser.add_argument('-j', '--threads',      help='Number of threads to use (default=%d)' % defaultParameters['threads'], type=int, default=defaultParameters['threads'])
