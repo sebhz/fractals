@@ -240,12 +240,12 @@ class PolynomialAttractor(Attractor):
 			if isHTML: # Convert this in a nice HTML equation
 				equation[v] = re.sub(r'\^(\d+)',r'<sup>\1</sup>', equation[v])
 				equation[v] = re.sub(r'n\+1=',r'<sub>n+1</sub>=', equation[v])
-				equation[v] = re.sub(r'(x|y|z)n',r'\1<sub>n</sub>', equation[v])
+				equation[v] = re.sub(r'(x|y)n',r'\1<sub>n</sub>', equation[v])
 
 		return equation
 
 	def getPolynomLength(self):
-		self.pl = math.factorial(self.order+2)/(math.factorial(self.order)*2)
+		self.pl = (self.order+2)*(self.order+1)/2
 
 	def getRandomCoef(self):
 		self.coef = [[random.randint(-30, 31)*self.codeStep for _ in range(0, self.pl)] for __ in range(2)]
@@ -307,7 +307,7 @@ class DeJongAttractor(Attractor):
 			for v in range(0,2):
 				equation[v] = re.sub(r'\^(\d+)',r'<sup>\1</sup>', equation[v])
 				equation[v] = re.sub(r'n\+1=',r'<sub>n+1</sub>=', equation[v])
-				equation[v] = re.sub(r'(x|y|z)n',r'\1<sub>n</sub>', equation[v])
+				equation[v] = re.sub(r'(x|y)n',r'\1<sub>n</sub>', equation[v])
 
 		return equation
 
