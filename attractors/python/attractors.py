@@ -54,7 +54,7 @@ defaultParameters = {
 	'outdir': "png",
 	'loglevel':4,
 	'threads':1,
-	'atype':'polynomial',
+	'type':'polynomial',
 }
 
 class polynom(object):
@@ -682,7 +682,7 @@ def parseArgs():
 	parser.add_argument('-O', '--outdir',       help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
 	parser.add_argument('-r', '--render',       help='rendering mode (greyscale, color)', default = "color", type=str, choices=("greyscale", "color"))
 	parser.add_argument('-s', '--subsample',    help='subsampling rate (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3))
-	parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['atype'], default = defaultParameters['atype'], type=str, choices=("polynomial", "dejong"))
+	parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong"))
 	args = parser.parse_args()
 	return args
 
