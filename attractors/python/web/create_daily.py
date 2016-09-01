@@ -45,9 +45,11 @@ __date
 <a href="png/__link"><img src="png_thumb/__link" alt="__code" title="__code"></img></a>
 </div>
 <div id="info_div">
+Attractor type: <span class="code">__type</span>
+<br></br>
 Polynom order: <span class="code">__order</span>
 <br></br>
-Minkowski-Bouligand dimension: <span class="code">__dimension</span>
+Fractal dimension: <span class="code">__dimension</span>
 <br></br>
 Number of iterations: <span class="code">__iterations</span>
 <br></br>
@@ -68,6 +70,7 @@ __y_polynom
 <div>
 Generation and rendering time: __time
 </div>
+<p>For polynomial attractors, the dimension is an estimate of the <a href="https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension">Minkowski-Bouligand (=box counting) dimension</a>. For De Jong attractors, it is an estimate of the <a href="https://en.wikipedia.org/wiki/Correlation_dimension">correlation dimension</a>.</p>
 </div>
 </div>
 <div class="box" id="uh_div">
@@ -116,9 +119,11 @@ MAIL_HTML_TEMPLATE='''<?xml version="1.0" encoding="UTF-8"?>
 <p class="polite">Please find your strange attractor !</p>
 <p></p>
 <div id="info_div">
+Attractor type: <span class="code">__type</span>
+<br></br>
 Polynom order: <span class="code">__order</span>
 <br></br>
-Minkowski-Bouligand (=box-counting) dimension: <span class="code">__dimension</span>
+Fractal dimension: <span class="code">__dimension</span>
 <br></br>
 Number of iterations: <span class="code">__iterations</span>
 <br></br>
@@ -136,19 +141,22 @@ Generation and rendering time: __time
 </div>
 </div>
 <p class="polite">Have a good day.</p>
+<p class="polite">For polynomial attractors, the dimension is an estimate of the <a href="https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension">Minkowski-Bouligand (=box counting) dimension</a>. For De Jong attractors, it is an estimate of the <a href="https://en.wikipedia.org/wiki/Correlation_dimension">correlation dimension</a>.</p>
 </body>
 </html>
 '''
 
 MAIL_TXT_TEMPLATE = '''Please find your strange attractor.
 
-	- Type: polynomial
+	- Type: __type
 	- Order: __order
 	- # Iterations: _iterations
-	- Minkowski-Bouligand (=box-counting) dimension: __dimension
+	- Fractal dimension: __dimension [1]
 	- Generation and rendering time: __time
 
 Have a good day.
+
+[1] for polynomial attractors, the dimension is an estimate of the Minkowski-Bouligand (=box counting) dimension. For De Jong attractors, it is an estimate of the correlation dimension.
 '''
 
 def numeral(n):
