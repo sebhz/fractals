@@ -172,7 +172,7 @@ class Attractor(object):
 
 	# An estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
 	# See https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension
-	def computeFractalDimension(self, a, screen_c, window_c):
+	def computeBoxCountingDimension(self, a, screen_c, window_c):
 		if not self.bound: return None
 
 		sideLength = 2 # Box side length, in pixels
@@ -185,6 +185,33 @@ class Attractor(object):
 		n = len(boxes.keys())
 
 		self.fdim = math.log(n)/math.log(1/(sideLength*pixelSize))
+
+	# An estimate of the correlation dimension computed "a la Julien Sprott"
+	# Estimate the probability that 2 points in the attractor are close enough
+	# We will make a small error because we resized things a bit, but not that much actually
+	def computeCorrelationDimension(self, a, screen_c):
+		base = 10
+		radiusRatio = 0.001
+		diagonal = (screen_c[2]-screen_c[0])**2 + (screen_c[3]-screen_c[1])**2
+		d1 = 4*radiusRatio*diagonal
+		d2 = float(d1)/base/base
+		n1, n2 = (0, 0)
+		points = a.keys()
+		l = len(points)
+
+		for p in points: # Iterate on each attractor point
+			p2 = points[random.randint(0,l-1)] # Pick another point at random
+			d = (p2[0]-p[0])**2 + (p2[1]-p[1])**2
+			if d == 0: continue # Oops we picked the same point twice
+			if d < d1: n2 += 1  # Distance within a big circle
+			if d > d2: continue # But out of a small circle
+			n1 += 1
+
+		# and then...
+		try:
+			self.fdim = math.log(float(n2)/n1, base)
+		except ZeroDivisionError:
+			self.fdim = 0.0 # Impossible to find small circles... very scattered points
 
 class PolynomialAttractor(Attractor):
 	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
@@ -269,6 +296,9 @@ class PolynomialAttractor(Attractor):
 
 		return l
 
+	def computeFractalDimension(self, a, screen_c, window_c):
+		super(PolynomialAttractor, self).computeBoxCountingDimension(a, screen_c, window_c)
+
 class DeJongAttractor(Attractor):
 	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
 	codeStep     = .125 # Step to use to map ASCII character to coef
@@ -309,6 +339,10 @@ class DeJongAttractor(Attractor):
 				equation[v] = re.sub(r'(x|y)n',r'\1<sub>n</sub>', equation[v])
 
 		return equation
+
+	def computeFractalDimension(self, a, screen_c, window_c):
+		super(DeJongAttractor, self).computeCorrelationDimension(a, screen_c)
+
 
 # Enlarge attractor bounds so that it has the same aspect ratio as screen_c 
 # sc: screen bound e.g. (0,0,800,600)
@@ -564,7 +598,7 @@ def generateAttractor():
 	logging.info("Attractor type: %s" % args.type)
 	if args.type == 'polynomial':
 		logging.info("Polynom order: %d" % int(at.code[1]))
-	logging.info("Minkowski-Bouligand dimension: %.3f" % at.fdim)
+	logging.info("Dimension: %.3f" % at.fdim)
 	logging.info("Lyapunov exponent: %.3f" % at.lyapunov['ly'])
 	logging.info("Code: %s" % at.code)
 	logging.info("Iterations: %d" % args.iter)
