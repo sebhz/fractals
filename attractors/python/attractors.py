@@ -195,12 +195,12 @@ class PolynomialAttractor(Attractor):
 		self.order      = defaultParameters['order']
 		self.coef       = None
 		self.code       = None
-		self.getPolynomLength()
 		if opt:
+			self.order = opt['order'] if 'order' in opt else defaultParameters['order']
 			if 'code' in opt and opt['code'] != None:
 				self.code = opt['code']
 				self.decodeCode() # Will populate order, polynom, length, polynom, coef and derive
-
+		self.getPolynomLength()
 	def decodeCode(self):
 		self.order = int(self.code[1])
 		self.getPolynomLength()
