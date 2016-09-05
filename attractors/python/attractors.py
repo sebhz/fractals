@@ -557,7 +557,10 @@ def generateAttractorSequence():
 	attractorEnd   = createAttractor()
 	bounds   = attractorStart.bound
 	coefList = list()
-	coefList.append([ x[:] for x in attractorStart.coef ])
+	if args.type == 'polynomial':
+		coefList.append([ x[:] for x in attractorStart.coef ])
+	else:
+		coefList.append(attractorStart.coef[:])
 	numAttractors = 1
 
 	for n in range(args.sequence):
