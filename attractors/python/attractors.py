@@ -110,7 +110,7 @@ class Attractor(object):
 				pmax = [max(pn, pm) for pn, pm in zip(pnew, pmax)]
 			p = pnew
 
-		self.bound = (pmin, pmax)
+		self.bound = [v for p in (pmin, pmax,) for v in p]
 		return True
 
 	def explore(self):
@@ -390,10 +390,6 @@ def createImageArray(p, sc, background):
 
 	return a
 
-# Project bounds to screen... do we really need this anymore ?
-def projectBounds(at):
-	return (at.bound[0][0], at.bound[0][1], at.bound[1][0], at.bound[1][1])
-
 # Performs histogram equalization on the attractor pixels
 def equalizeAttractor(p):
 	pools = [0]*(1<<INTERNAL_BPC)
@@ -511,8 +507,8 @@ def getInitPoints(at, n):
 		if not at.bound:
 			p = (random.random(), random.random())
 		else:
-			rx = at.bound[0][0] + random.random()*(at.bound[1][0]-at.bound[0][0])
-			ry = at.bound[0][1] + random.random()*(at.bound[1][1]-at.bound[0][1])
+			rx = at.bound[0] + random.random()*(at.bound[2]-at.bound[0])
+			ry = at.bound[1] + random.random()*(at.bound[3]-at.bound[1])
 			p = (rx, ry)
 		if at.checkConvergence(p):
 			initPoints.append(p)
@@ -524,8 +520,7 @@ def walkthroughAttractor(at, screen_c):
 	initPoints = getInitPoints(at, args.threads)
 	logging.debug("Found converging attractor. Now computing it.")
 	logging.debug("Attractor boundaries: %s" % (str(at.bound)))
-	b = projectBounds(at)
-	window_c = scaleBounds(b, screen_c)
+	window_c = scaleBounds(at.bound, screen_c)
 
 	manager = Manager()
 	a = manager.list([None]*args.threads)
