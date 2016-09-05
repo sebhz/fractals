@@ -55,23 +55,6 @@ defaultParameters = {
 	'type':'polynomial',
 }
 
-class polynom(object):
-	def __init__(self, a):
-		self.a = a
-
-	def derive(self):
-		b = [i*c for i, c in enumerate(self.a)]
-		return polynom(b[1:])
-
-	def __call__(self, x):
-		result = 0
-		for c in reversed(self.a):
-			result = result*x + c
-		return result
-
-	def __str__(self):
-		return self.a.__str__()
-
 class Attractor(object):
 	convDelay    = 128   # Number of points to ignore before checking convergence
 	convMaxIter  = 16384 # Check convergence on convMaxIter points only
