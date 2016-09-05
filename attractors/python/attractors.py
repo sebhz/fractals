@@ -109,8 +109,8 @@ class Attractor(object):
 				pmin = [min(pn, pm) for pn, pm in zip(pnew, pmin)]
 				pmax = [max(pn, pm) for pn, pm in zip(pnew, pmax)]
 			p = pnew
-
-		self.bound = [v for p in (pmin, pmax,) for v in p]
+		if not self.bound:
+			self.bound = [v for p in (pmin, pmax,) for v in p]
 		return True
 
 	def explore(self):
@@ -492,6 +492,7 @@ def renderAttractor(a, screen_c):
 def mergeAttractors(a):
 	v = a[0]
 	for vv in a[1:]:
+		if vv == None: continue
 		for k, e in vv.iteritems():
 			if k in v:
 				v[k] += e
@@ -544,8 +545,47 @@ def sec2hms(seconds):
 	h, m = divmod(m, 60)
 	return "%dh%02dm%02ds" % (h, m, s)
 
-def generateAttractor():
-	t0 = time()
+def writeAttractor(a, filepath):
+	logging.debug("Now writing attractor %s on disk." % filepath)
+	w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = True if args.render == "greyscale" else False, bitdepth=args.bpc, interlace=True)
+	aa = w.array_scanlines(a)
+	with open(filepath, "wb") as f:
+		w.write(f, aa)
+
+def generateAttractorSequence():
+	attractorStart = createAttractor()
+	attractorEnd   = createAttractor()
+	bounds   = attractorStart.bound
+	coefList = list()
+	coefList.append([ x[:] for x in attractorStart.coef ])
+	numAttractors = 1
+
+	for n in range(args.sequence):
+		if args.type == 'polynomial':
+			currentCoef = [[xx + float(yy-xx)*n/args.sequence for xx,yy in zip(x, y)] for x,y in zip(coefList[0], attractorEnd.coef)]
+		else:
+			currentCoef = [(y-x)*n/args.sequence for x, y in zip(attractorStart.coef, attractorEnd.coef)]
+
+		# Use attractor start as temp storage !
+		attractor = attractorStart
+		attractor.coef = currentCoef
+		attractor.bound = None
+		if attractor.checkConvergence(): # Will also update the attractor bounds
+			coefList.append(attractorStart.coef)
+			bounds = (min(bounds[0], attractor.bound[0]), min(bounds[1], attractor.bound[1]), max(bounds[2], attractor.bound[2]), max(bounds[3], attractor.bound[3]))
+			numAttractors += 1
+
+	logging.info("Sequence generated. %d converging attractors in sequence. Attractors bounding box: %s." % (numAttractors, str(bounds)))
+
+	for i, c in enumerate(coefList):
+		attractor.coef = c
+		attractor.bound = bounds
+		a = walkthroughAttractor(attractor, screen_c)
+		if not a : continue
+		path = os.path.join(args.outdir, attractor.code + "_" + "%04d" % i + ".png")
+		writeAttractor(a, path)
+
+def createAttractor():
 	if args.type == 'polynomial':
 		at = PolynomialAttractor(**{'order': args.order,
 	                'iter' : int(args.iter/args.threads),
@@ -560,17 +600,20 @@ def generateAttractor():
 	else:
 		at.explore()
 
+	return at
+
+def generateAttractor():
+	if args.sequence:
+		generateAttractorSequence()
+		return
+
+	t0 = time()
+	at = createAttractor()
 	a = walkthroughAttractor(at, screen_c)
 	if not a: return
-
-	logging.debug("Now writing attractor on disk.")
-	w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = True if args.render == "greyscale" else False, bitdepth=args.bpc, interlace=True)
-	aa = w.array_scanlines(a)
 	suffix = str(args.bpc)
 	filepath = os.path.join(args.outdir, at.code + "_" + suffix + ".png")
-	with open(filepath, "wb") as f:
-		w.write(f, aa)
-
+	writeAttractor(a, filepath)
 	t1 = time()
 
 	logging.info("Attractor type: %s" % args.type)
@@ -598,6 +641,7 @@ def parseArgs():
 	parser.add_argument('-n', '--number',       help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
 	parser.add_argument('-o', '--order',        help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
 	parser.add_argument('-O', '--outdir',       help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
+	parser.add_argument('-q', '--sequence',     help='generate a sequence of attractors', type=int)
 	parser.add_argument('-r', '--render',       help='rendering mode (greyscale, color)', default = "color", type=str, choices=("greyscale", "color"))
 	parser.add_argument('-s', '--subsample',    help='subsampling rate (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3))
 	parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong"))
