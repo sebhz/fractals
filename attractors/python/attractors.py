@@ -291,29 +291,31 @@ class DeJongAttractor(Attractor):
 		if opt:
 			if 'code' in opt and opt['code'] != None:
 				self.code = opt['code']
-				self.decodeCode() # Will populate order, polynom, length, polynom, coef and derive
+				self.decodeCode() # Will populate coef
 
 	def createCode(self):
 		self.code = "j"
 		# ASCII codes of digits and letters
-		c = [self.codelist[int(x/self.codeStep)+30] for x in self.coef]
+		c = [self.codelist[int(x/self.codeStep)+30] for d in self.coef for x in d]
 		self.code +="".join(map(chr,c))
 
 	def decodeCode(self):
 		d = dict([(self.codelist[i], i) for i in range(0, len(self.codelist))])
-		self.coef = [(d[ord(_)]-30)*self.codeStep for _ in self.code[1:]]
+		self.coef = [ [(d[ord(_)]-30)*self.codeStep for _ in self.code[1+2*__:3+2*__]] for __ in range(2) ]
+		print ">>", self.coef
 
 	def getRandomCoef(self):
-		self.coef = [random.randint(-30, 31)*self.codeStep for _ in range(4)]
+		self.coef = [[random.randint(-30, 31)*self.codeStep for _ in range(2)] for __ in range(2)]
+		print ">>", self.coef
 
 	def getNextPoint(self, p):
-		return ( math.sin(self.coef[0]*p[1]) - math.cos(self.coef[1]*p[0]),
-		         math.sin(self.coef[2]*p[0]) - math.cos(self.coef[3]*p[1]), )
+		return ( math.sin(self.coef[0][0]*p[1]) - math.cos(self.coef[0][1]*p[0]),
+		         math.sin(self.coef[1][0]*p[0]) - math.cos(self.coef[1][1]*p[1]), )
 
 	def humanReadable(self, isHTML):
 		equation = list()
-		equation.append('xn+1=sin(%.3f*yn)-cos(%.3f*xn)' % (self.coef[0], self.coef[1]))
-		equation.append('yn+1=sin(%.3f*xn)-cos(%.3f*yn)' % (self.coef[2], self.coef[3]))
+		equation.append('xn+1=sin(%.3f*yn)-cos(%.3f*xn)' % (self.coef[0][0], self.coef[0][1]))
+		equation.append('yn+1=sin(%.3f*xn)-cos(%.3f*yn)' % (self.coef[1][0], self.coef[1][1]))
 
 		if isHTML: # Convert this in a nice HTML equation
 			for v in range(0,2):
@@ -557,19 +559,13 @@ def generateAttractorSequence():
 	attractorEnd   = createAttractor()
 	bounds   = attractorStart.bound
 	coefList = list()
-	if args.type == 'polynomial':
-		coefList.append([ x[:] for x in attractorStart.coef ])
-	else:
-		coefList.append(attractorStart.coef[:])
+	coefList.append([ x[:] for x in attractorStart.coef ])
 	numAttractors = 1
 
 	for n in range(args.sequence):
-		if args.type == 'polynomial':
-			currentCoef = [[xx + float(yy-xx)*n/args.sequence for xx,yy in zip(x, y)] for x,y in zip(coefList[0], attractorEnd.coef)]
-		else:
-			currentCoef = [(y-x)*n/args.sequence for x, y in zip(attractorStart.coef, attractorEnd.coef)]
+		currentCoef = [[xx + float(yy-xx)*n/args.sequence for xx,yy in zip(x, y)] for x,y in zip(coefList[0], attractorEnd.coef)]
 
-		# Use attractor start as temp storage !
+		# Use attractorStart as temp storage !
 		attractor = attractorStart
 		attractor.coef = currentCoef
 		attractor.bound = None
