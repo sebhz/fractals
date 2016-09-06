@@ -50,9 +50,9 @@ defaultParameters = {
 	'number': 1,
 	'order': 2,
 	'outdir': "png",
-	'loglevel':4,
-	'threads':1,
-	'type':'polynomial',
+	'loglevel': 3,
+	'threads': 1,
+	'type': 'polynomial',
 }
 
 class Attractor(object):
@@ -302,11 +302,9 @@ class DeJongAttractor(Attractor):
 	def decodeCode(self):
 		d = dict([(self.codelist[i], i) for i in range(0, len(self.codelist))])
 		self.coef = [ [(d[ord(_)]-30)*self.codeStep for _ in self.code[1+2*__:3+2*__]] for __ in range(2) ]
-		print ">>", self.coef
 
 	def getRandomCoef(self):
 		self.coef = [[random.randint(-30, 31)*self.codeStep for _ in range(2)] for __ in range(2)]
-		print ">>", self.coef
 
 	def getNextPoint(self, p):
 		return ( math.sin(self.coef[0][0]*p[1]) - math.cos(self.coef[0][1]*p[0]),
@@ -555,33 +553,43 @@ def writeAttractor(a, filepath):
 		w.write(f, aa)
 
 def generateAttractorSequence():
-	attractorStart = createAttractor()
-	attractorEnd   = createAttractor()
-	bounds   = attractorStart.bound
-	coefList = list()
-	coefList.append([ x[:] for x in attractorStart.coef ])
+	SEQUENCE_STEP = 1024
 	numAttractors = 1
+	sequenceList = [None]*args.sequence
 
-	for n in range(args.sequence):
-		currentCoef = [[xx + float(yy-xx)*n/args.sequence for xx,yy in zip(x, y)] for x,y in zip(coefList[0], attractorEnd.coef)]
+	attractorStart = createAttractor()
+	bounds   = attractorStart.bound
 
-		# Use attractorStart as temp storage !
-		attractor = attractorStart
-		attractor.coef = currentCoef
-		attractor.bound = None
-		if attractor.checkConvergence(): # Will also update the attractor bounds
-			coefList.append(attractorStart.coef)
-			bounds = (min(bounds[0], attractor.bound[0]), min(bounds[1], attractor.bound[1]), max(bounds[2], attractor.bound[2]), max(bounds[3], attractor.bound[3]))
-			numAttractors += 1
+	args.code = None
+	for sequence in range(args.sequence):
+		attractorEnd   = createAttractor()
+		logging.info("Generating sequence between %s and %s." % (attractorStart.code, attractorEnd.code))
+		sequenceList[sequence] = list()
+		sequenceList[sequence].append([ x[:] for x in attractorStart.coef ])
 
-	logging.info("Sequence generated. %d converging attractors in sequence. Attractors bounding box: %s." % (numAttractors, str(bounds)))
+		for n in range(1, SEQUENCE_STEP):
+			currentCoef = [[xx + float(yy-xx)*n/SEQUENCE_STEP for xx,yy in zip(x, y)] for x,y in zip(sequenceList[sequence][0], attractorEnd.coef)]
 
+			# Use attractorStart as temp storage !
+			attractor = attractorStart
+			attractor.coef = currentCoef
+			attractor.bound = None
+			if attractor.checkConvergence(): # Will also update the attractor bounds
+				sequenceList[sequence].append(attractorStart.coef)
+				bounds = (min(bounds[0], attractor.bound[0]), min(bounds[1], attractor.bound[1]), max(bounds[2], attractor.bound[2]), max(bounds[3], attractor.bound[3]))
+				numAttractors += 1
+		attractorStart = attractorEnd
+
+		logging.info("Sequence %d generated. %d converging attractors found so far." % (sequence, numAttractors))
+		logging.debug("Attractors bounding box: %s." % (str(bounds)))
+
+	coefList = [ coefs for sequence in sequenceList for coefs in sequence ]
 	for i, c in enumerate(coefList):
-		attractor.coef = c
-		attractor.bound = bounds
-		a = walkthroughAttractor(attractor, screen_c)
+		attractorStart.coef = c
+		attractorStart.bound = bounds
+		a = walkthroughAttractor(attractorStart, screen_c)
 		if not a : continue
-		path = os.path.join(args.outdir, attractor.code + "_" + "%04d" % i + ".png")
+		path = os.path.join(args.outdir, attractorStart.code + "_" + "%04d" % i + ".png")
 		writeAttractor(a, path)
 
 def createAttractor():
@@ -640,7 +648,7 @@ def parseArgs():
 	parser.add_argument('-n', '--number',       help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
 	parser.add_argument('-o', '--order',        help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
 	parser.add_argument('-O', '--outdir',       help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
-	parser.add_argument('-q', '--sequence',     help='generate a sequence of attractors', type=int)
+	parser.add_argument('-q', '--sequence',     help='generate n following sequences of attractors', type=int)
 	parser.add_argument('-r', '--render',       help='rendering mode (greyscale, color)', default = "color", type=str, choices=("greyscale", "color"))
 	parser.add_argument('-s', '--subsample',    help='subsampling rate (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3))
 	parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong"))
