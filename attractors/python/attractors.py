@@ -498,7 +498,10 @@ def mergeAttractors(a):
 				v[k] += e
 			else:
 				v[k] = e
-	logging.debug("%d points in the attractor before any dithering done." % (len(v.keys())))
+	if v == None:
+		logging.debug("Empty attractor. Trying to go on anyway.")
+	else:
+		logging.debug("%d points in the attractor before any dithering done." % (len(v.keys())))
 	return v
 
 def getInitPoints(at, n):
