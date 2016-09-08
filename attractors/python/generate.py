@@ -303,7 +303,7 @@ def generateAttractorSequence():
 			attractorStart.coef = currentCoef
 			attractorStart.bound = None
 			if attractorStart.checkConvergence(): # Will also update the attractor bounds
-				sequenceList[sequence].append(attractorStart.coef)
+				sequenceList[sequence].append(currentCoef)
 				bounds = (min(bounds[0], attractorStart.bound[0]), min(bounds[1], attractorStart.bound[1]), max(bounds[2], attractorStart.bound[2]), max(bounds[3], attractorStart.bound[3]))
 				numAttractors += 1
 		attractorStart = attractorEnd
