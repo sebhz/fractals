@@ -118,11 +118,10 @@ class Attractor(object):
 			if i >= self.convDelay:
 				projectedPixel = w_to_s(pnew)
 
-				if projectedPixel:
-					if projectedPixel in a:
-						a[projectedPixel] += 1
-					else:
-						a[projectedPixel] = 0
+				if projectedPixel in a:
+					a[projectedPixel] += 1
+				else:
+					a[projectedPixel] = 0
 			p = pnew
 
 		aContainer[index] = a
@@ -130,8 +129,6 @@ class Attractor(object):
 	# An estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
 	# See https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension
 	def computeBoxCountingDimension(self, a, screen_c, window_c):
-		if not self.bound: return None
-
 		sideLength = 2 # Box side length, in pixels
 		pixelSize = (window_c[2]-window_c[0])/(screen_c[2]-screen_c[0])
 
