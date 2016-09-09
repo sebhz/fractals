@@ -16,8 +16,8 @@ from email.utils import COMMASPACE, formatdate
 from subprocess import Popen, PIPE, STDOUT
 
 TYPES = ('polynomial', 'dejong')
-THUMB_CMD = ['./generate.py', '--geometry=800x600', '--outdir=png_thumb', '--render=greyscale', '--subsample=2', '-H', '--loglevel=0', '--threads=4']
-FINAL_CMD = ['./generate.py', '--geometry=1920x1080', '--outdir=png', '--render=greyscale', '--subsample=2', '-H', '--loglevel=0', '--threads=4']
+THUMB_CMD = ['./generate.py', '--geometry=800x600', '--outdir=png_thumb', '--render=greyscale', '--subsample=3', '-H', '--loglevel=0', '--threads=4']
+FINAL_CMD = ['./generate.py', '--geometry=1920x1080', '--outdir=png', '--render=greyscale', '--subsample=3', '-H', '--loglevel=0', '--threads=4']
 REFERENCE_DATE = datetime(2016, 7, 27)
 CURRENT_FILE = "strange_attractor.xhtml"
 

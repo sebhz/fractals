@@ -367,7 +367,7 @@ def generateAttractor():
 def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
 	parser.add_argument('-b', '--bpc',          help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=(8, 16))
-	parser.add_argument('-c', '--code',         help='attractor code')
+	parser.add_argument('-c', '--code',         help='attractor code', type=str)
 	parser.add_argument('-g', '--geometry',     help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
 	parser.add_argument('-H', '--display_at',   help='Output parameters for post processing', action='store_true', default=False)
 	parser.add_argument('-j', '--threads',      help='Number of threads to use (default = %d)' % defaultParameters['threads'], type=int, default=defaultParameters['threads'])
@@ -381,6 +381,7 @@ def parseArgs():
 	parser.add_argument('-s', '--subsample',    help='subsampling rate (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3))
 	parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong"))
 	args = parser.parse_args()
+	if args.code and args.code[0] == 'j': args.type = 'dejong'
 	return args
 
 # ----------------------------- Main loop ----------------------------- #
