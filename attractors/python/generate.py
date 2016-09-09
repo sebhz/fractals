@@ -394,7 +394,7 @@ pxSize = args.subsample*args.subsample*int(g[0])*int(g[1])
 
 idealIter = int(OVERITERATE_FACTOR*pxSize)
 if args.type == 'dejong':
-	idealIter *= 2
+	idealIter *= 4
 if args.iter == None:
 	args.iter = idealIter
 	logging.debug("Setting iteration number to %d." % (args.iter))
