@@ -108,7 +108,7 @@ class Attractor(object):
 			int(screen_c[0] + (p[0]-window_c[0])*ratioX),
 			int(screen_c[1] + sh-(p[1]-window_c[1])*ratioY) )
 
-		for i in range(self.iterations):
+		for i in xrange(self.iterations):
 			pnew = self.getNextPoint(p)
 			if not pnew:
 				aContainer[index] = None
