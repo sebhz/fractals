@@ -68,7 +68,7 @@ class Attractor(object):
 		pe = [x + self.epsilon if i==0 else x for i,x in enumerate(p)]
 		modulus = lambda x, y: abs(x) + abs(y)
 
-		for i in range(self.convMaxIter):
+		for i in xrange(self.convMaxIter):
 			pnew = self.getNextPoint(p)
 			if not pnew: return False
 			if reduce(modulus, pnew, 0) > 1000000: # Unbounded - not an SA
@@ -187,7 +187,7 @@ class PolynomialAttractor(Attractor):
 		self.order = int(self.code[1])
 		self.getPolynomLength()
 
-		d = dict([(self.codelist[i], i) for i in range(0, len(self.codelist))])
+		d = dict([(v, i) for i, v in enumerate(self.codelist)])
 		self.coef = [[(d[ord(_)]-30)*self.codeStep for _ in self.code[3+__*self.pl:3+(__+1)*self.pl]] for __ in range(2)]
 
 	def createCode(self):
@@ -272,7 +272,7 @@ class DeJongAttractor(Attractor):
 		self.code +="".join(map(chr,c))
 
 	def decodeCode(self):
-		d = dict([(self.codelist[i], i) for i in range(0, len(self.codelist))])
+		d = dict([(v, i) for i, v in enumerate(self.codelist)])
 		self.coef = [ [(d[ord(_)]-30)*self.codeStep for _ in self.code[1+2*__:3+2*__]] for __ in range(2) ]
 
 	def getRandomCoef(self):
@@ -288,7 +288,7 @@ class DeJongAttractor(Attractor):
 		equation.append('yn+1=sin(%.3f*xn)-cos(%.3f*yn)' % (self.coef[1][0], self.coef[1][1]))
 
 		if isHTML: # Convert this in a nice HTML equation
-			for v in range(0,2):
+			for v in range(2):
 				equation[v] = re.sub(r'\^(\d+)',r'<sup>\1</sup>', equation[v])
 				equation[v] = re.sub(r'n\+1=',r'<sub>n+1</sub>=', equation[v])
 				equation[v] = re.sub(r'(x|y)n',r'\1<sub>n</sub>', equation[v])

@@ -290,13 +290,13 @@ def generateAttractorSequence():
 	bounds   = attractorStart.bound
 
 	args.code = None
-	for sequence in range(args.sequence):
+	for sequence in xrange(args.sequence):
 		attractorEnd   = createAttractor()
 		logging.info("Generating sequence between %s and %s." % (attractorStart.code, attractorEnd.code))
 		sequenceList[sequence] = list()
 		sequenceList[sequence].append([ x[:] for x in attractorStart.coef ])
 
-		for n in range(1, SEQUENCE_STEP):
+		for n in xrange(1, SEQUENCE_STEP):
 			currentCoef = [[xx + float(yy-xx)*n/SEQUENCE_STEP for xx,yy in zip(x, y)] for x,y in zip(sequenceList[sequence][0], attractorEnd.coef)]
 
 			# Use attractorStart as temp storage !
@@ -370,8 +370,8 @@ def parseArgs():
 	parser.add_argument('-c', '--code',         help='attractor code')
 	parser.add_argument('-g', '--geometry',     help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
 	parser.add_argument('-H', '--display_at',   help='Output parameters for post processing', action='store_true', default=False)
-	parser.add_argument('-j', '--threads',      help='Number of threads to use (default=%d)' % defaultParameters['threads'], type=int, default=defaultParameters['threads'])
-	parser.add_argument('-l', '--loglevel',     help='Sets log level (default %d)' % defaultParameters['loglevel'], default=defaultParameters['loglevel'], type=int, choices=range(0,len(LOGLEVELS)))
+	parser.add_argument('-j', '--threads',      help='Number of threads to use (default = %d)' % defaultParameters['threads'], type=int, default=defaultParameters['threads'])
+	parser.add_argument('-l', '--loglevel',     help='Sets log level (the higher the more verbose - default = %d)' % defaultParameters['loglevel'], default=defaultParameters['loglevel'], type=int, choices=range(len(LOGLEVELS)))
 	parser.add_argument('-i', '--iter',         help='attractor number of iterations', type=int)
 	parser.add_argument('-n', '--number',       help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
 	parser.add_argument('-o', '--order',        help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
@@ -405,5 +405,5 @@ screen_c = [0, 0] + [args.subsample*int(x) for x in g]
 
 if args.code: args.number = 1
 
-for i in range(0, args.number):
+for i in xrange(0, args.number):
 	generateAttractor()
