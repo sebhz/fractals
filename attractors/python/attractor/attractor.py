@@ -84,7 +84,7 @@ class Attractor(object):
 				pmax = [max(pn, pm) for pn, pm in zip(pnew, pmax)]
 			p = pnew
 		if not self.bound:
-			self.bound = [v for p in (pmin, pmax,) for v in p]
+			self.bound = [v for p in (pmin, pmax) for v in p]
 		return True
 
 	def explore(self):
