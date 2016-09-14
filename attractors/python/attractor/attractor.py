@@ -97,16 +97,16 @@ class Attractor(object):
 		logging.debug("Attractor found after %d trials." % (n+1))
 		self.createCode()
 
-	def iterateMap(self, screen_c, window_c, aContainer, index, initPoint=(0.1, 0.1)):
+	def iterateMap(self, screenDim, window_c, aContainer, index, initPoint=(0.1, 0.1)):
 		a = dict()
 		p = initPoint
 
-		sh = screen_c[3]-screen_c[1]
-		ratioY = sh/(window_c[3]-window_c[1])
-		ratioX = (screen_c[2]-screen_c[0])/(window_c[2]-window_c[0])
+		ratioX = (screenDim[0]-1)/(window_c[2]-window_c[0])
+		ratioY = (screenDim[1]-1)/(window_c[3]-window_c[1])
+		maxY = screenDim[1]-1
 		w_to_s = lambda p: (
-			int(screen_c[0] + (p[0]-window_c[0])*ratioX),
-			int(screen_c[1] + sh-(p[1]-window_c[1])*ratioY) )
+			int(       (p[0]-window_c[0])*ratioX),
+			int(maxY - (p[1]-window_c[1])*ratioY) )
 
 		for i in xrange(self.iterations):
 			pnew = self.getNextPoint(p)
@@ -128,9 +128,9 @@ class Attractor(object):
 
 	# An estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
 	# See https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension
-	def computeBoxCountingDimension(self, a, screen_c, window_c):
+	def computeBoxCountingDimension(self, a, screenDim, window_c):
 		sideLength = 2 # Box side length, in pixels
-		pixelSize = (window_c[2]-window_c[0])/(screen_c[2]-screen_c[0])
+		pixelSize = (window_c[2]-window_c[0])/screenDim[0]
 
 		boxes = dict()
 		for pt in a.keys():
@@ -144,10 +144,10 @@ class Attractor(object):
 	# Estimate the probability that 2 points in the attractor are close enough
 	# We will make a small error because we resized things a bit, but not that much
 	# actually
-	def computeCorrelationDimension(self, a, screen_c):
+	def computeCorrelationDimension(self, a, screenDim):
 		base = 10
 		radiusRatio = 0.001
-		diagonal = (screen_c[2]-screen_c[0])**2 + (screen_c[3]-screen_c[1])**2
+		diagonal = (screenDim[0])**2 + (screenDim[1])**2
 		d1 = 4*radiusRatio*diagonal
 		d2 = float(d1)/base/base
 		n1, n2 = (0, 0)
@@ -251,8 +251,8 @@ class PolynomialAttractor(Attractor):
 
 		return l
 
-	def computeFractalDimension(self, a, screen_c, window_c):
-		super(PolynomialAttractor, self).computeBoxCountingDimension(a, screen_c, window_c)
+	def computeFractalDimension(self, a, screenDim, window_c):
+		super(PolynomialAttractor, self).computeBoxCountingDimension(a, screenDim, window_c)
 
 class DeJongAttractor(Attractor):
 	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
@@ -295,6 +295,6 @@ class DeJongAttractor(Attractor):
 
 		return equation
 
-	def computeFractalDimension(self, a, screen_c, window_c):
-		super(DeJongAttractor, self).computeCorrelationDimension(a, screen_c)
+	def computeFractalDimension(self, a, screenDim, window_c):
+		super(DeJongAttractor, self).computeCorrelationDimension(a, screenDim)
 

@@ -11,7 +11,8 @@ defaultParameters = {
 	'mode': 'greyscale',
 	'subsample': 1,
 	'bpc' : 8,
-	'self.nthreads' : 1,
+	'nthreads' : 1,
+	'screenDim' : (800, 600),
 }
 
 def getInitPoints(at, n):
@@ -29,16 +30,16 @@ def getInitPoints(at, n):
 			i += 1
 		if i == n: return initPoints
 
-# sc: screen bound e.g. (0,0,800,600)
+# sd: screen dimension e.g (800,600)
 # wc: attractor bound (x0,y0,x1,y1)
-def scaleBounds(wc, sc):
+def scaleBounds(wc, sd):
 	# Enlarge window by 5% in both directions
 	hoff = (wc[3]-wc[1])*0.025
 	woff = (wc[2]-wc[0])*0.025
 	nwc  = (wc[0]-woff, wc[1]-hoff, wc[2]+woff, wc[3]+hoff)
 
 	wa = float(nwc[3]-nwc[1])/float(nwc[2]-nwc[0]) # New window aspect ratio
-	sa = float(sc[3]-sc[1])/float(sc[2]-sc[0]) # Screen aspect ratio
+	sa = float(sd[1])/float(sd[0]) # Screen aspect ratio
 	r = sa/wa
 
 	if wa < sa: # Enlarge window height to get the right AR - keep it centered vertically
@@ -73,8 +74,10 @@ class Renderer(object):
 		self.rendermode = getParam('mode')
 		self.subsample  = getParam('subsample')
 		self.nthreads   = getParam('threads')
-		self.screen_c   = getParam('screen')
+		self.screenDim  = getParam('screenDim')
 		self.shift      = INTERNAL_BPC - self.bpc
+
+		self.screenDim  = [x*self.subsample for x in self.screenDim]
 
 	# Equalize and colorize attractor
 	# attractor: attractor points: dict (X,Y) and containing frequency
@@ -100,9 +103,9 @@ class Renderer(object):
 		return at
 
 	# Creates the final image array
-	def createImageArray(self, p, sc, background):
-		w = int ((sc[2]-sc[0])/self.subsample)
-		h = int ((sc[3]-sc[1])/self.subsample)
+	def createImageArray(self, p, sd, background):
+		w = int ((sd[0])/self.subsample)
+		h = int ((sd[1])/self.subsample)
 
 		a = background*w*h
 
@@ -208,18 +211,18 @@ class Renderer(object):
 	def renderAttractor(self, a):
 		backgroundColor = [0xFF] if self.rendermode == "greyscale" else [0xFF, 0xFF, 0xFF]
 		p = self.postprocessAttractor(a)
-		i = self.createImageArray(p, self.screen_c, backgroundColor)
+		i = self.createImageArray(p, self.screenDim, backgroundColor)
 		return i
 
 	def walkthroughAttractor(self, at):
 		jobs = list()
 		initPoints = getInitPoints(at, self.nthreads)
-		window_c = scaleBounds(at.bound, self.screen_c)
+		window_c = scaleBounds(at.bound, self.screenDim)
 
 		manager = Manager()
 		a = manager.list([None]*self.nthreads)
 		for i in range(self.nthreads):
-			job = Process(group=None, name='t'+str(i), target=at.iterateMap, args=(self.screen_c, window_c, a, i, initPoints[i]))
+			job = Process(group=None, name='t'+str(i), target=at.iterateMap, args=(self.screenDim, window_c, a, i, initPoints[i]))
 			jobs.append(job)
 			job.start()
 
@@ -228,7 +231,7 @@ class Renderer(object):
 
 		aMerge = mergeAttractors(a)
 		if not aMerge: return aMerge
-		at.computeFractalDimension(aMerge, self.screen_c, window_c)
+		at.computeFractalDimension(aMerge, self.screenDim, window_c)
 
 		logging.debug("Time to render the attractor.")
 		return self.renderAttractor(aMerge)

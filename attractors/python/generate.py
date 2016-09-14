@@ -78,7 +78,7 @@ def createAttractor():
 	else:
 		at.explore()
 
-	logging.debug("converging attractor found. Boundaries: %s" % (str(at.bound)))
+	logging.debug("Converging attractor found. Boundaries: %s" % (str(at.bound)))
 
 	return at
 
@@ -121,10 +121,10 @@ def generateAttractorSequence(r):
 		path = os.path.join(args.outdir, attractorStart.code + "_" + "%04d" % i + ".png")
 		writeAttractor(a, path)
 
-def generateAttractor():
+def generateAttractor(screenDim):
 	r  = render.Renderer(**{'bpc' : args.bpc,
 			'mode' : args.render,
-			'screen' : screen_c,
+			'screenDim' : screenDim,
 			'subsample' : args.subsample,
 			'threads': args.threads})
 
@@ -192,10 +192,7 @@ if args.iter == None:
 if args.iter < idealIter:
 	logging.warning("For better rendering, you should use at least %d iterations." % idealIter)
 
-# TODO: We do not really need to maintain 4 coordinates. W and H are sufficient.
-screen_c = [0, 0] + [args.subsample*int(x) for x in g]
-
 if args.code or args.sequence: args.number = 1
 
 for i in xrange(0, args.number):
-	generateAttractor()
+	generateAttractor([int(x) for x in g])
