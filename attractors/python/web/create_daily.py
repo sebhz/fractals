@@ -308,7 +308,7 @@ for attractorNum in attractorRange:
 		'__type' : "polynomial",
 	}
 
-	MAP['__type'] = TYPES[randint(0,1)]
+	MAP['__type'] = TYPES[0]
 
 	dt = REFERENCE_DATE + timedelta(days=attractorNum-1)
 	MAP['__date'] = dt.strftime("%Y, %b %d")

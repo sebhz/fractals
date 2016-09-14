@@ -5,6 +5,14 @@ import random
 import logging
 from multiprocessing import Manager, Process
 
+try:
+    import png
+except:
+    print >> sys.stderr, "this program requires the pyPNG module"
+    print >> sys.stderr, "available at https://github.com/drj11/pypng"
+    raise SystemExit
+
+
 INTERNAL_BPC=16
 
 defaultParameters = {
@@ -235,4 +243,12 @@ class Renderer(object):
 
 		logging.debug("Time to render the attractor.")
 		return self.renderAttractor(aMerge)
+
+	def writeAttractorPNG(self, a, filepath):
+		logging.debug("Now writing attractor %s on disk." % filepath)
+		w = png.Writer(size=[x/self.subsample for x in self.screenDim], greyscale = True if self.rendermode == "greyscale" else False, bitdepth=self.bpc, interlace=True)
+		aa = w.array_scanlines(a)
+		with open(filepath, "wb") as f:
+			w.write(f, aa)
+
 

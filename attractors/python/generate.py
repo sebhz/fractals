@@ -28,13 +28,6 @@ import os
 import logging
 from time import time
 
-try:
-    import png
-except:
-    print >> sys.stderr, "this program requires the pyPNG module"
-    print >> sys.stderr, "available at https://github.com/drj11/pypng"
-    raise SystemExit
-
 OVERITERATE_FACTOR=4
 LOGLEVELS = (logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG, logging.NOTSET)
 
@@ -55,13 +48,6 @@ def sec2hms(seconds):
 	m, s = divmod(seconds, 60)
 	h, m = divmod(m, 60)
 	return "%dh%02dm%02ds" % (h, m, s)
-
-def writeAttractor(a, filepath):
-	logging.debug("Now writing attractor %s on disk." % filepath)
-	w = png.Writer(size=(int(g[0]), int(g[1])), greyscale = True if args.render == "greyscale" else False, bitdepth=args.bpc, interlace=True)
-	aa = w.array_scanlines(a)
-	with open(filepath, "wb") as f:
-		w.write(f, aa)
 
 def createAttractor():
 	if args.type == 'polynomial':
@@ -119,7 +105,7 @@ def generateAttractorSequence(r):
 		a = r.walkthroughAttractor(attractorStart)
 		if not a : continue
 		path = os.path.join(args.outdir, attractorStart.code + "_" + "%04d" % i + ".png")
-		writeAttractor(a, path)
+		r.writeAttractorPNG(a, path)
 
 def generateAttractor(screenDim):
 	r  = render.Renderer(**{'bpc' : args.bpc,
@@ -138,7 +124,7 @@ def generateAttractor(screenDim):
 	if not a: return
 	suffix = str(args.bpc)
 	filepath = os.path.join(args.outdir, at.code + "_" + suffix + ".png")
-	writeAttractor(a, filepath)
+	r.writeAttractorPNG(a, filepath)
 	t1 = time()
 
 	logging.info("Attractor type: %s" % args.type)
