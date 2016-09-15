@@ -20,7 +20,7 @@
 # Ian Witham's blog
 # http://ianwitham.wordpress.com/category/graphics/strange-attractors-graphics/
 
-from attractor import attractor, render
+from attractor import attractor, render, util
 import random
 import argparse
 import sys
@@ -28,11 +28,10 @@ import os
 import logging
 from time import time
 
-OVERITERATE_FACTOR=4
 LOGLEVELS = (logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG, logging.NOTSET)
 
 defaultParameters = {
-	'iter': 1280*1024*OVERITERATE_FACTOR,
+	'iter': 1280*1024*4,
 	'sub': 1,
 	'bpc': 8,
 	'geometry': "1280x1024",
@@ -107,17 +106,7 @@ def generateAttractorSequence(r):
 		path = os.path.join(args.outdir, attractorStart.code + "_" + "%04d" % i + ".png")
 		r.writeAttractorPNG(a, path)
 
-def generateAttractor(screenDim):
-	r  = render.Renderer(**{'bpc' : args.bpc,
-			'mode' : args.render,
-			'screenDim' : screenDim,
-			'subsample' : args.subsample,
-			'threads': args.threads})
-
-	if args.sequence:
-		generateAttractorSequence(r)
-		return
-
+def generateSingleAttractor(r):
 	t0 = time()
 	at = createAttractor()
 	a = r.walkthroughAttractor(at)
@@ -136,16 +125,23 @@ def generateAttractor(screenDim):
 	logging.info("Iterations: %d" % args.iter)
 	logging.info("Attractor generation and rendering took %s." % sec2hms(t1-t0))
 
-	if args.display_at:
-		p = at.humanReadable(True)
-		print at, at.fdim, at.lyapunov['ly'], args.iter, p[0], p[1]
+def generateAttractor(screenDim):
+	r  = render.Renderer(**{'bpc' : args.bpc,
+			'mode' : args.render,
+			'screenDim' : screenDim,
+			'subsample' : args.subsample,
+			'threads': args.threads})
+
+	if args.sequence:
+		generateAttractorSequence(r)
+	else:
+		generateSingleAttractor(r)
 
 def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
 	parser.add_argument('-b', '--bpc',          help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=(8, 16))
 	parser.add_argument('-c', '--code',         help='attractor code', type=str)
 	parser.add_argument('-g', '--geometry',     help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
-	parser.add_argument('-H', '--display_at',   help='Output parameters for post processing', action='store_true', default=False)
 	parser.add_argument('-j', '--threads',      help='Number of threads to use (default = %d)' % defaultParameters['threads'], type=int, default=defaultParameters['threads'])
 	parser.add_argument('-l', '--loglevel',     help='Sets log level (the higher the more verbose - default = %d)' % defaultParameters['loglevel'], default=defaultParameters['loglevel'], type=int, choices=range(len(LOGLEVELS)))
 	parser.add_argument('-i', '--iter',         help='attractor number of iterations', type=int)
@@ -166,19 +162,17 @@ args = parseArgs()
 logging.basicConfig(stream=sys.stderr, level=LOGLEVELS[args.loglevel])
 random.seed()
 
-g = args.geometry.split('x')
-pxSize = args.subsample*args.subsample*int(g[0])*int(g[1])
+g = [int(x) for x in args.geometry.split('x')]
+#TODO - check validity of g
 
-idealIter = int(OVERITERATE_FACTOR*pxSize)
-if args.type == 'dejong':
-	idealIter *= 4
+idealIter = util.getIdealIterationNumber(args.type, g, args.subsample)
 if args.iter == None:
 	args.iter = idealIter
 	logging.debug("Setting iteration number to %d." % (args.iter))
-if args.iter < idealIter:
+elif args.iter < idealIter:
 	logging.warning("For better rendering, you should use at least %d iterations." % idealIter)
 
 if args.code or args.sequence: args.number = 1
 
 for i in xrange(0, args.number):
-	generateAttractor([int(x) for x in g])
+	generateAttractor(g)
