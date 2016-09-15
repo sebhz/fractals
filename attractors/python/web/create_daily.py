@@ -3,21 +3,19 @@
 import os
 import sys
 import argparse
+import logging
 import smtplib
 
+from attractor import attractor, render, util
 from time import time
 from random import randint
 from datetime import datetime, timedelta
-from os.path import basename
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import COMMASPACE, formatdate
-from subprocess import Popen, PIPE, STDOUT
 
 TYPES = ('polynomial', 'dejong')
-THUMB_CMD = ['./generate.py', '--geometry=800x600', '--outdir=png_thumb', '--render=greyscale', '--subsample=3', '-H', '--loglevel=0', '--threads=4']
-FINAL_CMD = ['./generate.py', '--geometry=1920x1080', '--outdir=png', '--render=greyscale', '--subsample=3', '-H', '--loglevel=0', '--threads=4']
 REFERENCE_DATE = datetime(2016, 7, 27)
 CURRENT_FILE = "strange_attractor.xhtml"
 
@@ -167,7 +165,7 @@ def daysBetween(d1, d2):
 	return abs((d2 - d1).days)
 
 def modifyPreviousFile(fileName, curName):
-	print >> sys.stderr, "Modifying previous HTML (%s)" % (fileName)
+	logging.info("Modifying previous HTML (%s)" % (fileName))
 	with open(fileName) as f:
 		page = f.readlines()
 
@@ -208,7 +206,7 @@ def getMailHTML(MAP):
 
 def send_mail(MAP, server, send_from, send_to, subject, files=None):
 	if not isinstance(send_to, list):
-		print >> sys.stderr, "Badly formed recipient list. Not sending any mail."
+		logging.warning("Badly formed recipient list. Not sending any mail.")
 		return
 
 	msg = MIMEMultipart('alternative')
@@ -228,22 +226,22 @@ def send_mail(MAP, server, send_from, send_to, subject, files=None):
 				fil.read(),
 				"png"
 			)
-			part['Content-Disposition'] = 'attachment; filename=%s' % basename(f)
+			part['Content-Disposition'] = 'attachment; filename=%s' % os.path.basename(f)
 			msg.attach(part)
 
 	try:
 		smtp = smtplib.SMTP(server)
 	except smtplib.SMTPConnectError:
-		print >> sys.stderr, "Unable to connect to SMTP server. Not sending any mail."
+		logging.warning("Unable to connect to SMTP server. Not sending any mail.")
 		return
 
 	try:
 		refused = smtp.sendmail(send_from, send_to, msg.as_string())
 	except smtplib.SMTPException as e:
-		print >> sys.stderr, "Error sending mail:", repr(e)
+		logging.warning(sys.stderr, "Error sending mail:", repr(e))
 	else:
 		if refused:
-			print >> sys.stderr, "Some mails could not be delivered:", refused
+			logging.warning(sys.stderr, "Some mails could not be delivered:", refused)
 
 	smtp.quit()
 
@@ -267,7 +265,7 @@ def processHTML(attractorNum, MAP):
 
 def processMail(MAP):
 	if args.mail and args.recipients and args.server:
-		print >> sys.stderr, "Sending emails to %s, using SMTP server %s." % (args.recipients, args.server)
+		logging.info("Sending emails to %s, using SMTP server %s." % (args.recipients, args.server))
 		fromaddr = 'strangeattractor@attractor.org'
 		toaddr   = args.recipients.split(',') # Hopefully there won't be any comma in the addresses
 		subject  = "%s : Strange attractor of the day" % (MAP['__date'])
@@ -278,9 +276,72 @@ def sec2hms(seconds):
 	h, m = divmod(m, 60)
 	return "%dh%02dm%02ds" % (h, m, s)
 
+def createAttractor(AttractorType, AttractorOrder):
+	if AttractorType == 'polynomial':
+		at = attractor.PolynomialAttractor(**{'order': AttractorOrder})
+	else:
+		at = attractor.DeJongAttractor()
+	at.explore()
+	return at
+
+def processAttractor(AttractorNum):
+	MAP = {
+		'__date' : datetime.today().strftime("%Y, %b %d"),
+		'__order': randint(2, 7),
+		'__code' : "",
+		'__iterations' : 0,
+		'__dimension' : 2,
+		'__lyapunov' : 0.0,
+		'__link' : "",
+		'__x_polynom' : "",
+		'__y_polynom' : "",
+		'__time' : "",
+		'__type' : TYPES[randint(0, len(TYPES)-1)],
+	}
+
+	dt = REFERENCE_DATE + timedelta(days=attractorNum-1)
+	MAP['__date'] = dt.strftime("%Y, %b %d")
+
+	subsampling = 3
+	logging.info("Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum)))
+	logging.info("We have a %s attractor (order %d)." % (MAP['__type'], MAP['__order']))
+
+	at = createAttractor(MAP['__type'], MAP['__order'])
+	filePath = at.code + '_8.png'
+	for parameters in ({'geometry': (800, 600), 'directory': 'png_thumb'}, {'geometry': (1920, 1080), 'directory': 'png'}):
+		t0 = time()
+		iterations = util.getIdealIterationNumber(MAP['__type'], parameters['geometry'], subsampling)
+		logging.debug("Num iterations: %d", iterations)
+		at.iterations = iterations
+		r = render.Renderer(**{'bpc': 8,
+			'mode': 'greyscale',
+			'screenDim': parameters['geometry'],
+			'subsample': subsampling,
+			'threads': 4 })
+		a = r.walkthroughAttractor(at) # Will not accumulate thumb points above full points
+		r.writeAttractorPNG(a, os.path.join(parameters['directory'], filePath))
+		t1 = time()
+		logging.info("Thumbnail generated.")
+
+	MAP['__code'] = at.code
+	if MAP['__type'] == 'polynomial':
+		MAP['__order'] = str(at.order)
+	else:
+		MAP['__order'] = 'irrelevant'
+
+	MAP['__x_polynom'], MAP['__y_polynom'] = at.humanReadable(isHTML=True)
+	MAP['__iterations'] = str(at.iterations)
+	MAP['__dimension'] = "%.3f" % (at.fdim)
+	MAP['__lyapunov'] = "%.3f" % (at.lyapunov['ly'])
+	MAP['__link'] = filePath
+	MAP['__prev'] = "#" if attractorNum == 1 else "%d.xhtml" % (attractorNum-1)
+	MAP['__time'] = sec2hms(t1-t0)
+	return MAP
+
 #
 # Main program
 #
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 args = parseArgs()
 if args.date:
 	d = datetime.strptime(args.date,"%Y-%m-%d")
@@ -293,59 +354,7 @@ else:
 		attractorRange = range(1, d+1)
 
 for attractorNum in attractorRange:
-
-	MAP = {
-		'__date' : datetime.today().strftime("%Y, %b %d"),
-		'__order': randint(2, 7),
-		'__code' : "",
-		'__iterations' : 0,
-		'__dimension' : 2,
-		'__lyapunov' : 0.0,
-		'__link' : "",
-		'__x_polynom' : "",
-		'__y_polynom' : "",
-		'__time' : "",
-		'__type' : "polynomial",
-	}
-
-	MAP['__type'] = TYPES[0]
-
-	dt = REFERENCE_DATE + timedelta(days=attractorNum-1)
-	MAP['__date'] = dt.strftime("%Y, %b %d")
-
-	print >> sys.stderr, "Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum))
-
-	if MAP['__type'] == 'polynomial':
-		cmd = THUMB_CMD + ["--order=" + str(MAP['__order']), "--type=" + str(MAP['__type'])]
-	else:
-		cmd = THUMB_CMD + ["--type=" + str(MAP['__type'])]
-
-	p = Popen(cmd, stdout=PIPE, stderr=PIPE)
-	stdout, stderr = p.communicate()
-	MAP['__code'], MAP['__dimension'], MAP['__lyapunov'], MAP['__iterations'], MAP['__x_polynom'], MAP['__y_polynom'] = stdout.split()
-	print >> sys.stderr, "Thumbnail generated"
-
-	if MAP['__type'] == 'polynomial':
-		cmd = FINAL_CMD + ["--order=" + str(MAP['__order']), "--type=" + str(MAP['__type']), "--code=" + MAP['__code']]
-	else:
-		cmd = FINAL_CMD + ["--type=" + str(MAP['__type']), "--code=" + MAP['__code']]
-
-	t0 = time()
-	p = Popen(cmd, stdout=PIPE, stderr=PIPE)
-	stdout, stderr = p.communicate()
-	t1 = time()
-	MAP['__code'], MAP['__dimension'], MAP['__lyapunov'], MAP['__iterations'], MAP['__x_polynom'], MAP['__y_polynom'] = stdout.split()
-	print >> sys.stderr, "Image generated"
-
-	MAP['__dimension'] = "%.3f" % (float(MAP['__dimension']))
-	MAP['__lyapunov'] = "%.3f" % (float(MAP['__lyapunov']))
-	MAP['__link'] = MAP['__code'] + "_8.png"
-	MAP['__prev'] = "#" if attractorNum == 1 else "%d.xhtml" % (attractorNum-1)
-	MAP['__time'] = sec2hms(t1-t0)
-
-	if MAP['__type'] == 'dejong':
-		MAP['__order'] = "irrelevant"
-
+	MAP = processAttractor(attractorNum)
 	processHTML(attractorNum, MAP)
 	processMail(MAP)
 
