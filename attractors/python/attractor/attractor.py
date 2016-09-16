@@ -27,6 +27,7 @@ OVERITERATE_FACTOR=4
 defaultParameters = {
 	'iter': 1280*1024*OVERITERATE_FACTOR,
 	'order': 2,
+	'loglevel' : logging.WARNING,
 }
 
 class Attractor(object):
@@ -35,12 +36,16 @@ class Attractor(object):
 	epsilon      = 1e-6
 
 	def __init__(self, **opt):
+		getParam = lambda k: opt[k] if k in opt else defaultParameters[k]
+
+		self.logger = logging.getLogger(__name__)
 		self.iterations = defaultParameters['iter']
 		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
 		self.fdim      = 0
 		self.bound     = None
 		if opt:
-			self.iterations = opt['iter'] if 'iter' in opt else defaultParameters['iter']
+			self.iterations = getParam('iter')
+			if 'loglevel' in opt: self.logger.setLevel(opt['loglevel'])
 
 	def __str__(self):
 		return self.code if self.code else super(Attractor, self).__str__()
@@ -51,7 +56,7 @@ class Attractor(object):
 		dl   = [d-x for d,x in zip(p2, p)]
 		dl2  = reduce(lambda x,y: x*x + y*y, dl)
 		if dl2 == 0:
-			logging.warning("Unable to compute Lyapunov exponent, but trying to go on...")
+			self.logger.warning("Unable to compute Lyapunov exponent, but trying to go on...")
 			return pe
 		df = dl2/self.epsilon/self.epsilon
 		rs = 1/math.sqrt(df)
@@ -94,7 +99,7 @@ class Attractor(object):
 			n += 1
 			self.getRandomCoef()
 		# Found one -> create corresponding code
-		logging.debug("Attractor found after %d trials." % (n+1))
+		self.logger.debug("Attractor found after %d trials." % (n+1))
 		self.createCode()
 
 	def iterateMap(self, screenDim, window_c, aContainer, index, initPoint=(0.1, 0.1)):
@@ -245,8 +250,8 @@ class PolynomialAttractor(Attractor):
 						n += 1
 				l.append(result)
 		except OverflowError:
-			logging.error("Overflow during attractor computation.")
-			logging.error("Either this is a very slowly diverging attractor, or you used a wrong code")
+			self.logger.error("Overflow during attractor computation.")
+			self.logger.error("Either this is a very slowly diverging attractor, or you used a wrong code")
 			return None
 
 		return l

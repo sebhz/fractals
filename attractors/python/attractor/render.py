@@ -21,6 +21,7 @@ defaultParameters = {
 	'bpc' : 8,
 	'nthreads' : 1,
 	'screenDim' : (800, 600),
+	'loglevel' : logging.WARNING,
 }
 
 def getInitPoints(at, n):
@@ -59,34 +60,19 @@ def scaleBounds(wc, sd):
 
 	return wc
 
-def mergeAttractors(a):
-	v = a[0]
-	for vv in a[1:]:
-		if vv == None: continue
-		for k, e in vv.iteritems():
-			if k in v:
-				v[k] += e
-			else:
-				v[k] = e
-	if v == None:
-		logging.debug("Empty attractor. Trying to go on anyway.")
-	else:
-		logging.debug("%d points in the attractor before any dithering done." % (len(v.keys())))
-	return v
-
 class Renderer(object):
 	def __init__(self, **opt):
 		getParam = lambda k: opt[k] if k in opt else defaultParameters[k]
 
+		self.logger     = logging.getLogger(__name__)
 		self.bpc        = getParam('bpc')
 		self.rendermode = getParam('mode')
 		self.subsample  = getParam('subsample')
 		self.nthreads   = getParam('threads')
 		self.screenDim  = getParam('screenDim')
 		self.shift      = INTERNAL_BPC - self.bpc
-
 		self.screenDim  = [x*self.subsample for x in self.screenDim]
-
+		if opt and 'loglevel' in opt: self.logger.setLevel(opt['loglevel'])
 	# Equalize and colorize attractor
 	# attractor: attractor points: dict (X,Y) and containing frequency
 	# Returns the attractor points: dict indexed by (X, Y) and containing COLOR, 
@@ -163,7 +149,7 @@ class Renderer(object):
 			else: pools[v] = 1
 
 		ncolors = len(pools.keys())
-		logging.debug("%d points in attractor. %d unique %d-bpc colors in attractor. Coloring ratio: %1.2f%%." % (len(a.keys()), ncolors, INTERNAL_BPC, float(len(pools.keys()))/len(a.keys())*100))
+		self.logger.debug("%d points in attractor. %d unique %d-bpc colors in attractor. Coloring ratio: %1.2f%%." % (len(a.keys()), ncolors, INTERNAL_BPC, float(len(pools.keys()))/len(a.keys())*100))
 
 		colormap = dict()
 
@@ -177,12 +163,12 @@ class Renderer(object):
 		dt = dict()
 		for k in sorted(colormap.keys()):
 			dt[k>>self.shift] = True
-		logging.debug("%d unique %d-bpc greyscale." % (len(dt.keys()), self.bpc))
+		self.logger.debug("%d unique %d-bpc greyscale." % (len(dt.keys()), self.bpc))
 
 		dt = dict()
 		for k in sorted(colormap.keys()):
 			dt[tuple([v >> self.shift for v in colormap[k]])] = True
-		logging.debug("%d unique %d-bpc color." % (len(dt.keys()), self.bpc))
+		self.logger.debug("%d unique %d-bpc color." % (len(dt.keys()), self.bpc))
 
 		for v in a:
 			a[v] = colormap[a[v]]
@@ -222,6 +208,21 @@ class Renderer(object):
 		i = self.createImageArray(p, self.screenDim, backgroundColor)
 		return i
 
+	def mergeAttractors(self, a):
+		v = a[0]
+		for vv in a[1:]:
+			if vv == None: continue
+			for k, e in vv.iteritems():
+				if k in v:
+					v[k] += e
+				else:
+					v[k] = e
+		if v == None:
+			self.logger.debug("Empty attractor. Trying to go on anyway.")
+		else:
+			self.logger.debug("%d points in the attractor before any dithering done." % (len(v.keys())))
+		return v
+
 	def walkthroughAttractor(self, at):
 		jobs = list()
 		initPoints = getInitPoints(at, self.nthreads)
@@ -237,18 +238,17 @@ class Renderer(object):
 		for job in jobs:
 			job.join()
 
-		aMerge = mergeAttractors(a)
+		aMerge = self.mergeAttractors(a)
 		if not aMerge: return aMerge
 		at.computeFractalDimension(aMerge, self.screenDim, window_c)
 
-		logging.debug("Time to render the attractor.")
+		self.logger.debug("Time to render the attractor.")
 		return self.renderAttractor(aMerge)
 
 	def writeAttractorPNG(self, a, filepath):
-		logging.debug("Now writing attractor %s on disk." % filepath)
+		self.logger.debug("Now writing attractor %s on disk." % filepath)
 		w = png.Writer(size=[x/self.subsample for x in self.screenDim], greyscale = True if self.rendermode == "greyscale" else False, bitdepth=self.bpc, interlace=True)
 		aa = w.array_scanlines(a)
 		with open(filepath, "wb") as f:
 			w.write(f, aa)
-
 
