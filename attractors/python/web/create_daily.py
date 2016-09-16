@@ -8,14 +8,12 @@ import smtplib
 
 from attractor import attractor, render, util
 from time import time
-from random import randint
 from datetime import datetime, timedelta
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import COMMASPACE, formatdate
 
-TYPES = ('polynomial', 'dejong')
 REFERENCE_DATE = datetime(2016, 7, 27)
 CURRENT_FILE = "strange_attractor.xhtml"
 
@@ -180,7 +178,7 @@ def modifyPreviousFile(fileName, curName):
 
 def parseArgs():
 	parser = argparse.ArgumentParser(description='generation of strange attractor web page')
-	parser.add_argument('-a', '--all',  help='Regenerates all pages from the beginning on time (2016-07-27) until today', action='store_true', default=False)
+	parser.add_argument('-a', '--all',  help='Regenerates all pages from the beginning of time (2016-07-27) until today', action='store_true', default=False)
 	parser.add_argument('-d', '--date', help='Forces date. Format of input: YYYY-MM-DD', type=str)
 	parser.add_argument('-m', '--mail', help='Mail the attractor(s)', action='store_true', default=False)
 	parser.add_argument('-r', '--recipients', help='Recipient list for mails (comma separated)', type=str)
@@ -287,7 +285,7 @@ def createAttractor(AttractorType, AttractorOrder):
 def processAttractor(AttractorNum):
 	MAP = {
 		'__date' : datetime.today().strftime("%Y, %b %d"),
-		'__order': randint(2, 7),
+		'__order': 2,
 		'__code' : "",
 		'__iterations' : 0,
 		'__dimension' : 2,
@@ -296,11 +294,17 @@ def processAttractor(AttractorNum):
 		'__x_polynom' : "",
 		'__y_polynom' : "",
 		'__time' : "",
-		'__type' : TYPES[randint(0, len(TYPES)-1)],
+		'__type' : "polynomial",
 	}
 
 	dt = REFERENCE_DATE + timedelta(days=attractorNum-1)
 	MAP['__date'] = dt.strftime("%Y, %b %d")
+	t = AttractorNum % 7
+	if t == 0:
+		MAP['__type'] = "dejong"
+	else:
+		MAP['__type'] = "polynomial"
+	MAP['__order'] = t + 1
 
 	subsampling = 3
 	logging.info("Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum)))
