@@ -209,18 +209,26 @@ class Renderer(object):
 		return i
 
 	def mergeAttractors(self, a):
-		v = a[0]
-		for vv in a[1:]:
+		v = None
+
+		for i in xrange(len(a)):
+			if a[i] != None:
+				v = a[i]
+				break
+
+		if v == None:
+			self.logger.debug("Empty attractor. Trying to go on anyway.")
+			return v
+
+		for vv in a[i+1:]:
 			if vv == None: continue
 			for k, e in vv.iteritems():
 				if k in v:
 					v[k] += e
 				else:
 					v[k] = e
-		if v == None:
-			self.logger.debug("Empty attractor. Trying to go on anyway.")
-		else:
-			self.logger.debug("%d points in the attractor before any dithering done." % (len(v.keys())))
+
+		self.logger.debug("%d points in the attractor before any dithering done." % (len(v.keys())))
 		return v
 
 	def walkthroughAttractor(self, at):
