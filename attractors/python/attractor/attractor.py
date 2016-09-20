@@ -28,6 +28,7 @@ defaultParameters = {
 	'iter': 1280*1024*OVERITERATE_FACTOR,
 	'order': 2,
 }
+modulus = lambda x,y: x*x + y*y
 
 class Attractor(object):
 	convDelay    = 128   # Number of points to ignore before checking convergence
@@ -52,7 +53,7 @@ class Attractor(object):
 		p2   = self.getNextPoint(pe)
 		if not p2: return pe
 		dl   = [d-x for d,x in zip(p2, p)]
-		dl2  = reduce(lambda x,y: x*x + y*y, dl)
+		dl2  = modulus(*dl)
 		if dl2 == 0:
 			self.logger.warning("Unable to compute Lyapunov exponent, but trying to go on...")
 			return pe
@@ -68,15 +69,14 @@ class Attractor(object):
 		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
 		pmin, pmax = ([100000,100000], [-100000,-100000])
 		p = initPoint
-		pe = [x + self.epsilon if i==0 else x for i,x in enumerate(p)]
-		modulus = lambda x, y: abs(x) + abs(y)
+		pe = [x + self.epsilon if i==0 else x for i, x in enumerate(p)]
 
 		for i in xrange(self.convMaxIter):
 			pnew = self.getNextPoint(p)
 			if not pnew: return False
-			if reduce(modulus, pnew, 0) > 1000000: # Unbounded - not an SA
+			if modulus(*pnew) > 1000000: # Unbounded - not an SA
 				return False
-			if reduce(modulus, [pn-pc for pn, pc in zip(pnew, p)], 0) < self.epsilon:
+			if modulus(*[pn-pc for pn, pc in zip(pnew, p)]) < self.epsilon:
 				return False
 			# Compute Lyapunov exponent... sort of
 			pe = self.computeLyapunov(pnew, pe)
@@ -150,7 +150,7 @@ class Attractor(object):
 	def computeCorrelationDimension(self, a, screenDim):
 		base = 10
 		radiusRatio = 0.001
-		diagonal = (screenDim[0])**2 + (screenDim[1])**2
+		diagonal = modulus(*screenDim)
 		d1 = 4*radiusRatio*diagonal
 		d2 = float(d1)/base/base
 		n1, n2 = (0, 0)
@@ -159,7 +159,7 @@ class Attractor(object):
 
 		for p in points: # Iterate on each attractor point
 			p2 = points[random.randint(0,l-1)] # Pick another point at random
-			d = (p2[0]-p[0])**2 + (p2[1]-p[1])**2
+			d = modulus(p2[0]-p[0], p2[1]-p[1])
 			if d == 0: continue # Oops we picked the same point twice
 			if d < d1: n2 += 1  # Distance within a big circle
 			if d > d2: continue # But out of a small circle
