@@ -27,7 +27,6 @@ OVERITERATE_FACTOR=4
 defaultParameters = {
 	'iter': 1280*1024*OVERITERATE_FACTOR,
 	'order': 2,
-	'loglevel' : logging.WARNING,
 }
 
 class Attractor(object):
@@ -45,7 +44,6 @@ class Attractor(object):
 		self.bound     = None
 		if opt:
 			self.iterations = getParam('iter')
-			if 'loglevel' in opt: self.logger.setLevel(opt['loglevel'])
 
 	def __str__(self):
 		return self.code if self.code else super(Attractor, self).__str__()

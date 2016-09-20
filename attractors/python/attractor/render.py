@@ -21,7 +21,6 @@ defaultParameters = {
 	'bpc' : 8,
 	'nthreads' : 1,
 	'screenDim' : (800, 600),
-	'loglevel' : logging.WARNING,
 }
 
 def getInitPoints(at, n):
@@ -72,7 +71,6 @@ class Renderer(object):
 		self.screenDim  = getParam('screenDim')
 		self.shift      = INTERNAL_BPC - self.bpc
 		self.screenDim  = [x*self.subsample for x in self.screenDim]
-		if opt and 'loglevel' in opt: self.logger.setLevel(opt['loglevel'])
 	# Equalize and colorize attractor
 	# attractor: attractor points: dict (X,Y) and containing frequency
 	# Returns the attractor points: dict indexed by (X, Y) and containing COLOR, 
