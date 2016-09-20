@@ -310,22 +310,26 @@ def processAttractor(AttractorNum):
 	logging.info("Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum)))
 	logging.info("We have a %s attractor (order %d)." % (MAP['__type'], MAP['__order']))
 
-	at = createAttractor(MAP['__type'], MAP['__order'])
-	filePath = at.code + '_8.png'
-	for parameters in ({'geometry': (800, 600), 'directory': 'png_thumb'}, {'geometry': (1920, 1080), 'directory': 'png'}):
-		t0 = time()
-		iterations = util.getIdealIterationNumber(MAP['__type'], parameters['geometry'], subsampling)
-		logging.debug("Num iterations: %d", iterations)
-		at.iterations = iterations
-		r = render.Renderer(**{'bpc': 8,
-			'mode': 'greyscale',
-			'screenDim': parameters['geometry'],
-			'subsample': subsampling,
-			'threads': 4 })
-		a = r.walkthroughAttractor(at) # Will not accumulate thumb points above full points
-		r.writeAttractorPNG(a, os.path.join(parameters['directory'], filePath))
-		t1 = time()
-		logging.info("Thumbnail generated.")
+	while True:
+		done = False
+		at = createAttractor(MAP['__type'], MAP['__order'])
+		filePath = at.code + '_8.png'
+		for parameters in ({'geometry': (800, 600), 'directory': 'png_thumb', 'type': 'thumbnail'}, {'geometry': (1920, 1080), 'directory': 'png', 'type': 'main'}):
+			t0 = time()
+			iterations = util.getIdealIterationNumber(MAP['__type'], parameters['geometry'], subsampling)
+			logging.debug("Num iterations: %d", iterations)
+			at.iterations = iterations
+			r = render.Renderer(**{'bpc': 8,
+				'mode': 'greyscale',
+				'screenDim': parameters['geometry'],
+				'subsample': subsampling,
+				'threads': 4 })
+			a = r.walkthroughAttractor(at) # Will not accumulate thumb points above full points
+			if a == None: break
+			r.writeAttractorPNG(a, os.path.join(parameters['directory'], filePath))
+			if parameters['type'] == 'main': done = True
+			t1 = time()
+		if done: break
 
 	MAP['__code'] = at.code
 	if MAP['__type'] == 'polynomial':
