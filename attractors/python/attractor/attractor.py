@@ -255,7 +255,7 @@ class PolynomialAttractor(Attractor):
 		return l
 
 	def computeFractalDimension(self, a, screenDim, window_c):
-		super(PolynomialAttractor, self).computeBoxCountingDimension(a, screenDim, window_c)
+		self.computeBoxCountingDimension(a, screenDim, window_c)
 
 class DeJongAttractor(Attractor):
 	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
@@ -299,5 +299,5 @@ class DeJongAttractor(Attractor):
 		return equation
 
 	def computeFractalDimension(self, a, screenDim, window_c):
-		super(DeJongAttractor, self).computeCorrelationDimension(a, screenDim)
+		self.computeCorrelationDimension(a, screenDim)
 
