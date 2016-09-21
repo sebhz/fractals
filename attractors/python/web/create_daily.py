@@ -33,7 +33,6 @@ __date
 <ul class="navbar">
 <li><a href="1.xhtml">|&lt;</a></li>
 <li><a href="__prev">&lt;</a></li>
-<li><a href="#__random">?</a></li>
 <li><a href="#__next">&gt;</a></li>
 <li><a href="strange_attractor.xhtml">&gt;|</a></li>
 </ul>
