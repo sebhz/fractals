@@ -1,8 +1,18 @@
 #!/usr/bin/python
 
-OVERITERATE_FACTOR=4
-
 def getIdealIterationNumber(AttractorType, screenDim, subsamplingRate):
+	"""
+	Computes the number of iterations necessary to have the attractor
+	"look good", when rendered.
+
+	Arguments:
+		AttractorType: either 'polynomial' or 'dejong'. De Jong attractor typically
+		               require more iterations
+		screenDim: a (w,h) tuple giving the final picture width and height in pixels
+		subsamplingRate: the oversampling rate (usually 1, 2 or 3)
+	"""
+
+	OVERITERATE_FACTOR=4
 	pxSize = subsamplingRate*subsamplingRate*screenDim[0]*screenDim[1]
 
 	idealIter = int(OVERITERATE_FACTOR*pxSize)
@@ -12,7 +22,21 @@ def getIdealIterationNumber(AttractorType, screenDim, subsamplingRate):
 	return idealIter
 
 def scaleBounds(wc, sd, pct=0.05):
-	# Enlarge window by 5% in both directions
+	"""
+	Pads and scale a window, keeping its aspect ratio to fit in a screen
+
+	Arguments:
+		wc: the window to scale, as a (x0, y0, x1, y1) tuple.
+		    x0, y0 are the coordinates of the bottom left point
+		    x1, y1 are the coordinates of the top right point
+		sd: the screen dimension, as a (w, h) tuple
+			w and h are respectively the width and height of the screen
+		pct: the percentage of padding to be applied in both direction
+
+	Returns a tuple (X0, Y0, X1, Y1) representing wc padded by pct % in
+	both directions, and scaled to fit in sd (and be centered in it)
+	"""
+
 	hoff = (wc[3]-wc[1])*float(pct)/2
 	woff = (wc[2]-wc[0])*float(pct)/2
 	nwc  = (wc[0]-woff, wc[1]-hoff, wc[2]+woff, wc[3]+hoff)
