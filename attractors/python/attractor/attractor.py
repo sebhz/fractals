@@ -25,8 +25,9 @@ import logging
 OVERITERATE_FACTOR=4
 
 defaultParameters = {
-	'iter': 1280*1024*OVERITERATE_FACTOR,
+	'iter' : 1280*1024*OVERITERATE_FACTOR,
 	'order': 2,
+	'code' : None,
 }
 modulus = lambda x,y: x*x + y*y
 
@@ -36,7 +37,7 @@ class Attractor(object):
 	epsilon      = 1e-6
 
 	def __init__(self, **kwargs):
-		getParam = lambda k: kwargs[k] if kwargs and k in kwargs else defaultParameters[k]
+		getParam = lambda k: kwargs[k] if kwargs and k in kwargs else defaultParameters[k] if k in defaultParameters else None
 
 		self.logger = logging.getLogger(__name__)
 		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
@@ -173,16 +174,15 @@ class PolynomialAttractor(Attractor):
 	codeStep     = .125 # Step to use to map ASCII character to coef
 
 	def __init__(self, **kwargs):
+		getParam = lambda k: kwargs[k] if kwargs and k in kwargs else defaultParameters[k] if k in defaultParameters else None
 		super(PolynomialAttractor, self).__init__(**kwargs)
-		self.order      = defaultParameters['order']
-		self.coef       = None
-		self.code       = None
-		if kwargs:
-			self.order = kwargs['order'] if 'order' in kwargs else defaultParameters['order']
-			if 'code' in kwargs and kwargs['code'] != None:
-				self.code = kwargs['code']
-				self.decodeCode() # Will populate order, polynom, length, polynom, coef and derive
-		self.getPolynomLength()
+		self.code       = getParam('code')
+		if self.code:
+			self.decodeCode() # Will populate order, length and coef
+		else:
+			self.order      = getParam('order')
+			self.coef       = None
+			self.getPolynomLength()
 
 	def decodeCode(self):
 		self.order = int(self.code[1])
