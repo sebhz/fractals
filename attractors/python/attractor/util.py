@@ -1,4 +1,7 @@
 #!/usr/bin/python
+"""
+Ancillary functions used for attractor generation and rendering.
+"""
 
 def getIdealIterationNumber(AttractorType, screenDim, subsamplingRate):
 	"""
@@ -6,10 +9,12 @@ def getIdealIterationNumber(AttractorType, screenDim, subsamplingRate):
 	"look good", when rendered.
 
 	Arguments:
-		AttractorType: either 'polynomial' or 'dejong'. De Jong attractor typically
+		AttractorType: either 'polynomial' or 'dejong'. De Jong attractors typically
 		               require more iterations
 		screenDim: a (w,h) tuple giving the final picture width and height in pixels
 		subsamplingRate: the oversampling rate (usually 1, 2 or 3)
+
+	Returns the correct number of iteration to have the attractor look reasonably good.
 	"""
 
 	OVERITERATE_FACTOR=4
@@ -23,7 +28,7 @@ def getIdealIterationNumber(AttractorType, screenDim, subsamplingRate):
 
 def scaleBounds(wc, sd, pct=0.05):
 	"""
-	Pads and scale a window, keeping its aspect ratio to fit in a screen
+	Pads and enlarges a window to center it in a larger window whose aspect ratio is given.
 
 	Arguments:
 		wc: the window to scale, as a (x0, y0, x1, y1) tuple.
@@ -34,7 +39,8 @@ def scaleBounds(wc, sd, pct=0.05):
 		pct: the percentage of padding to be applied in both direction
 
 	Returns a tuple (X0, Y0, X1, Y1) representing wc padded by pct % in
-	both directions, and scaled to fit in sd (and be centered in it)
+	both directions, enlarged to have the same aspect ratio as sd, so that
+	sc is now centered in the new window.
 	"""
 
 	hoff = (wc[3]-wc[1])*float(pct)/2
