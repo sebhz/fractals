@@ -50,12 +50,12 @@ def sec2hms(seconds):
 
 def createAttractor():
 	if args.type == 'polynomial':
-		at = attractor.PolynomialAttractor(**{'order': args.order,
-	                'iter' : int(args.iter/args.threads),
-	                'code' : args.code })
+		at = attractor.PolynomialAttractor(order = args.order,
+	                iter = int(args.iter/args.threads),
+	                code = args.code)
 	else:
-		at = attractor.DeJongAttractor(**{'iter' : int(args.iter/args.threads),
-	                'code' : args.code })
+		at = attractor.DeJongAttractor(iter = int(args.iter/args.threads),
+	                code = args.code)
 
 	if args.code:
 		if not at.checkConvergence():
@@ -126,11 +126,11 @@ def generateSingleAttractor(r):
 	logging.info("Attractor generation and rendering took %s." % sec2hms(t1-t0))
 
 def generateAttractor(screenDim):
-	r  = render.Renderer(**{'bpc' : args.bpc,
-			'mode' : args.render,
-			'screenDim' : screenDim,
-			'subsample' : args.subsample,
-			'threads': args.threads})
+	r  = render.Renderer(bpc=args.bpc,
+			mode=args.render,
+			screenDim=screenDim,
+			subsample=args.subsample,
+			threads=args.threads)
 
 	if args.sequence:
 		generateAttractorSequence(r)

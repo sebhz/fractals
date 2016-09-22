@@ -275,7 +275,7 @@ def sec2hms(seconds):
 
 def createAttractor(AttractorType, AttractorOrder):
 	if AttractorType == 'polynomial':
-		at = attractor.PolynomialAttractor(**{'order': AttractorOrder})
+		at = attractor.PolynomialAttractor(order = AttractorOrder)
 	else:
 		at = attractor.DeJongAttractor()
 	at.explore()
@@ -318,11 +318,11 @@ def processAttractor(AttractorNum):
 			iterations = util.getIdealIterationNumber(MAP['__type'], parameters['geometry'], subsampling)
 			logging.debug("Num iterations: %d", iterations)
 			at.iterations = iterations
-			r = render.Renderer(**{'bpc': 8,
-				'mode': 'greyscale',
-				'screenDim': parameters['geometry'],
-				'subsample': subsampling,
-				'threads': 4 })
+			r = render.Renderer(bpc=8,
+				mode='greyscale',
+				screenDim=parameters['geometry'],
+				subsample=subsampling,
+				threads=4)
 			a = r.walkthroughAttractor(at) # Will not accumulate thumb points above full points
 			if a == None: break
 			r.writeAttractorPNG(a, os.path.join(parameters['directory'], filePath))

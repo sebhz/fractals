@@ -35,16 +35,14 @@ class Attractor(object):
 	convMaxIter  = 16384 # Check convergence on convMaxIter points only
 	epsilon      = 1e-6
 
-	def __init__(self, **opt):
-		getParam = lambda k: opt[k] if k in opt else defaultParameters[k]
+	def __init__(self, **kwargs):
+		getParam = lambda k: kwargs[k] if kwargs and k in kwargs else defaultParameters[k]
 
 		self.logger = logging.getLogger(__name__)
-		self.iterations = defaultParameters['iter']
 		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
 		self.fdim      = 0
 		self.bound     = None
-		if opt:
-			self.iterations = getParam('iter')
+		self.iterations = getParam('iter')
 
 	def __str__(self):
 		return self.code if self.code else super(Attractor, self).__str__()
@@ -174,15 +172,15 @@ class PolynomialAttractor(Attractor):
 	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
 	codeStep     = .125 # Step to use to map ASCII character to coef
 
-	def __init__(self, **opt):
-		super(PolynomialAttractor, self).__init__(**opt)
+	def __init__(self, **kwargs):
+		super(PolynomialAttractor, self).__init__(**kwargs)
 		self.order      = defaultParameters['order']
 		self.coef       = None
 		self.code       = None
-		if opt:
-			self.order = opt['order'] if 'order' in opt else defaultParameters['order']
-			if 'code' in opt and opt['code'] != None:
-				self.code = opt['code']
+		if kwargs:
+			self.order = kwargs['order'] if 'order' in kwargs else defaultParameters['order']
+			if 'code' in kwargs and kwargs['code'] != None:
+				self.code = kwargs['code']
 				self.decodeCode() # Will populate order, polynom, length, polynom, coef and derive
 		self.getPolynomLength()
 
@@ -261,11 +259,11 @@ class DeJongAttractor(Attractor):
 	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
 	codeStep     = .125 # Step to use to map ASCII character to coef
 
-	def __init__(self, **opt):
-		super(DeJongAttractor, self).__init__(**opt)
-		if opt:
-			if 'code' in opt and opt['code'] != None:
-				self.code = opt['code']
+	def __init__(self, **kwargs):
+		super(DeJongAttractor, self).__init__(**kwargs)
+		if kwargs:
+			if 'code' in kwargs and kwargs['code'] != None:
+				self.code = kwargs['code']
 				self.decodeCode() # Will populate coef
 
 	def createCode(self):

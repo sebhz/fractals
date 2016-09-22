@@ -60,8 +60,8 @@ def scaleBounds(wc, sd):
 	return wc
 
 class Renderer(object):
-	def __init__(self, **opt):
-		getParam = lambda k: opt[k] if k in opt else defaultParameters[k]
+	def __init__(self, **kwargs):
+		getParam = lambda k: kwargs[k] if kwargs and k in kwargs else defaultParameters[k]
 
 		self.logger     = logging.getLogger(__name__)
 		self.bpc        = getParam('bpc')
