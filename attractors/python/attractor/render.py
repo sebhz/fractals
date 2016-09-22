@@ -3,7 +3,6 @@
 import colorsys
 import random
 import logging
-from multiprocessing import Manager, Process
 
 try:
     import png
@@ -19,45 +18,8 @@ defaultParameters = {
 	'mode': 'greyscale',
 	'subsample': 1,
 	'bpc' : 8,
-	'nthreads' : 1,
 	'screenDim' : (800, 600),
 }
-
-def getInitPoints(at, n):
-	initPoints = list()
-	i = 0
-	while True:
-		if not at.bound:
-			p = (random.random(), random.random())
-		else:
-			rx = at.bound[0] + random.random()*(at.bound[2]-at.bound[0])
-			ry = at.bound[1] + random.random()*(at.bound[3]-at.bound[1])
-			p = (rx, ry)
-		if at.checkConvergence(p):
-			initPoints.append(p)
-			i += 1
-		if i == n: return initPoints
-
-# sd: screen dimension e.g (800,600)
-# wc: attractor bound (x0,y0,x1,y1)
-def scaleBounds(wc, sd):
-	# Enlarge window by 5% in both directions
-	hoff = (wc[3]-wc[1])*0.025
-	woff = (wc[2]-wc[0])*0.025
-	nwc  = (wc[0]-woff, wc[1]-hoff, wc[2]+woff, wc[3]+hoff)
-
-	wa = float(nwc[3]-nwc[1])/float(nwc[2]-nwc[0]) # New window aspect ratio
-	sa = float(sd[1])/float(sd[0]) # Screen aspect ratio
-	r = sa/wa
-
-	if wa < sa: # Enlarge window height to get the right AR - keep it centered vertically
-		yoff = (nwc[3]-nwc[1])*(r-1)/2
-		return (nwc[0], nwc[1]-yoff, nwc[2], nwc[3]+yoff)
-	elif wa > sa: # Enlarge window width to get the right AR - keep it centered horizontally
-		xoff = (nwc[2]-nwc[0])*(1/r-1)/2
-		return (nwc[0]-xoff, nwc[1], nwc[2]+xoff, nwc[3])
-
-	return wc
 
 class Renderer(object):
 	def __init__(self, **kwargs):
@@ -67,7 +29,6 @@ class Renderer(object):
 		self.bpc        = getParam('bpc')
 		self.rendermode = getParam('mode')
 		self.subsample  = getParam('subsample')
-		self.nthreads   = getParam('threads')
 		self.screenDim  = getParam('screenDim')
 		self.shift      = INTERNAL_BPC - self.bpc
 		self.screenDim  = [x*self.subsample for x in self.screenDim]
@@ -205,51 +166,6 @@ class Renderer(object):
 		p = self.postprocessAttractor(a)
 		i = self.createImageArray(p, self.screenDim, backgroundColor)
 		return i
-
-	def mergeAttractors(self, a):
-		v = None
-
-		for i in xrange(len(a)):
-			if a[i] != None:
-				v = a[i]
-				break
-
-		if v == None:
-			self.logger.debug("Empty attractor. Trying to go on anyway.")
-			return v
-
-		for vv in a[i+1:]:
-			if vv == None: continue
-			for k, e in vv.iteritems():
-				if k in v:
-					v[k] += e
-				else:
-					v[k] = e
-
-		self.logger.debug("%d points in the attractor before any dithering done." % (len(v.keys())))
-		return v
-
-	def walkthroughAttractor(self, at):
-		jobs = list()
-		initPoints = getInitPoints(at, self.nthreads)
-		window_c = scaleBounds(at.bound, self.screenDim)
-
-		manager = Manager()
-		a = manager.list([None]*self.nthreads)
-		for i in range(self.nthreads):
-			job = Process(group=None, name='t'+str(i), target=at.iterateMap, args=(self.screenDim, window_c, a, i, initPoints[i]))
-			jobs.append(job)
-			job.start()
-
-		for job in jobs:
-			job.join()
-
-		aMerge = self.mergeAttractors(a)
-		if not aMerge: return aMerge
-		at.computeFractalDimension(aMerge, self.screenDim, window_c)
-
-		self.logger.debug("Time to render the attractor.")
-		return self.renderAttractor(aMerge)
 
 	def writeAttractorPNG(self, a, filepath):
 		self.logger.debug("Now writing attractor %s on disk." % filepath)

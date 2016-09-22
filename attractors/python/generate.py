@@ -67,7 +67,7 @@ def createAttractor():
 
 	return at
 
-def generateAttractorSequence(r):
+def generateAttractorSequence(r, nthreads):
 	SEQUENCE_STEP = 1024
 	numAttractors = 1
 	sequenceList = [None]*args.sequence
@@ -98,18 +98,23 @@ def generateAttractorSequence(r):
 		logging.debug("Attractors bounding box: %s." % (str(bounds)))
 
 	coefList = [ coefs for sequence in sequenceList for coefs in sequence ]
+	windowC = util.scaleBounds(bounds, r.screenDim)
+
 	for i, c in enumerate(coefList):
 		attractorStart.coef = c
 		attractorStart.bound = bounds
-		a = r.walkthroughAttractor(attractorStart)
+		a = attractorStart.walkthroughAttractor(r.screenDim, windowC, nthreads)
+		a = r.renderAttractor(a)
 		if not a : continue
 		path = os.path.join(args.outdir, attractorStart.code + "_" + "%04d" % i + ".png")
 		r.writeAttractorPNG(a, path)
 
-def generateSingleAttractor(r):
+def generateSingleAttractor(r, nthreads):
 	t0 = time()
 	at = createAttractor()
-	a = r.walkthroughAttractor(at)
+	windowC = util.scaleBounds(at.bound, r.screenDim)
+	a = at.walkthroughAttractor(r.screenDim, windowC, nthreads)
+	a = r.renderAttractor(a)
 	if not a: return
 	suffix = str(args.bpc)
 	filepath = os.path.join(args.outdir, at.code + "_" + suffix + ".png")
@@ -125,17 +130,16 @@ def generateSingleAttractor(r):
 	logging.info("Iterations: %d" % args.iter)
 	logging.info("Attractor generation and rendering took %s." % sec2hms(t1-t0))
 
-def generateAttractor(screenDim):
+def generateAttractor(screenDim, nthreads):
 	r  = render.Renderer(bpc=args.bpc,
 			mode=args.render,
 			screenDim=screenDim,
-			subsample=args.subsample,
-			threads=args.threads)
+			subsample=args.subsample,)
 
 	if args.sequence:
-		generateAttractorSequence(r)
+		generateAttractorSequence(r, nthreads)
 	else:
-		generateSingleAttractor(r)
+		generateSingleAttractor(r, nthreads)
 
 def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
@@ -175,4 +179,4 @@ elif args.iter < idealIter:
 if args.code or args.sequence: args.number = 1
 
 for i in xrange(0, args.number):
-	generateAttractor(g)
+	generateAttractor(g, args.threads)

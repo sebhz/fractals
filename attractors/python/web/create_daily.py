@@ -321,9 +321,10 @@ def processAttractor(AttractorNum):
 			r = render.Renderer(bpc=8,
 				mode='greyscale',
 				screenDim=parameters['geometry'],
-				subsample=subsampling,
-				threads=4)
-			a = r.walkthroughAttractor(at) # Will not accumulate thumb points above full points
+				subsample=subsampling)
+			windowC = util.scaleBounds(at.bound, r.screenDim)
+			a = at.walkthroughAttractor(r.screenDim, windowC, 4)
+			a = r.renderAttractor(a)
 			if a == None: break
 			r.writeAttractorPNG(a, os.path.join(parameters['directory'], filePath))
 			if parameters['type'] == 'main': done = True

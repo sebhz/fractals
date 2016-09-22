@@ -21,6 +21,7 @@ import random
 import math
 import re
 import logging
+from multiprocessing import Manager, Process
 
 OVERITERATE_FACTOR=4
 
@@ -99,16 +100,31 @@ class Attractor(object):
 		self.logger.debug("Attractor found after %d trials." % (n+1))
 		self.createCode()
 
-	def iterateMap(self, screenDim, window_c, aContainer, index, initPoint=(0.1, 0.1)):
+	def getInitPoints(self, n):
+		initPoints = list()
+		i = 0
+		while True:
+			if not self.bound:
+				p = (random.random(), random.random())
+			else:
+				rx = self.bound[0] + random.random()*(self.bound[2]-self.bound[0])
+				ry = self.bound[1] + random.random()*(self.bound[3]-self.bound[1])
+				p = (rx, ry)
+			if self.checkConvergence(p):
+				initPoints.append(p)
+				i += 1
+			if i == n: return initPoints
+
+	def iterateMap(self, screenDim, windowC, aContainer, index, initPoint=(0.1, 0.1)):
 		a = dict()
 		p = initPoint
 
-		ratioX = (screenDim[0]-1)/(window_c[2]-window_c[0])
-		ratioY = (screenDim[1]-1)/(window_c[3]-window_c[1])
+		ratioX = (screenDim[0]-1)/(windowC[2]-windowC[0])
+		ratioY = (screenDim[1]-1)/(windowC[3]-windowC[1])
 		maxY = screenDim[1]-1
 		w_to_s = lambda p: (
-			int(       (p[0]-window_c[0])*ratioX),
-			int(maxY - (p[1]-window_c[1])*ratioY) )
+			int(       (p[0]-windowC[0])*ratioX),
+			int(maxY - (p[1]-windowC[1])*ratioY) )
 
 		for i in xrange(self.iterations):
 			pnew = self.getNextPoint(p)
@@ -128,11 +144,55 @@ class Attractor(object):
 
 		aContainer[index] = a
 
+	def mergeAttractors(self, a):
+		v = None
+
+		for i in xrange(len(a)):
+			if a[i] != None:
+				v = a[i]
+				break
+
+		if v == None:
+			self.logger.debug("Empty attractor. Trying to go on anyway.")
+			return v
+
+		for vv in a[i+1:]:
+			if vv == None: continue
+			for k, e in vv.iteritems():
+				if k in v:
+					v[k] += e
+				else:
+					v[k] = e
+
+		self.logger.debug("%d points in the attractor before any dithering done." % (len(v.keys())))
+		return v
+
+	def walkthroughAttractor(self, screenDim, windowC, nthreads):
+		jobs = list()
+		initPoints = self.getInitPoints(nthreads)
+
+		manager = Manager()
+		a = manager.list([None]*nthreads)
+		for i in range(nthreads):
+			job = Process(group=None, name='t'+str(i), target=self.iterateMap, args=(screenDim, windowC, a, i, initPoints[i]))
+			jobs.append(job)
+			job.start()
+
+		for job in jobs:
+			job.join()
+
+		aMerge = self.mergeAttractors(a)
+		if not aMerge: return aMerge
+		self.computeFractalDimension(aMerge, screenDim, windowC)
+
+		self.logger.debug("Time to render the attractor.")
+		return aMerge
+
 	# An estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
 	# See https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension
-	def computeBoxCountingDimension(self, a, screenDim, window_c):
+	def computeBoxCountingDimension(self, a, screenDim, windowC):
 		sideLength = 2 # Box side length, in pixels
-		pixelSize = (window_c[2]-window_c[0])/screenDim[0]
+		pixelSize = (windowC[2]-windowC[0])/screenDim[0]
 
 		boxes = dict()
 		for pt in a.keys():
@@ -252,8 +312,8 @@ class PolynomialAttractor(Attractor):
 
 		return l
 
-	def computeFractalDimension(self, a, screenDim, window_c):
-		self.computeBoxCountingDimension(a, screenDim, window_c)
+	def computeFractalDimension(self, a, screenDim, windowC):
+		self.computeBoxCountingDimension(a, screenDim, windowC)
 
 class DeJongAttractor(Attractor):
 	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
@@ -296,6 +356,6 @@ class DeJongAttractor(Attractor):
 
 		return equation
 
-	def computeFractalDimension(self, a, screenDim, window_c):
+	def computeFractalDimension(self, a, screenDim, windowC):
 		self.computeCorrelationDimension(a, screenDim)
 
