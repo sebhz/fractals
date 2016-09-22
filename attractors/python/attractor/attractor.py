@@ -21,6 +21,7 @@ import random
 import math
 import re
 import logging
+import util
 from multiprocessing import Manager, Process
 
 OVERITERATE_FACTOR=4
@@ -167,10 +168,11 @@ class Attractor(object):
 		self.logger.debug("%d points in the attractor before any dithering done." % (len(v.keys())))
 		return v
 
-	def walkthroughAttractor(self, screenDim, windowC, nthreads):
+	def walkthroughAttractor(self, screenDim, nthreads):
 		jobs = list()
 		initPoints = self.getInitPoints(nthreads)
 
+		windowC = util.scaleBounds(self.bound, screenDim)
 		manager = Manager()
 		a = manager.list([None]*nthreads)
 		for i in range(nthreads):

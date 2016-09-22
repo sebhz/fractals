@@ -98,12 +98,11 @@ def generateAttractorSequence(r, nthreads):
 		logging.debug("Attractors bounding box: %s." % (str(bounds)))
 
 	coefList = [ coefs for sequence in sequenceList for coefs in sequence ]
-	windowC = util.scaleBounds(bounds, r.screenDim)
 
 	for i, c in enumerate(coefList):
 		attractorStart.coef = c
 		attractorStart.bound = bounds
-		a = attractorStart.walkthroughAttractor(r.screenDim, windowC, nthreads)
+		a = attractorStart.walkthroughAttractor(r.screenDim, nthreads)
 		a = r.renderAttractor(a)
 		if not a : continue
 		path = os.path.join(args.outdir, attractorStart.code + "_" + "%04d" % i + ".png")
@@ -112,8 +111,7 @@ def generateAttractorSequence(r, nthreads):
 def generateSingleAttractor(r, nthreads):
 	t0 = time()
 	at = createAttractor()
-	windowC = util.scaleBounds(at.bound, r.screenDim)
-	a = at.walkthroughAttractor(r.screenDim, windowC, nthreads)
+	a = at.walkthroughAttractor(r.screenDim, nthreads)
 	a = r.renderAttractor(a)
 	if not a: return
 	suffix = str(args.bpc)

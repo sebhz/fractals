@@ -322,8 +322,7 @@ def processAttractor(AttractorNum):
 				mode='greyscale',
 				screenDim=parameters['geometry'],
 				subsample=subsampling)
-			windowC = util.scaleBounds(at.bound, r.screenDim)
-			a = at.walkthroughAttractor(r.screenDim, windowC, 4)
+			a = at.walkthroughAttractor(r.screenDim, 4)
 			a = r.renderAttractor(a)
 			if a == None: break
 			r.writeAttractorPNG(a, os.path.join(parameters['directory'], filePath))
