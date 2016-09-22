@@ -3,7 +3,7 @@
 Ancillary functions used for attractor generation and rendering.
 """
 
-def getIdealIterationNumber(AttractorType, screenDim, subsamplingRate):
+def getIdealIterationNumber(AttractorType, geometry, subsamplingRate=1):
 	"""
 	Computes the number of iterations necessary to have the attractor
 	"look good", when rendered.
@@ -11,14 +11,14 @@ def getIdealIterationNumber(AttractorType, screenDim, subsamplingRate):
 	Arguments:
 		AttractorType: either 'polynomial' or 'dejong'. De Jong attractors typically
 		               require more iterations
-		screenDim: a (w,h) tuple giving the final picture width and height in pixels
+		geometry: a (w,h) tuple giving the final picture width and height in pixels
 		subsamplingRate: the oversampling rate (usually 1, 2 or 3)
 
 	Returns the correct number of iteration to have the attractor look reasonably good.
 	"""
 
 	OVERITERATE_FACTOR=4
-	pxSize = subsamplingRate*subsamplingRate*screenDim[0]*screenDim[1]
+	pxSize = subsamplingRate*subsamplingRate*geometry[0]*geometry[1]
 
 	idealIter = int(OVERITERATE_FACTOR*pxSize)
 	if AttractorType == 'dejong':

@@ -102,7 +102,7 @@ def generateAttractorSequence(r, nthreads):
 	for i, c in enumerate(coefList):
 		attractorStart.coef = c
 		attractorStart.bound = bounds
-		a = attractorStart.walkthroughAttractor(r.screenDim, nthreads)
+		a = attractorStart.walkthroughAttractor(r.geometry, nthreads)
 		a = r.renderAttractor(a)
 		if not a : continue
 		path = os.path.join(args.outdir, attractorStart.code + "_" + "%04d" % i + ".png")
@@ -111,7 +111,7 @@ def generateAttractorSequence(r, nthreads):
 def generateSingleAttractor(r, nthreads):
 	t0 = time()
 	at = createAttractor()
-	a = at.walkthroughAttractor(r.screenDim, nthreads)
+	a = at.walkthroughAttractor(r.geometry, nthreads)
 	a = r.renderAttractor(a)
 	if not a: return
 	suffix = str(args.bpc)
@@ -128,10 +128,10 @@ def generateSingleAttractor(r, nthreads):
 	logging.info("Iterations: %d" % args.iter)
 	logging.info("Attractor generation and rendering took %s." % sec2hms(t1-t0))
 
-def generateAttractor(screenDim, nthreads):
+def generateAttractor(geometry, nthreads):
 	r  = render.Renderer(bpc=args.bpc,
 			mode=args.render,
-			screenDim=screenDim,
+			geometry=geometry,
 			subsample=args.subsample,)
 
 	if args.sequence:

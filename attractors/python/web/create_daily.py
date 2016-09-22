@@ -320,9 +320,9 @@ def processAttractor(AttractorNum):
 			at.iterations = iterations
 			r = render.Renderer(bpc=8,
 				mode='greyscale',
-				screenDim=parameters['geometry'],
+				geometry=parameters['geometry'],
 				subsample=subsampling)
-			a = at.walkthroughAttractor(r.screenDim, 4)
+			a = at.walkthroughAttractor(r.geometry, 4)
 			a = r.renderAttractor(a)
 			if a == None: break
 			r.writeAttractorPNG(a, os.path.join(parameters['directory'], filePath))

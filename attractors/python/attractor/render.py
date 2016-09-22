@@ -18,7 +18,7 @@ defaultParameters = {
 	'mode': 'greyscale',
 	'subsample': 1,
 	'bpc' : 8,
-	'screenDim' : (800, 600),
+	'geometry' : (800, 600),
 }
 
 class Renderer(object):
@@ -29,9 +29,9 @@ class Renderer(object):
 		self.bpc        = getParam('bpc')
 		self.rendermode = getParam('mode')
 		self.subsample  = getParam('subsample')
-		self.screenDim  = getParam('screenDim')
+		self.geometry   = getParam('geometry')
 		self.shift      = INTERNAL_BPC - self.bpc
-		self.screenDim  = [x*self.subsample for x in self.screenDim]
+		self.geometry  = [x*self.subsample for x in self.geometry]
 	# Equalize and colorize attractor
 	# attractor: attractor points: dict (X,Y) and containing frequency
 	# Returns the attractor points: dict indexed by (X, Y) and containing COLOR, 
@@ -164,12 +164,12 @@ class Renderer(object):
 	def renderAttractor(self, a):
 		backgroundColor = [0xFF] if self.rendermode == "greyscale" else [0xFF, 0xFF, 0xFF]
 		p = self.postprocessAttractor(a)
-		i = self.createImageArray(p, self.screenDim, backgroundColor)
+		i = self.createImageArray(p, self.geometry, backgroundColor)
 		return i
 
 	def writeAttractorPNG(self, a, filepath):
 		self.logger.debug("Now writing attractor %s on disk." % filepath)
-		w = png.Writer(size=[x/self.subsample for x in self.screenDim], greyscale = True if self.rendermode == "greyscale" else False, bitdepth=self.bpc, interlace=True)
+		w = png.Writer(size=[x/self.subsample for x in self.geometry], greyscale = True if self.rendermode == "greyscale" else False, bitdepth=self.bpc, interlace=True)
 		aa = w.array_scanlines(a)
 		with open(filepath, "wb") as f:
 			w.write(f, aa)
