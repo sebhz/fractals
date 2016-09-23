@@ -34,6 +34,10 @@ defaultParameters = {
 modulus = lambda x,y: x*x + y*y
 
 class Attractor(object):
+	"""
+	Base class representing an attractor. Should generally not be instanciated directly. Use one
+	of its subclasses: PolyomialAttractor or DeJongAttractor.
+	"""
 	convDelay    = 128   # Number of points to ignore before checking convergence
 	convMaxIter  = 16384 # Check convergence on convMaxIter points only
 	epsilon      = 1e-6
@@ -168,7 +172,7 @@ class Attractor(object):
 		self.logger.debug("%d points in the attractor before any dithering done." % (len(v.keys())))
 		return v
 
-	def walkthroughAttractor(self, screenDim, nthreads):
+	def createFrequencyMap(self, screenDim, nthreads):
 		jobs = list()
 		initPoints = self.getInitPoints(nthreads)
 
@@ -190,9 +194,11 @@ class Attractor(object):
 		self.logger.debug("Time to render the attractor.")
 		return aMerge
 
-	# An estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
-	# See https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension
 	def computeBoxCountingDimension(self, a, screenDim, windowC):
+		"""
+		Computes an estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
+		See https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension
+		"""
 		sideLength = 2 # Box side length, in pixels
 		pixelSize = (windowC[2]-windowC[0])/screenDim[0]
 
@@ -204,11 +210,11 @@ class Attractor(object):
 
 		self.fdim = math.log(n)/math.log(1/(sideLength*pixelSize))
 
-	# An estimate of the correlation dimension computed "a la Julien Sprott"
-	# Estimate the probability that 2 points in the attractor are close enough
-	# We will make a small error because we resized things a bit, but not that much
-	# actually
 	def computeCorrelationDimension(self, a, screenDim):
+		"""
+		Computes an estimate of the correlation dimension computed "a la Julien Sprott"
+		Estimate the probability that 2 points in the attractor are close enough
+		"""
 		base = 10
 		radiusRatio = 0.001
 		diagonal = modulus(*screenDim)

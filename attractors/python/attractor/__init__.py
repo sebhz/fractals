@@ -20,7 +20,7 @@ in a 1024x768 8-bits greyscale PNG image.
 	at = attractor.PolynomialAttractor(order=2, iter=it)
 	at.explore()
 	r = render.Renderer(mode='greyscale', geometry=geometry)
-	frequencyMap = at.walkthroughAttractor(r.geometry, 4)
+	frequencyMap = at.createFrequencyMap(r.geometry, 4)
 	pixelArray = r.renderAttractor(frequencyMap)
 	r.writeAttractorPNG(pixelArray, "attractor.png")
 

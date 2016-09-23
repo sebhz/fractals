@@ -102,7 +102,7 @@ def generateAttractorSequence(r, nthreads):
 	for i, c in enumerate(coefList):
 		attractorStart.coef = c
 		attractorStart.bound = bounds
-		a = attractorStart.walkthroughAttractor(r.geometry, nthreads)
+		a = attractorStart.createFrequencyMap(r.geometry, nthreads)
 		a = r.renderAttractor(a)
 		if not a : continue
 		path = os.path.join(args.outdir, attractorStart.code + "_" + "%04d" % i + ".png")
@@ -111,7 +111,7 @@ def generateAttractorSequence(r, nthreads):
 def generateSingleAttractor(r, nthreads):
 	t0 = time()
 	at = createAttractor()
-	a = at.walkthroughAttractor(r.geometry, nthreads)
+	a = at.createFrequencyMap(r.geometry, nthreads)
 	a = r.renderAttractor(a)
 	if not a: return
 	suffix = str(args.bpc)

@@ -322,7 +322,7 @@ def processAttractor(AttractorNum):
 				mode='greyscale',
 				geometry=parameters['geometry'],
 				subsample=subsampling)
-			a = at.walkthroughAttractor(r.geometry, 4)
+			a = at.createFrequencyMap(r.geometry, 4)
 			a = r.renderAttractor(a)
 			if a == None: break
 			r.writeAttractorPNG(a, os.path.join(parameters['directory'], filePath))
