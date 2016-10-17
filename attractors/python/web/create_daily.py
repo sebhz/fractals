@@ -107,12 +107,17 @@ MAIL_HTML_TEMPLATE='''<?xml version="1.0" encoding="UTF-8"?>
 	.polite {
 	font-variant:normal;
 	}
+	.attractor_image {
+	text-align:center;
+	}
 </style>
 </head>
 
 <body>
 <p class="polite">Please find your strange attractor !</p>
-<p></p>
+<div class="attractor_image">
+<img src="cid:atImg" alt="__code">
+</div>
 <div id="info_div">
 Attractor type: <span class="code">__type</span>
 <br></br>
@@ -206,24 +211,32 @@ def send_mail(MAP, server, send_from, send_to, subject, files=None):
 		logging.warning("Badly formed recipient list. Not sending any mail.")
 		return
 
-	msg = MIMEMultipart('alternative')
+	# Root message
+	msg = MIMEMultipart('related')
 	msg['From'] = send_from
 	msg['To'] = COMMASPACE.join(send_to)
 	msg['Date'] = formatdate(localtime=True)
 	msg['Subject'] = subject
 
+	# Now create a multipart message below the root message
+	# and attach both plain text and HTML version of the message to it.
+	msgAlternative = MIMEMultipart('alternative')
+	msg.attach(msgAlternative)
 	text = getMailText(MAP)
 	html = getMailHTML(MAP)
-	msg.attach(MIMEText(text, 'plain'))
-	msg.attach(MIMEText(html, 'html'))
+	msgAlternative.attach(MIMEText(text, 'plain'))
+	msgAlternative.attach(MIMEText(html, 'html'))
 
+	# Finally attach the image to the root message... this loop is overkill
+	# and unnecessary, but will do for our case !
 	for f in files or []:
 		with open(f, "rb") as fil:
 			part = MIMEImage(
 				fil.read(),
 				"png"
 			)
-			part['Content-Disposition'] = 'attachment; filename=%s' % os.path.basename(f)
+			#part['Content-Disposition'] = 'attachment; filename=%s' % os.path.basename(f)
+			part.add_header('Content-ID', '<atImg>')
 			msg.attach(part)
 
 	try:
