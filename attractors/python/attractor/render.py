@@ -33,6 +33,7 @@ class Renderer(object):
 		self.shift      = INTERNAL_BPC - self.bpc
 		self.geometry   = [x*self.subsample for x in self.geometry]
 		self.backgroundColor = (1<<self.bpc) - 1 if self.rendermode == "greyscale" else (0xFF, 0xFF, 0xFF)
+		self.internalbg = 0xFFFF
 
 	# Equalize and colorize attractor
 	# attractor: attractor points: dict (X,Y) and containing frequency
@@ -159,7 +160,7 @@ class Renderer(object):
 						c += at[(x, y)]
 			# OK now we have accumulated all colors in the attractors
 			# Time to weight with the background color
-			v = 0xFFFF*(self.subsample*self.subsample-n)
+			v = self.internalbg*(self.subsample*self.subsample-n)
 			c += v
 			c = int(c/(self.subsample*self.subsample))
 			nat[(xsub,ysub)] = c
