@@ -105,6 +105,7 @@ def generateAttractorSequence(r, nthreads):
 		a = attractorStart.createFrequencyMap(r.geometry, nthreads)
 		a = r.renderAttractor(a)
 		if not a : continue
+
 		path = os.path.join(args.outdir, attractorStart.code + "_" + "%04d" % i + ".png")
 		r.writeAttractorPNG(a, path)
 
@@ -133,6 +134,12 @@ def generateAttractor(geometry, nthreads):
 			mode=args.render,
 			geometry=geometry,
 			subsample=args.subsample,)
+
+	try:
+		os.makedirs(args.outdir)
+	except OSError:
+		if not os.path.isdir(args.outdir):
+			raise
 
 	if args.sequence:
 		generateAttractorSequence(r, nthreads)
