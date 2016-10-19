@@ -39,9 +39,7 @@ class Renderer(object):
 	# attractor: attractor points: dict (X,Y) and containing frequency
 	# Returns the attractor points: dict indexed by (X, Y) and containing COLOR, 
 	def postprocessAttractor(self, at):
-		M = 0
-		for v in at.values():
-			M = max(M, v)
+		M = max(at.values())
 
 		# Now send the map in the [0, (1<<INTERNAL_BPC)-1] range
 		for i, pt in at.iteritems():

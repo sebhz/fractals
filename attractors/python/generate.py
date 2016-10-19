@@ -148,7 +148,7 @@ def generateAttractor(geometry, nthreads):
 
 def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
-	parser.add_argument('-b', '--bpc',          help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=(8, 16))
+	parser.add_argument('-b', '--bpc',          help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=range(1, 17))
 	parser.add_argument('-c', '--code',         help='attractor code', type=str)
 	parser.add_argument('-g', '--geometry',     help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
 	parser.add_argument('-j', '--threads',      help='Number of threads to use (default = %d)' % defaultParameters['threads'], type=int, default=defaultParameters['threads'])
