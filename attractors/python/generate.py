@@ -111,10 +111,15 @@ def generateAttractorSequence(r, nthreads):
 
 def generateSingleAttractor(r, nthreads):
 	t0 = time()
-	at = createAttractor()
-	a = at.createFrequencyMap(r.geometry, nthreads)
-	a = r.renderAttractor(a)
-	if not a: return
+	while True:
+		at = createAttractor()
+		a = at.createFrequencyMap(r.geometry, nthreads)
+		logging.debug(">>> %s" % at.code)
+		# Will also test is a is null
+		if r.isNice(a):
+			a = r.renderAttractor(a)
+			break
+
 	suffix = str(args.bpc)
 	filepath = os.path.join(args.outdir, at.code + "_" + suffix + ".png")
 	r.writeAttractorPNG(a, filepath)
