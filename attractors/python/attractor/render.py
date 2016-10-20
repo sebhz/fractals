@@ -68,11 +68,15 @@ class Renderer(object):
 
 		for c, v in p.iteritems():
 			offset = c[0] + c[1]*w
-			if self.rendermode == "greyscale":
-				a[offset] = v >> self.shift
-			else:
-				a[3*offset:3*offset+3] = [x >> self.shift for x in v]
-
+			try:
+				if self.rendermode == "greyscale":
+					a[offset] = v >> self.shift
+				else:
+					a[3*offset:3*offset+3] = [x >> self.shift for x in v]
+			except IndexError as e:
+				# This can occur if the bounds were not correctly assessed
+				# and a point of the atractor happens to fall out of them.
+				logging.debug("Looks like a point fell out of our bounds. Ignoring it")
 		return a
 
 	# Performs histogram equalization on the attractor pixels
@@ -166,6 +170,7 @@ class Renderer(object):
 		return nat
 
 	def renderAttractor(self, a):
+		if not a: return None
 		p = self.postprocessAttractor(a)
 		i = self.createImageArray(p, self.geometry)
 		return i
