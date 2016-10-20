@@ -184,6 +184,7 @@ def parseArgs():
 	parser = argparse.ArgumentParser(description='generation of strange attractor web page')
 	parser.add_argument('-a', '--all',  help='Regenerates all pages from the beginning of time (2016-07-27) until today', action='store_true', default=False)
 	parser.add_argument('-d', '--date', help='Forces date. Format of input: YYYY-MM-DD', type=str)
+	parser.add_argument('-f', '--fromaddr', help='From address', type=str, default='attractors@attractor.org')
 	parser.add_argument('-m', '--mail', help='Mail the attractor(s)', action='store_true', default=False)
 	parser.add_argument('-r', '--recipients', help='Recipient list for mails (comma separated)', type=str)
 	parser.add_argument('-s', '--server', help='SMTP server to use', type=str)
@@ -276,10 +277,9 @@ def processHTML(attractorNum, MAP):
 def processMail(MAP):
 	if args.mail and args.recipients and args.server:
 		logging.info("Sending emails to %s, using SMTP server %s." % (args.recipients, args.server))
-		fromaddr = 'strangeattractor@attractor.org'
 		toaddr   = args.recipients.split(',') # Hopefully there won't be any comma in the addresses
 		subject  = "%s : Strange attractor of the day" % (MAP['__date'])
-		send_mail(MAP, args.server, fromaddr, toaddr, subject, ("png/"+MAP['__link'],))
+		send_mail(MAP, args.server, args.fromaddr, toaddr, subject, ("png/"+MAP['__link'],))
 
 def sec2hms(seconds):
 	m, s = divmod(seconds, 60)
