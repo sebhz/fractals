@@ -183,11 +183,17 @@ class Renderer(object):
 		with open(filepath, "wb") as f:
 			w.write(f, aa)
 
-	def isNice(self, a):
+	def isNice(self, a, coverLimit=0.01):
+		"""
+		Checks if the attractor passed is 'nice': currently nice means that the
+		attractors covers more than coverLimit percent of the window.
+		"""
 		if not a: return False
 		nPoints = len(a.keys())
 		sSize   = self.geometry[0]*self.geometry[1]
-		if float(nPoints)/sSize < 0.01:
+		coverRatio = float(nPoints)/sSize
+		self.logger.debug("Attractor cover ratio is %.2f" % coverRatio)
+		if coverRatio < coverLimit:
 			return False
 
 		return True
