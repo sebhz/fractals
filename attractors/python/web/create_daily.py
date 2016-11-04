@@ -125,6 +125,8 @@ Polynom order: <span class="code">__order</span>
 <br></br>
 Fractal dimension: <span class="code">__dimension</span>
 <br></br>
+Sprott's code: <span class="code">__code</span>
+<br></br>
 Number of iterations: <span class="code">__iterations</span>
 <br></br>
 Equations:
