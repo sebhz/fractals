@@ -1,4 +1,7 @@
 #!/usr/bin/python
+
+import logging
+
 """
 Ancillary functions used for attractor generation and rendering.
 """
@@ -49,7 +52,12 @@ def scaleBounds(wc, sd, pct=0.05):
 
 	wa = float(nwc[3]-nwc[1])/float(nwc[2]-nwc[0]) # New window aspect ratio
 	sa = float(sd[1])/float(sd[0]) # Screen aspect ratio
-	r = sa/wa
+	try:
+		r = sa/wa
+	except ZeroDivisionError as e:
+		logging.debug("Exception caught when enlarging window")
+		logging.debug("Window: %s - screen: %s - hoff: %f - woff: %f - nwc: %s - wa: %f" % (str(wc), str(sd), hoff, woff, str(nwc), wa))
+		raise e
 
 	if wa < sa: # Enlarge window height to get the right AR - keep it centered vertically
 		yoff = (nwc[3]-nwc[1])*(r-1)/2
