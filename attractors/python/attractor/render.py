@@ -192,7 +192,7 @@ class Renderer(object):
 		nPoints = len(a.keys())
 		sSize   = self.geometry[0]*self.geometry[1]
 		coverRatio = float(nPoints)/sSize
-		self.logger.debug("Attractor cover ratio is %.2f" % coverRatio)
+		self.logger.debug("Attractor cover ratio is %.2f%%" % (100.0*coverRatio))
 		if coverRatio < coverLimit:
 			return False
 
