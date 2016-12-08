@@ -76,6 +76,7 @@ img {
 
 .polynom_div {
 	margin: 0 10px;
+	word-break: break-all;
 }
 
 ul.navbar {
