@@ -5,13 +5,12 @@ import random
 import logging
 
 try:
-    import png
+	import png
 except:
 	import sys
-    print >> sys.stderr, "this program requires the pyPNG module"
-    print >> sys.stderr, "available at https://github.com/drj11/pypng"
-    raise SystemExit
-
+	print >> sys.stderr, "this program requires the pyPNG module"
+	print >> sys.stderr, "available at https://github.com/drj11/pypng"
+	raise SystemExit
 
 INTERNAL_BPC=16
 
