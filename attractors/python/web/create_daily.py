@@ -16,6 +16,7 @@ from email.utils import COMMASPACE, formatdate
 
 REFERENCE_DATE = datetime(2016, 7, 27)
 CURRENT_FILE = "strange_attractor.xhtml"
+NUM_THREADS = 4
 
 PAGE_TEMPLATE='''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
@@ -187,6 +188,7 @@ def parseArgs():
 	parser.add_argument('-a', '--all',  help='Regenerates all pages from the beginning of time (2016-07-27) until today', action='store_true', default=False)
 	parser.add_argument('-d', '--date', help='Forces date. Format of input: YYYY-MM-DD', type=str)
 	parser.add_argument('-f', '--fromaddr', help='From address', type=str, default='attractors@attractor.org')
+	parser.add_argument('-j', '--nthreads', help='Number of threads to use', type=int, default=NUM_THREADS)
 	parser.add_argument('-m', '--mail', help='Mail the attractor(s)', action='store_true', default=False)
 	parser.add_argument('-r', '--recipients', help='Recipient list for mails (comma separated)', type=str)
 	parser.add_argument('-s', '--server', help='SMTP server to use', type=str)
@@ -337,7 +339,7 @@ def processAttractor(AttractorNum):
 				mode='greyscale',
 				geometry=parameters['geometry'],
 				subsample=subsampling)
-			a = at.createFrequencyMap(r.geometry, 4)
+			a = at.createFrequencyMap(r.geometry, args.nthreads)
 			if not r.isNice(a) and parameters['type'] == 'thumbnail': break
 			a = r.renderAttractor(a)
 			if a == None: break
