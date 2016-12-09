@@ -120,7 +120,7 @@ class Attractor(object):
 				i += 1
 			if i == n: return initPoints
 
-	def iterateMap(self, screenDim, windowC, aContainer, index, initPoint=(0.1, 0.1)):
+	def iterateMap(self, screenDim, windowC, aContainer, index, lock, initPoint=(0.1, 0.1)):
 		a = dict()
 		p = initPoint
 
@@ -146,8 +146,9 @@ class Attractor(object):
 				else:
 					a[projectedPixel] = 0
 			p = pnew
-
+		lock.acquire()
 		aContainer[index] = a
+		lock.release()
 
 	def mergeAttractors(self, a):
 		v = None
@@ -179,8 +180,9 @@ class Attractor(object):
 		windowC = util.scaleBounds(self.bound, screenDim)
 		manager = Manager()
 		a = manager.list([None]*nthreads)
+		l = manager.Lock()
 		for i in range(nthreads):
-			job = Process(group=None, name='t'+str(i), target=self.iterateMap, args=(screenDim, windowC, a, i, initPoints[i]))
+			job = Process(group=None, name='t'+str(i), target=self.iterateMap, args=(screenDim, windowC, a, i, l, initPoints[i]))
 			jobs.append(job)
 			job.start()
 
