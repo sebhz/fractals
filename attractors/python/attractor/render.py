@@ -7,6 +7,7 @@ import logging
 try:
     import png
 except:
+	import sys
     print >> sys.stderr, "this program requires the pyPNG module"
     print >> sys.stderr, "available at https://github.com/drj11/pypng"
     raise SystemExit
