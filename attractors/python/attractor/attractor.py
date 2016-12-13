@@ -144,11 +144,10 @@ class Attractor(object):
 				if projectedPixel in a:
 					a[projectedPixel] += 1
 				else:
-					a[projectedPixel] = 0
+					a[projectedPixel] = 1
 			p = pnew
-		lock.acquire()
-		aContainer[index] = a
-		lock.release()
+		with lock:
+			aContainer[index] = a
 
 	def mergeAttractors(self, a):
 		v = None
@@ -178,18 +177,19 @@ class Attractor(object):
 		initPoints = self.getInitPoints(nthreads)
 
 		windowC = util.scaleBounds(self.bound, screenDim)
-		manager = Manager()
-		a = manager.list([None]*nthreads)
-		l = manager.Lock()
-		for i in range(nthreads):
-			job = Process(group=None, name='t'+str(i), target=self.iterateMap, args=(screenDim, windowC, a, i, l, initPoints[i]))
-			jobs.append(job)
-			job.start()
+		with Manager() as manager:
+			a = manager.list([None]*nthreads)
+			l = manager.Lock()
+			for i in range(nthreads):
+				job = Process(group=None, name='t'+str(i), target=self.iterateMap, args=(screenDim, windowC, a, i, l, initPoints[i]))
+				jobs.append(job)
+				job.start()
 
-		for job in jobs:
-			job.join()
+			for job in jobs:
+				job.join()
 
-		aMerge = self.mergeAttractors(a)
+			aMerge = self.mergeAttractors(a)
+
 		if not aMerge: return aMerge
 		self.computeFractalDimension(aMerge, screenDim, windowC)
 
