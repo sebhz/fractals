@@ -5,6 +5,7 @@ import sys
 import argparse
 import logging
 import smtplib
+import random
 
 from attractor import attractor, render, util
 from time import time
@@ -368,6 +369,8 @@ def processAttractor(AttractorNum):
 #
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 args = parseArgs()
+random.seed()
+
 if args.date:
 	d = datetime.strptime(args.date,"%Y-%m-%d")
 	attractorRange = (daysBetween(REFERENCE_DATE, d) + 1,)
