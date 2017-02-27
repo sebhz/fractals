@@ -330,7 +330,7 @@ def processAttractor(AttractorNum):
 		done = False
 		at = createAttractor(MAP['__type'], MAP['__order'])
 		filePath = at.code + '_8.png'
-		for parameters in ({'geometry': (800, 600), 'directory': 'png_thumb', 'type': 'thumbnail'}, {'geometry': (1920, 1080), 'directory': 'png', 'type': 'main'}):
+		for parameters in ({'geometry': (600, 600), 'directory': 'png_thumb', 'type': 'thumbnail'}, {'geometry': (1080, 1080), 'directory': 'png', 'type': 'main'}):
 			t0 = time()
 			iterations = util.getIdealIterationNumber(MAP['__type'], parameters['geometry'], subsampling)
 			logging.debug("Num iterations: %d", iterations)
