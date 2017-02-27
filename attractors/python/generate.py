@@ -115,7 +115,7 @@ def generateSingleAttractor(r, nthreads):
 		at = createAttractor()
 		a = at.createFrequencyMap(r.geometry, nthreads)
 		# Will also test if a is null
-		if r.isNice(a):
+		if r.isNice(a) or args.code:
 			a = r.renderAttractor(a)
 			break
 
