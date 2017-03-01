@@ -26,7 +26,7 @@ PAGE_TEMPLATE='''<?xml version="1.0" encoding="UTF-8"?>
 <head dir="ltr" id="head-id" lang="EN" profile="http://gmpg.org/xfn/11">
 	<title>Strange attractor of the day</title>
 	<link rel="stylesheet" href="css/stylesheet.css" type="text/css" media="all"/>
-	<script src="js/getRandom.js" type="text/javascript"></script>
+	<script src="js/navigation.js" type="text/javascript"></script>
 </head>
 
 <body>
