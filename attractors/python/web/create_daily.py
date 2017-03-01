@@ -333,7 +333,7 @@ def processAttractor(AttractorNum):
 		done = False
 		at = createAttractor(MAP['__type'], MAP['__order'])
 		filePath = at.code + '_8.png'
-		for parameters in ({'geometry': (600, 600), 'directory': 'png_thumb', 'type': 'thumbnail'}, {'geometry': (1080, 1080), 'directory': 'png', 'type': 'main'}):
+		for parameters in ( {'geometry': (1080, 1080), 'directory': 'png'}):
 			t0 = time()
 			iterations = util.getIdealIterationNumber(MAP['__type'], parameters['geometry'], subsampling)
 			logging.debug("Num iterations: %d", iterations)
@@ -343,11 +343,11 @@ def processAttractor(AttractorNum):
 				geometry=parameters['geometry'],
 				subsample=subsampling)
 			a = at.createFrequencyMap(r.geometry, args.nthreads)
-			if not r.isNice(a) and parameters['type'] == 'thumbnail': break
+			if not r.isNice(a) : break
 			a = r.renderAttractor(a)
 			if a == None: break
 			r.writeAttractorPNG(a, os.path.join(parameters['directory'], filePath))
-			if parameters['type'] == 'main': done = True
+			done = True
 			t1 = time()
 		if done: break
 
