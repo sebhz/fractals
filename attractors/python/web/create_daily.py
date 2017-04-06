@@ -6,6 +6,7 @@ import argparse
 import logging
 import smtplib
 import random
+import subprocess
 
 from attractor import attractor, render, util
 from time import time
@@ -333,7 +334,7 @@ def processAttractor(AttractorNum):
 		done = False
 		at = createAttractor(MAP['__type'], MAP['__order'])
 		filePath = at.code + '_8.png'
-		for parameters in ( {'geometry': (1080, 1080), 'directory': 'png'}, ):
+		for parameters in ( {'geometry': (960, 960), 'directory': 'png'}, ):
 			t0 = time()
 			iterations = util.getIdealIterationNumber(MAP['__type'], parameters['geometry'], subsampling)
 			logging.debug("Num iterations: %d", iterations)
@@ -366,6 +367,11 @@ def processAttractor(AttractorNum):
 	MAP['__time'] = sec2hms(t1-t0)
 	return MAP
 
+def processThumbnails(MAP):
+	filename = MAP['__code'] + "_8.png"
+	subprocess.call(["convert", "png/" + filename, "-resize", "128x128", "png_tile/" + filename])
+	subprocess.call(["convert", "png/" + filename, "-resize", "600x600", "png_thumb/" + filename])
+
 #
 # Main program
 #
@@ -387,4 +393,5 @@ for attractorNum in attractorRange:
 	MAP = processAttractor(attractorNum)
 	processHTML(attractorNum, MAP)
 	processMail(MAP)
+	processThumbnails(MAP)
 
