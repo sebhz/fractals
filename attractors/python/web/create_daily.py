@@ -334,7 +334,7 @@ def processAttractor(AttractorNum):
 		done = False
 		at = createAttractor(MAP['__type'], MAP['__order'])
 		filePath = at.code + '_8.png'
-		for parameters in ( {'geometry': (960, 960), 'directory': 'png'}, ):
+		for parameters in ( {'geometry': (1000, 1000), 'directory': '/tmp'}, ):
 			t0 = time()
 			iterations = util.getIdealIterationNumber(MAP['__type'], parameters['geometry'], subsampling)
 			logging.debug("Num iterations: %d", iterations)
@@ -369,8 +369,9 @@ def processAttractor(AttractorNum):
 
 def processThumbnails(MAP):
 	filename = MAP['__code'] + "_8.png"
-	subprocess.call(["convert", "png/" + filename, "-resize", "128x128", "png_tile/" + filename])
-	subprocess.call(["convert", "png/" + filename, "-resize", "600x600", "png_thumb/" + filename])
+	subprocess.call(["convert", "/tmp/" + filename, "-resize", "960x960", "png/" + filename])
+	subprocess.call(["convert", "/tmp/" + filename, "-resize", "600x600", "png_thumb/" + filename])
+	subprocess.call(["convert", "/tmp/" + filename, "-resize", "128x128", "png_tile/" + filename])
 
 #
 # Main program
@@ -391,7 +392,7 @@ else:
 
 for attractorNum in attractorRange:
 	MAP = processAttractor(attractorNum)
+	processThumbnails(MAP)
 	processHTML(attractorNum, MAP)
 	processMail(MAP)
-	processThumbnails(MAP)
 
