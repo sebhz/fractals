@@ -1,3 +1,5 @@
+var addressRoot = "http://10.214.224.18/attractors/"
+
 function getLastAttractorNum() {
 	var startDate = new Date(2016, 06, 27) // July ! January is 0
 	var currentDate = new Date()
@@ -10,7 +12,7 @@ function loadDifferentRandomPage(fname) {
 		var d = Math.floor(Math.random()*window.b)+1
 		var page = d + ".xhtml"
 	} while (page === fname);
-	window.open("http://172.28.195.117/attractors/" + page, "_self")
+	window.open(addressRoot + page, "_self")
 }
 
 function loadDifferentRandomMonth(fname) {
@@ -28,7 +30,7 @@ function loadDifferentRandomMonth(fname) {
 		}
 		var page = "" + dDate.getFullYear() + df + ".xhtml"
 	} while (page === fname);
-	window.open("http://172.28.195.117/attractors/" + page, "_self")
+	window.open(addressRoot + page, "_self")
 }
 
 function loadRandomMonth() {
@@ -44,7 +46,7 @@ function loadPreviousPage() {
 		return true
 	}
 	var prevAttractorNum = window.currentAttractorNum - 1
-	window.open("http://172.28.195.117/attractors/" + prevAttractorNum + ".xhtml", "_self")
+	window.open(addressRoot + prevAttractorNum + ".xhtml", "_self")
 }
 
 function loadNextPage() {
@@ -52,7 +54,7 @@ function loadNextPage() {
                 return true
         }
         var nextAttractorNum = window.currentAttractorNum + 1
-        window.open("http://172.28.195.117/attractors/" + nextAttractorNum + ".xhtml", "_self")
+        window.open(addressRoot+ nextAttractorNum + ".xhtml", "_self")
 }
 
 var b = getLastAttractorNum()

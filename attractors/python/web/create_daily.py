@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2.7
 
 import os
 import sys
@@ -194,6 +194,7 @@ def parseArgs():
 	parser.add_argument('-f', '--fromaddr', help='From address', type=str, default='attractors@attractor.org')
 	parser.add_argument('-j', '--nthreads', help='Number of threads to use', type=int, default=NUM_THREADS)
 	parser.add_argument('-m', '--mail', help='Mail the attractor(s)', action='store_true', default=False)
+	parser.add_argument('-n', '--num', help='Number of the attractor (in the series). Incompatible with --date.', type=int)
 	parser.add_argument('-r', '--recipients', help='Recipient list for mails (comma separated)', type=str)
 	parser.add_argument('-s', '--server', help='SMTP server to use', type=str)
 	args = parser.parse_args()
@@ -369,9 +370,18 @@ def processAttractor(AttractorNum):
 
 def processThumbnails(MAP):
 	filename = MAP['__code'] + "_8.png"
-	subprocess.call(["convert", "/tmp/" + filename, "-resize", "960x960", "png/" + filename])
-	subprocess.call(["convert", "/tmp/" + filename, "-resize", "600x600", "png_thumb/" + filename])
-	subprocess.call(["convert", "/tmp/" + filename, "-resize", "128x128", "png_tile/" + filename])
+	for d in (("960x960", "png"), ("600x600", "png_thumb"), ("128x128", "png_tile")):
+		if not os.path.exists(d[1]):
+			os.mkdir(d[1])
+		elif not os.path.isdir(d[1]):
+			logging.error("Output directory " + d[1] + " exists, but is a plain file. Ignoring it.")
+			continue
+
+		try:
+			subprocess.call(["convert", os.path.join("/tmp", filename), "-resize", d[0], os.path.join(d[1], filename)])
+		except OSError:
+			logging.error("Problem invoking convert utility. Is ImageMagick installed ?")
+			break
 
 #
 # Main program
@@ -380,9 +390,18 @@ logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 args = parseArgs()
 random.seed()
 
+if args.date and args.num != None:
+	logging.error("Only one of --num and --date switch is allowed.")
+	sys.exit()
+
 if args.date:
 	d = datetime.strptime(args.date,"%Y-%m-%d")
 	attractorRange = (daysBetween(REFERENCE_DATE, d) + 1,)
+elif args.num != None:
+	if args.num < 1:
+		logging.error("Only positive and non zero numbers are allowed for attractors.")
+		sys.exit()
+	attractorRange = (args.num,)
 else:
 	d = daysBetween(REFERENCE_DATE, datetime.today()) + 1
 	if not args.all:
