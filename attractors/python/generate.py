@@ -31,14 +31,15 @@ from time import time
 LOGLEVELS = (logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG, logging.NOTSET)
 
 defaultParameters = {
-	'iter': 1280*1024*4,
-	'sub': 1,
 	'bpc': 8,
-	'geometry': "1280x1024",
+	'colorscheme': 'light',
+	'geometry': '1280x1024',
+	'iter': 1280*1024*4,
+	'loglevel': 3,
 	'number': 1,
 	'order': 2,
-	'outdir': "png",
-	'loglevel': 3,
+	'outdir': 'png',
+	'sub': 1,
 	'threads': 1,
 	'type': 'polynomial',
 }
@@ -137,7 +138,8 @@ def generateAttractor(geometry, nthreads):
 	r  = render.Renderer(bpc=args.bpc,
 			mode=args.render,
 			geometry=geometry,
-			subsample=args.subsample,)
+			subsample=args.subsample,
+			colormode=args.colorscheme)
 
 	try:
 		os.makedirs(args.outdir)
@@ -154,6 +156,7 @@ def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
 	parser.add_argument('-b', '--bpc',          help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=range(1, 17))
 	parser.add_argument('-c', '--code',         help='attractor code', type=str)
+	parser.add_argument('-C', '--colorscheme',  help='attractor color scheme ("light" or "dark")', type=str, choices=('light', 'dark'))
 	parser.add_argument('-g', '--geometry',     help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
 	parser.add_argument('-j', '--threads',      help='Number of threads to use (default = %d)' % defaultParameters['threads'], type=int, default=defaultParameters['threads'])
 	parser.add_argument('-l', '--loglevel',     help='Sets log level (the higher the more verbose - default = %d)' % defaultParameters['loglevel'], default=defaultParameters['loglevel'], type=int, choices=range(len(LOGLEVELS)))
