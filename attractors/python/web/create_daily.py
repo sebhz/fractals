@@ -328,8 +328,10 @@ def processAttractor(AttractorNum):
 	MAP['__order'] = t + 1
 
 	subsampling = 3
+	colorscheme = random.choice(('light', 'dark'))
 	logging.info("Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum)))
 	logging.info("We have a %s attractor (order %d)." % (MAP['__type'], MAP['__order']))
+	logging.info("Color scheme used: " + colorscheme)
 
 	while True:
 		done = False
@@ -343,7 +345,8 @@ def processAttractor(AttractorNum):
 			r = render.Renderer(bpc=8,
 				mode='greyscale',
 				geometry=parameters['geometry'],
-				subsample=subsampling)
+				subsample=subsampling,
+				colormode=colorscheme)
 			a = at.createFrequencyMap(r.geometry, args.nthreads)
 			if not r.isNice(a) : break
 			a = r.renderAttractor(a)
