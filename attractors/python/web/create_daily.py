@@ -343,7 +343,6 @@ def processAttractor(AttractorNum):
 			logging.debug("Num iterations: %d", iterations)
 			at.iterations = iterations
 			r = render.Renderer(bpc=8,
-				mode='greyscale',
 				geometry=parameters['geometry'],
 				subsample=subsampling,
 				colormode=colorscheme)
