@@ -30,6 +30,7 @@ defaultParameters = {
 	'iter' : 1280*1024*OVERITERATE_FACTOR,
 	'order': 2,
 	'code' : None,
+	'dimension' : 2,
 }
 modulus = lambda x,y: x*x + y*y
 
@@ -49,7 +50,12 @@ class Attractor(object):
 		self.lyapunov  = {'nl': 0, 'lsum': 0, 'ly': 0}
 		self.fdim      = 0
 		self.bound     = None
+		# TODO: type checking on parameters
 		self.iterations = getParam('iter')
+		self.dimension  = getParam('dimension')
+		if self.dimension < 2 or self.dimension > 3:
+			self.logger.warning("Invalid dimension value " + self.dimension + ". Forcing 2D.")
+			self.dimension = 2
 
 	def __str__(self):
 		return self.code if self.code else super(Attractor, self).__str__()
