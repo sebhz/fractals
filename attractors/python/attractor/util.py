@@ -34,7 +34,7 @@ def scaleBounds(wc, sd, pct=0.05):
 	Pads and enlarges a window to center it in a larger window whose aspect ratio is given.
 
 	Arguments:
-		wc: the window to scale, as a (x0, y0, x1, y1) tuple.
+		wc: the window to scale, as a (x0, y0, z0, x1, y1, z1) tuple.
 		    x0, y0 are the coordinates of the bottom left point
 		    x1, y1 are the coordinates of the top right point
 		sd: the screen dimension, as a (w, h) tuple
@@ -45,10 +45,9 @@ def scaleBounds(wc, sd, pct=0.05):
 	both directions, enlarged to have the same aspect ratio as sd, so that
 	sc is now centered in the new window.
 	"""
-
-	hoff = (wc[3]-wc[1])*float(pct)/2
-	woff = (wc[2]-wc[0])*float(pct)/2
-	nwc  = (wc[0]-woff, wc[1]-hoff, wc[2]+woff, wc[3]+hoff)
+	hoff = (wc[4]-wc[1])*float(pct)/2
+	woff = (wc[3]-wc[0])*float(pct)/2
+	nwc  = (wc[0]-woff, wc[1]-hoff, wc[3]+woff, wc[4]+hoff)
 
 	wa = float(nwc[3]-nwc[1])/float(nwc[2]-nwc[0]) # New window aspect ratio
 	sa = float(sd[1])/float(sd[0]) # Screen aspect ratio
