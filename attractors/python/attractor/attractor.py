@@ -25,6 +25,7 @@ import util
 from multiprocessing import Manager, Process
 
 OVERITERATE_FACTOR=4
+LYAPUNOV_BOUND=100000
 
 defaultParameters = {
 	'iter' : 1280*1024*OVERITERATE_FACTOR,
@@ -32,7 +33,7 @@ defaultParameters = {
 	'code' : None,
 	'dimension' : 2,
 }
-modulus = lambda x,y: x*x + y*y
+modulus = lambda x,y,z: x*x + y*y + z*z
 
 class Attractor(object):
 	"""
@@ -76,9 +77,9 @@ class Attractor(object):
 		self.lyapunov['ly'] = self.lyapunov['lsum'] / self.lyapunov['nl']
 		return [p[i]+rs*x for i,x in enumerate(dl)]
 
-	def checkConvergence(self, initPoint=(0.1, 0.1)):
+	def checkConvergence(self, initPoint=(0.1, 0.1, 0.0)):
 		self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
-		pmin, pmax = ([100000,100000], [-100000,-100000])
+		pmin, pmax = ([LYAPUNOV_BOUND]*3, [-LYAPUNOV_BOUND]*3)
 		p = initPoint
 		pe = [x + self.epsilon if i==0 else x for i, x in enumerate(p)]
 
@@ -116,17 +117,18 @@ class Attractor(object):
 		i = 0
 		while True:
 			if not self.bound:
-				p = (random.random(), random.random())
+				p = (random.random(), random.random(), 0)
 			else:
-				rx = self.bound[0] + random.random()*(self.bound[2]-self.bound[0])
-				ry = self.bound[1] + random.random()*(self.bound[3]-self.bound[1])
-				p = (rx, ry)
+				rx = self.bound[0] + random.random()*(self.bound[3]-self.bound[0])
+				ry = self.bound[1] + random.random()*(self.bound[4]-self.bound[1])
+				rz = self.bound[2] + random.random()*(self.bound[5]-self.bound[2])
+				p = (rx, ry, rz)
 			if self.checkConvergence(p):
 				initPoints.append(p)
 				i += 1
 			if i == n: return initPoints
 
-	def iterateMap(self, screenDim, windowC, aContainer, index, lock, initPoint=(0.1, 0.1)):
+	def iterateMap(self, screenDim, windowC, aContainer, index, lock, initPoint=(0.1, 0.1, 0.0)):
 		a = dict()
 		p = initPoint
 
@@ -148,9 +150,15 @@ class Attractor(object):
 				projectedPixel = w_to_s(pnew)
 
 				if projectedPixel in a:
-					a[projectedPixel] += 1
+					if self.dimension == 2:
+						a[projectedPixel] += 1
+					elif pnew[2] > a[projectedPixel]:
+						a[projectedPixel] = pnew[2]
 				else:
-					a[projectedPixel] = 1
+					if self.dimension == 2:
+						a[projectedPixel] = 1
+					else:
+						a[projectedPixel] = pnew[2]
 			p = pnew
 		with lock:
 			aContainer[index] = a
@@ -171,7 +179,10 @@ class Attractor(object):
 			if vv == None: continue
 			for k, e in vv.iteritems():
 				if k in v:
-					v[k] += e
+					if self.dimension == 2:
+						v[k] += e
+					elif e > v[k]:
+						v[k] = e
 				else:
 					v[k] = e
 
@@ -216,7 +227,11 @@ class Attractor(object):
 			boxes[boxCoordinates] = True
 		n = len(boxes.keys())
 
-		self.fdim = math.log(n)/math.log(1/(sideLength*pixelSize))
+		try:
+			self.fdim = math.log(n)/math.log(1/(sideLength*pixelSize))
+		except ValueError:
+			self.logger.error("Math error when trying to compute dimension. Setting it to 0")
+			self.fdim = 0
 
 	def computeCorrelationDimension(self, a, screenDim):
 		"""
@@ -234,7 +249,7 @@ class Attractor(object):
 
 		for p in points: # Iterate on each attractor point
 			p2 = points[random.randint(0,l-1)] # Pick another point at random
-			d = modulus(p2[0]-p[0], p2[1]-p[1])
+			d = modulus(p2[0]-p[0], p2[1]-p[1], 0)
 			if d == 0: continue # Oops we picked the same point twice
 			if d < d1: n2 += 1  # Distance within a big circle
 			if d > d2: continue # But out of a small circle
@@ -326,7 +341,7 @@ class PolynomialAttractor(Attractor):
 			self.logger.error("Either this is a very slowly diverging attractor, or you used a wrong code")
 			return None
 
-		return l
+		return l + [0.0]
 
 	def computeFractalDimension(self, a, screenDim, windowC):
 		self.computeBoxCountingDimension(a, screenDim, windowC)
@@ -341,6 +356,7 @@ class DeJongAttractor(Attractor):
 			if 'code' in kwargs and kwargs['code'] != None:
 				self.code = kwargs['code']
 				self.decodeCode() # Will populate coef
+		self.dimension = 2
 
 	def createCode(self):
 		self.code = "j"
@@ -357,7 +373,8 @@ class DeJongAttractor(Attractor):
 
 	def getNextPoint(self, p):
 		return ( math.sin(self.coef[0][0]*p[1]) - math.cos(self.coef[0][1]*p[0]),
-		         math.sin(self.coef[1][0]*p[0]) - math.cos(self.coef[1][1]*p[1]), )
+		         math.sin(self.coef[1][0]*p[0]) - math.cos(self.coef[1][1]*p[1]),
+				 0, )
 
 	def humanReadable(self, isHTML):
 		equation = list()
@@ -373,5 +390,5 @@ class DeJongAttractor(Attractor):
 		return equation
 
 	def computeFractalDimension(self, a, screenDim, windowC):
-		self.computeCorrelationDimension(a, screenDim)
+		self.computeCorrelationDimension(a, screenDim + [0])
 
