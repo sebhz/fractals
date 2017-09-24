@@ -347,7 +347,7 @@ class PolynomialAttractor(Attractor):
 							result += c[n]*(p[0]**j)*(p[1]**i)
 							n += 1
 							continue
-						for k in range(self.orfer-i-j+1):
+						for k in range(self.order-i-j+1):
 							result += c[n]*(p[0]**k)*(p[1]**j)*(p[2]**i)
 							n+=1
 				l.append(result)
