@@ -320,7 +320,7 @@ class PolynomialAttractor(Attractor):
 		return equation
 
 	def getPolynomLength(self):
-		self.pl = (self.order+2)*(self.order+1)/2
+		self.pl = math.factorial(self.order+self.dimension)/math.factorial(self.order)/math.factorial(self.dimension)
 
 	def getRandomCoef(self):
 		self.coef = [[random.randint(-30, 31)*self.codeStep for _ in range(0, self.pl)] for __ in range(2)]
