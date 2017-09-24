@@ -276,14 +276,15 @@ class PolynomialAttractor(Attractor):
 			self.getPolynomLength()
 
 	def decodeCode(self):
+		self.dimension = int(self.code[0])
 		self.order = int(self.code[1])
 		self.getPolynomLength()
 
 		d = dict([(v, i) for i, v in enumerate(self.codelist)])
-		self.coef = [[(d[ord(_)]-30)*self.codeStep for _ in self.code[3+__*self.pl:3+(__+1)*self.pl]] for __ in range(2)]
+		self.coef = [[(d[ord(_)]-30)*self.codeStep for _ in self.code[3+__*self.pl:3+(__+1)*self.pl]] for __ in range(self.dimension)]
 
 	def createCode(self):
-		self.code = str(2)+str(self.order)
+		self.code = str(self.dimension)+str(self.order)
 		self.code += "_"
 		# ASCII codes of digits and letters
 		cl = [self.codelist[int(x/self.codeStep)+30] for c in self.coef for x in c]
@@ -292,8 +293,8 @@ class PolynomialAttractor(Attractor):
 	# Outputs a human readable string of the polynom. If isHTML is True
 	# outputs an HTML blurb of the equation. Else output a plain text.
 	def humanReadable(self, isHTML):
-		variables = ('xn', 'yn')
-		equation = ["", ""]
+		variables = ('xn', 'yn', 'zn')
+		equation = [""]*self.dimension
 		for v, c in enumerate(self.coef): # Iterate on each dimension
 			n = 0
 			equation[v] = variables[v]+"+1="
@@ -302,9 +303,18 @@ class PolynomialAttractor(Attractor):
 					if c[n] == 0:
 						n+=1
 						continue
-					equation[v] += "%.3f*%s^%d*%s^%d+" % (c[n], variables[0], j, variables[1], i)
-					n += 1
-					continue
+					if self.dimension == 2:
+						equation[v] += "%.3f*%s^%d*%s^%d+" % (c[n], variables[0], j, variables[1], i)
+						n += 1
+						continue
+					# if dimension == 3 we should end up here
+					for k in range(self.order-i-j+1):
+						if c[n] == 0:
+							n+=1
+							continue
+						equation[v] += "%.3f*%s^%d*%s^%d*%s^%d+" % (c[n], variables[0], k, variables[1], j, variables[2], i)
+						n+=1
+
 			# Some cleanup
 			for r in variables:
 				equation[v] = equation[v].replace("*%s^0" % (r), "")
@@ -315,7 +325,7 @@ class PolynomialAttractor(Attractor):
 			if isHTML: # Convert this in a nice HTML equation
 				equation[v] = re.sub(r'\^(\d+)',r'<sup>\1</sup>', equation[v])
 				equation[v] = re.sub(r'n\+1=',r'<sub>n+1</sub>=', equation[v])
-				equation[v] = re.sub(r'(x|y)n',r'\1<sub>n</sub>', equation[v])
+				equation[v] = re.sub(r'(x|y|z)n',r'\1<sub>n</sub>', equation[v])
 
 		return equation
 
@@ -323,7 +333,7 @@ class PolynomialAttractor(Attractor):
 		self.pl = math.factorial(self.order+self.dimension)/math.factorial(self.order)/math.factorial(self.dimension)
 
 	def getRandomCoef(self):
-		self.coef = [[random.randint(-30, 31)*self.codeStep for _ in range(0, self.pl)] for __ in range(2)]
+		self.coef = [[random.randint(-30, 31)*self.codeStep for _ in range(0, self.pl)] for __ in range(self.dimension)]
 
 	def getNextPoint(self, p):
 		l = list()
@@ -333,15 +343,20 @@ class PolynomialAttractor(Attractor):
 				n = 0
 				for i in range(self.order+1):
 					for j in range(self.order-i+1):
-						result += c[n]*(p[0]**j)*(p[1]**i)
-						n += 1
+						if self.dimension == 2:
+							result += c[n]*(p[0]**j)*(p[1]**i)
+							n += 1
+							continue
+						for k in range(self.orfer-i-j+1):
+							result += c[n]*(p[0]**k)*(p[1]**j)*(p[2]**i)
+							n+=1
 				l.append(result)
 		except OverflowError:
 			self.logger.error("Overflow during attractor computation.")
 			self.logger.error("Either this is a very slowly diverging attractor, or you used a wrong code")
 			return None
 
-		return l + [0.0]
+		return l if self.dimension == 3 else l + [0]
 
 	def computeFractalDimension(self, a, screenDim, windowC):
 		self.computeBoxCountingDimension(a, screenDim, windowC)
