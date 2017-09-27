@@ -274,6 +274,7 @@ class PolynomialAttractor(Attractor):
 			self.order      = getParam('order')
 			self.coef       = None
 			self.getPolynomLength()
+		if self.dimension == 3: self.codeStep /= 4
 
 	def decodeCode(self):
 		self.dimension = int(self.code[0])
