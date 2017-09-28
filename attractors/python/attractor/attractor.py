@@ -186,6 +186,12 @@ class Attractor(object):
 				else:
 					v[k] = e
 
+		# For 3D, translate the Z buffer to have min equal to 0
+		if self.dimension == 3:
+			m = min(v.values())
+			for k, e in v.iteritems():
+				v[k] -= m
+
 		self.logger.debug("%d points in the attractor before any dithering done." % (len(v.keys())))
 		return v
 

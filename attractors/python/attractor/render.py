@@ -38,7 +38,9 @@ class Renderer(object):
 		self.internalbg = 0xFFFF if self.colormode == 'light' else 0
 
 	# Equalize the attractor
-	# attractor: attractor points: dict (X,Y) and containing frequency
+	# attractor: attractor points: dict (X,Y) and containing :
+	# - frequency for 2D
+	# - Z for 3D
 	# Returns the attractor points: dict indexed by (X, Y) and containing COLOR, 
 	def postprocessAttractor(self, at):
 		M = max(at.values())
