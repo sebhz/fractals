@@ -295,9 +295,9 @@ def sec2hms(seconds):
 	h, m = divmod(m, 60)
 	return "%dh%02dm%02ds" % (h, m, s)
 
-def createAttractor(AttractorType, AttractorOrder):
+def createAttractor(AttractorType, AttractorOrder, AttractorDimension):
 	if AttractorType == 'polynomial':
-		at = attractor.PolynomialAttractor(order = AttractorOrder)
+		at = attractor.PolynomialAttractor(order = AttractorOrder, dimension = AttractorDimension)
 	else:
 		at = attractor.DeJongAttractor()
 	at.explore()
@@ -329,13 +329,14 @@ def processAttractor(AttractorNum):
 
 	subsampling = 3
 	colorscheme = random.choice(('light', 'dark'))
+	dimension = random.choice((2,3))
 	logging.info("Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum)))
-	logging.info("We have a %s attractor (order %d)." % (MAP['__type'], MAP['__order']))
+	logging.info("We have a %s attractor (order %d, dimension %d)." % (MAP['__type'], MAP['__order'], dimension))
 	logging.info("Color scheme used: " + colorscheme)
 
 	while True:
 		done = False
-		at = createAttractor(MAP['__type'], MAP['__order'])
+		at = createAttractor(MAP['__type'], MAP['__order'], dimension)
 		filePath = at.code + '_8.png'
 		for parameters in ( {'geometry': (1000, 1000), 'directory': '/tmp'}, ):
 			t0 = time()
@@ -345,7 +346,8 @@ def processAttractor(AttractorNum):
 			r = render.Renderer(bpc=8,
 				geometry=parameters['geometry'],
 				subsample=subsampling,
-				colormode=colorscheme)
+				colormode=colorscheme,
+				dimension=dimension)
 			a = at.createFrequencyMap(r.geometry, args.nthreads)
 			if not r.isNice(a) : break
 			a = r.renderAttractor(a)
