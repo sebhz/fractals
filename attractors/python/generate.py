@@ -139,7 +139,8 @@ def generateAttractor(geometry, nthreads):
 	r  = render.Renderer(bpc=args.bpc,
 			geometry=geometry,
 			subsample=args.subsample,
-			colormode=args.colorscheme)
+			colormode=args.colorscheme,
+			dimension=args.dimension)
 
 	try:
 		os.makedirs(args.outdir)

@@ -152,7 +152,7 @@ class Attractor(object):
 				if projectedPixel in a:
 					if self.dimension == 2:
 						a[projectedPixel] += 1
-					elif pnew[2] < a[projectedPixel]:
+					elif pnew[2] > a[projectedPixel]:
 						a[projectedPixel] = pnew[2]
 				else:
 					if self.dimension == 2:
@@ -181,7 +181,7 @@ class Attractor(object):
 				if k in v:
 					if self.dimension == 2:
 						v[k] += e
-					elif e < v[k]:
+					elif e > v[k]:
 						v[k] = e
 				else:
 					v[k] = e

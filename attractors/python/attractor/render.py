@@ -19,6 +19,7 @@ defaultParameters = {
 	'colormode': 'light',
 	'subsample': 1,
 	'bpc' : 8,
+	'dimension' : 2,
 	'geometry' : (800, 600),
 }
 
@@ -31,11 +32,15 @@ class Renderer(object):
 		self.subsample  = getParam('subsample')
 		self.geometry   = getParam('geometry')
 		self.colormode  = getParam('colormode')
+		self.dimension  = getParam('dimension')
 		self.transparentbg  = getParam('transparentbg')
 		self.shift      = INTERNAL_BPC - self.bpc
 		self.backgroundColor = (1<<self.bpc) - 1 if self.colormode == 'light' else 0
 		self.geometry   = [x*self.subsample for x in self.geometry]
 		self.internalbg = 0xFFFF if self.colormode == 'light' else 0
+		if self.dimension < 2 or self.dimension > 3:
+			self.logger.warning("Trying to create renderer with invalid dimension (" + self.dimension + "). Defaulting to 2.")
+			self.dimension = 2
 
 	# Equalize the attractor
 	# attractor: attractor points: dict (X,Y) and containing :
@@ -89,10 +94,14 @@ class Renderer(object):
 			pools[i] = 1+((1<<INTERNAL_BPC)-2)*(pools[i]-pools[0])/(pools[-1]-pools[0])
 
 		# Now reapply the stretched values
-		for k in p:
-			if self.colormode == 'light': # invert the values so that high order pixels are dark
-				p[k] = ((1<<INTERNAL_BPC)-1) - pools[p[k]]
-			else:
+		if self.dimension == 2:
+			for k in p:
+				if self.colormode == 'light': # invert the values so that high order pixels are dark
+					p[k] = ((1<<INTERNAL_BPC)-1) - pools[p[k]]
+				else:
+					p[k] = pools[p[k]]
+		else:
+			for k in p:
 				p[k] = pools[p[k]]
 
 	def subsampleAttractor(self, at):
