@@ -66,6 +66,9 @@ __x_polynom
 <p class="code">
 __y_polynom
 </p>
+<p class="code">
+__z_polynom
+</p>
 </div>
 <div>
 Generation and rendering time: __time
@@ -141,6 +144,9 @@ __x_polynom
 </span>
 <p class="code">
 __y_polynom
+</p>
+<p class="code">
+__z_polynom
 </p>
 </div>
 <div>
@@ -314,6 +320,7 @@ def processAttractor(AttractorNum):
 		'__link' : "",
 		'__x_polynom' : "",
 		'__y_polynom' : "",
+		'__z_polynom' : "",
 		'__time' : "",
 		'__type' : "polynomial",
 	}
@@ -363,7 +370,11 @@ def processAttractor(AttractorNum):
 	else:
 		MAP['__order'] = 'irrelevant'
 
-	MAP['__x_polynom'], MAP['__y_polynom'] = at.humanReadable(isHTML=True)
+	if dimension == 3:
+		MAP['__x_polynom'], MAP['__y_polynom'], MAP['__z_polynom'] = at.humanReadable(isHTML=True)
+	else:
+		MAP['__x_polynom'], MAP['__y_polynom'] = at.humanReadable(isHTML=True)
+
 	MAP['__iterations'] = str(at.iterations)
 	MAP['__dimension'] = "%.3f" % (at.fdim)
 	MAP['__lyapunov'] = "%.3f" % (at.lyapunov['ly'])
