@@ -324,7 +324,7 @@ def processAttractor(AttractorNum):
 		'__time' : "",
 		'__type' : "polynomial",
 	}
-
+	maxFileNameLength = os.statvfs('/').f_namemax
 	dt = REFERENCE_DATE + timedelta(days=attractorNum-1)
 	MAP['__date'] = dt.strftime("%Y, %b %d")
 	t = AttractorNum % 7
@@ -336,7 +336,7 @@ def processAttractor(AttractorNum):
 
 	subsampling = 3
 	colorscheme = random.choice(('light', 'dark'))
-	dimension = random.choice((2,3))
+	dimension = 2 if MAP['__type'] == "dejong" or MAP['__order'] > 4 else random.choice((2,3))
 	logging.info("Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum)))
 	logging.info("We have a %s attractor (order %d, dimension %d)." % (MAP['__type'], MAP['__order'], dimension))
 	logging.info("Color scheme used: " + colorscheme)
@@ -344,7 +344,6 @@ def processAttractor(AttractorNum):
 	while True:
 		done = False
 		at = createAttractor(MAP['__type'], MAP['__order'], dimension)
-		filePath = at.code + '_8.png'
 		for parameters in ( {'geometry': (1000, 1000), 'directory': '/tmp'}, ):
 			t0 = time()
 			iterations = util.getIdealIterationNumber(MAP['__type'], parameters['geometry'], subsampling)
@@ -359,7 +358,15 @@ def processAttractor(AttractorNum):
 			if not r.isNice(a) : break
 			a = r.renderAttractor(a)
 			if a == None: break
-			r.writeAttractorPNG(a, os.path.join(parameters['directory'], filePath))
+
+			suffix = '_8.png'
+			if len(at.code) < maxFileNameLength - len(suffix):
+				filePath = at.code + suffix
+			else:
+				filePath = at.code[:maxFileNameLength-len(suffix)-1] + '#' + suffix
+			# TODO: we should check that full path is not too long
+			fname = os.path.join(parameters['directory'], filePath)
+			r.writeAttractorPNG(a, fname)
 			done = True
 			t1 = time()
 		if done: break
