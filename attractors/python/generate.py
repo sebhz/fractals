@@ -68,38 +68,62 @@ def createAttractor():
 	logging.debug("Converging attractor found. Boundaries: %s" % (str(at.bound)))
 
 	return at
-
+###
+# Generate a sequence of 1024 attractors converging attractors "close to each other"
+# By varying one parameter in each dimension
+#
 def generateAttractorSequence(r, nthreads):
-	SEQUENCE_STEP = 1024
-	numAttractors = 1
-	sequenceList = [None]*args.sequence
+	sequenceSize = 1024
+	coefStep = 0.125/16
+	coefList = list()
 
-	attractorStart = createAttractor()
+	#Find a nice attractor to start with !
+	while True:
+		attractorStart = createAttractor()
+		a = attractorStart.createFrequencyMap(r.geometry, nthreads)
+		# Will also test if a is null
+		if r.isNice(a):
+			break
+
 	bounds   = attractorStart.bound
-
 	args.code = None
-	for sequence in xrange(args.sequence):
-		attractorEnd   = createAttractor()
-		logging.info("Generating sequence between %s and %s." % (attractorStart.code, attractorEnd.code))
-		sequenceList[sequence] = list()
-		sequenceList[sequence].append([ x[:] for x in attractorStart.coef ])
 
-		for n in xrange(1, SEQUENCE_STEP):
-			currentCoef = [[xx + float(yy-xx)*n/SEQUENCE_STEP for xx,yy in zip(x, y)] for x,y in zip(sequenceList[sequence][0], attractorEnd.coef)]
+	coefMod=list()
+	if args.type == 'polynomial':
+		for d in xrange(attractorStart.dimension):
+			coefMod.append((random.randint(0, attractorStart.pl-1), coefStep*random.choice((-1, 1))))
+	else:
+		for d in xrange(2):
+			coefMod.append((random.randint(0, 1), coefStep*random.choice((-1, 1))))
 
-			# Use attractorStart as temp storage !
+	for num in xrange(sequenceSize):
+		logging.debug("Attractor #%d in sequence." % (num))
+		coefList.append([ x[:] for x in attractorStart.coef ])
+		bounds = [min(x) for x in zip(bounds[0:3], attractorStart.bound[0:3])] + [max(x) for x in zip(bounds[3:6], attractorStart.bound[3:6])]
+		# Modify the coefficients chosen in the direction chosen by a tiny bit.
+		# Try this until the resulting attractor is converging. If it is not converging, modify other coefs !
+		while True:
+			currentCoef = attractorStart.coef
+			attractorStart.bound = None # We only update bounds if they do not exist !
+			for d in xrange(attractorStart.dimension):
+				coefModPosition = coefMod[d][0]
+				attractorStart.coef[d][coefModPosition] += coefMod[d][1]
+			if attractorStart.checkConvergence():
+				logging.debug("Found converging attractor.")
+				break
+
+			# We did not converge: change our coefficients direction and position and try again
+			coefMod=list()
+			if args.type == 'polynomial':
+				for d in xrange(attractorStart.dimension):
+					coefMod.append((random.randint(0, attractorStart.pl-1), coefStep*random.choice((-1, 1))))
+			else:
+				for d in xrange(2):
+					coefMod.append((random.randint(0, 1), coefStep*random.choice((-1, 1))))
 			attractorStart.coef = currentCoef
-			attractorStart.bound = None
-			if attractorStart.checkConvergence(): # Will also update the attractor bounds
-				sequenceList[sequence].append(currentCoef)
-				bounds = (min(bounds[0], attractorStart.bound[0]), min(bounds[1], attractorStart.bound[1]), max(bounds[2], attractorStart.bound[2]), max(bounds[3], attractorStart.bound[3]))
-				numAttractors += 1
-		attractorStart = attractorEnd
 
-		logging.info("Sequence %d generated. %d converging attractors found so far." % (sequence, numAttractors))
-		logging.debug("Attractors bounding box: %s." % (str(bounds)))
-
-	coefList = [ coefs for sequence in sequenceList for coefs in sequence ]
+	logging.info("Attractor sequence generated. %d converging attractors in the sequence." % (sequenceSize))
+	logging.debug("Attractors bounding box: %s." % (str(bounds)))
 
 	for i, c in enumerate(coefList):
 		attractorStart.coef = c
