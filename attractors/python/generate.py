@@ -68,71 +68,64 @@ def createAttractor():
 	logging.debug("Converging attractor found. Boundaries: %s" % (str(at.bound)))
 
 	return at
-###
-# Generate a sequence of 1024 attractors converging attractors "close to each other"
-# By varying one parameter in each dimension
-#
+
+def getCloseCoef(a, step):
+	coefMod=list()
+	if args.type == 'polynomial':
+		for d in xrange(a.dimension):
+			coefMod.append((random.randint(0, a.pl-1), step*random.choice((-1, 1))))
+	else:
+		for d in xrange(2):
+			coefMod.append((random.randint(0, 1), step*random.choice((-1, 1))))
+	return coefMod
+
+"""
+Generate a sequence of converging attractors "close to each other"
+"""
 def generateAttractorSequence(r, nthreads):
-	sequenceSize = 1024
+	sequenceSize = args.sequence or 1024
 	coefStep = 0.125/16
 	coefList = list()
 
-	#Find a nice attractor to start with !
+	# Find a nice attractor to start with !
 	while True:
-		attractorStart = createAttractor()
-		a = attractorStart.createFrequencyMap(r.geometry, nthreads)
+		at = createAttractor()
+		a = at.createFrequencyMap(r.geometry, nthreads)
 		# Will also test if a is null
 		if r.isNice(a):
 			break
 
-	bounds   = attractorStart.bound
+	bounds   = at.bound
 	args.code = None
-
-	coefMod=list()
-	if args.type == 'polynomial':
-		for d in xrange(attractorStart.dimension):
-			coefMod.append((random.randint(0, attractorStart.pl-1), coefStep*random.choice((-1, 1))))
-	else:
-		for d in xrange(2):
-			coefMod.append((random.randint(0, 1), coefStep*random.choice((-1, 1))))
 
 	for num in xrange(sequenceSize):
 		logging.debug("Attractor #%d in sequence." % (num))
-		coefList.append([ x[:] for x in attractorStart.coef ])
-		bounds = [min(x) for x in zip(bounds[0:3], attractorStart.bound[0:3])] + [max(x) for x in zip(bounds[3:6], attractorStart.bound[3:6])]
-		# Modify the coefficients chosen in the direction chosen by a tiny bit.
-		# Try this until the resulting attractor is converging. If it is not converging, modify other coefs !
+		coefList.append([ x[:] for x in at.coef ])
+		bounds = [min(x) for x in zip(bounds[0:3], at.bound[0:3])] + [max(x) for x in zip(bounds[3:6], at.bound[3:6])]
+		currentCoef = at.coef
+		# Modify the attractor coefficients. Backup and try gain until resulting attractor converges
 		while True:
-			currentCoef = attractorStart.coef
-			attractorStart.bound = None # We only update bounds if they do not exist !
-			for d in xrange(attractorStart.dimension):
+			coefMod = getCloseCoef(at, coefStep)
+			at.bound = None # We only update bounds if they do not exist !
+			for d in xrange(at.dimension):
 				coefModPosition = coefMod[d][0]
-				attractorStart.coef[d][coefModPosition] += coefMod[d][1]
-			if attractorStart.checkConvergence():
-				logging.debug("Found converging attractor.")
+				at.coef[d][coefModPosition] += coefMod[d][1]
+			if at.checkConvergence():
 				break
-
-			# We did not converge: change our coefficients direction and position and try again
-			coefMod=list()
-			if args.type == 'polynomial':
-				for d in xrange(attractorStart.dimension):
-					coefMod.append((random.randint(0, attractorStart.pl-1), coefStep*random.choice((-1, 1))))
-			else:
-				for d in xrange(2):
-					coefMod.append((random.randint(0, 1), coefStep*random.choice((-1, 1))))
-			attractorStart.coef = currentCoef
+			# We did not converge: backup one step and try again
+			at.coef = currentCoef
 
 	logging.info("Attractor sequence generated. %d converging attractors in the sequence." % (sequenceSize))
 	logging.debug("Attractors bounding box: %s." % (str(bounds)))
 
 	for i, c in enumerate(coefList):
-		attractorStart.coef = c
-		attractorStart.bound = bounds
-		a = attractorStart.createFrequencyMap(r.geometry, nthreads)
+		at.coef = c
+		at.bound = bounds
+		a = at.createFrequencyMap(r.geometry, nthreads)
 		a = r.renderAttractor(a)
 		if not a : continue
 
-		path = os.path.join(args.outdir, attractorStart.code + "_" + "%04d" % i + ".png")
+		path = os.path.join(args.outdir, at.code + "_" + "%04d" % i + ".png")
 		r.writeAttractorPNG(a, path)
 
 def generateSingleAttractor(r, nthreads):
@@ -190,7 +183,7 @@ def parseArgs():
 	parser.add_argument('-n', '--number',       help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
 	parser.add_argument('-o', '--order',        help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
 	parser.add_argument('-O', '--outdir',       help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
-	parser.add_argument('-q', '--sequence',     help='generate n following sequences of attractors', type=int)
+	parser.add_argument('-q', '--sequence',     help='generate a sequence of SEQUENCE attractors', type=int)
 	parser.add_argument('-s', '--subsample',    help='subsampling rate (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3))
 	parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong"))
 	args = parser.parse_args()
