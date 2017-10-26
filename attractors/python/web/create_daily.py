@@ -392,6 +392,7 @@ def processAttractor(AttractorNum):
 
 def processThumbnails(MAP):
 	filename = MAP['__code'] + "_8.png"
+	radius = 15
 	for d in (("960x960", "png"), ("600x600", "png_thumb"), ("128x128", "png_tile")):
 		if not os.path.exists(d[1]):
 			os.mkdir(d[1])
@@ -399,10 +400,13 @@ def processThumbnails(MAP):
 			logging.error("Output directory " + d[1] + " exists, but is a plain file. Ignoring it.")
 			continue
 
+		(w, h) = d[0].split('x')
+		roundedCornerCommand = 'roundRectangle 0,0 %s,%s %d,%d' % (w, h, radius, radius)
 		try:
-			subprocess.call(["convert", os.path.join("/tmp", filename), "-resize", d[0], os.path.join(d[1], filename)])
+			subprocess.call(["mogrify", "-resize", d[0], os.path.join("/tmp", filename)])
+			subprocess.call(['convert', '-size', d[0], 'xc:none', '-fill', 'white', '-draw', roundedCornerCommand, os.path.join("/tmp", filename), '-compose', 'SrcIn', '-composite', os.path.join(d[1], filename)])
 		except OSError:
-			logging.error("Problem invoking convert utility. Is ImageMagick installed ?")
+			logging.error("Problem invoking convert or mogrify utility. Is ImageMagick installed ?")
 			break
 
 #
