@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import os
 import re
@@ -54,7 +54,7 @@ __tiles
 def fillTemplate(template, MAP):
 	out_page=""
 	for line in template.split('\n'):
-		for k, v in MAP.iteritems():
+		for k, v in MAP.items():
 			if k in line:
 				line = line.replace(k, str(v))
 		out_page += line + '\n'
@@ -77,7 +77,7 @@ def daysBetween(d1, d2):
 def createImageMap():
 	h=dict()
 	d = daysBetween(REFERENCE_DATE, datetime.today()) + 1
-	for day in xrange(1,d+1):
+	for day in range(1,d+1):
 		dt = REFERENCE_DATE + timedelta(days=day-1)
 		if not (dt.year, dt.month) in h: h[(dt.year, dt.month)] = list()
 		h[(dt.year, dt.month)].append(day)

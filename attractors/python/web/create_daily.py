@@ -1,4 +1,4 @@
-#!/usr/bin/python2.7
+#!/usr/bin/python3
 
 import os
 import sys
@@ -209,7 +209,7 @@ def parseArgs():
 def fillTemplate(template, MAP):
 	out_page=""
 	for line in template.split('\n'):
-		for k, v in MAP.iteritems():
+		for k, v in MAP.items():
 			if k in line:
 				line = line.replace(k, str(v))
 		out_page += line + '\n'
@@ -433,7 +433,7 @@ else:
 	if not args.all:
 		attractorRange = (d,)
 	else:
-		attractorRange = range(1, d+1)
+		attractorRange = list(range(1, d+1))
 
 for attractorNum in attractorRange:
 	MAP = processAttractor(attractorNum)

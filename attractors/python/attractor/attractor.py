@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@ import random
 import math
 import re
 import logging
-import util
+from . import util
 from multiprocessing import Manager, Process
 
 OVERITERATE_FACTOR=4
@@ -83,7 +83,7 @@ class Attractor(object):
 		p = initPoint
 		pe = [x + self.epsilon if i==0 else x for i, x in enumerate(p)]
 
-		for i in xrange(self.convMaxIter):
+		for i in range(self.convMaxIter):
 			pnew = self.getNextPoint(p)
 			if not pnew: return False
 			if modulus(*pnew) > 1000000: # Unbounded - not an SA
@@ -139,7 +139,7 @@ class Attractor(object):
 			int(       (p[0]-windowC[0])*ratioX),
 			int(maxY - (p[1]-windowC[1])*ratioY) )
 
-		for i in xrange(self.iterations):
+		for i in range(self.iterations):
 			pnew = self.getNextPoint(p)
 			if not pnew:
 				aContainer[index] = None
@@ -166,7 +166,7 @@ class Attractor(object):
 	def mergeAttractors(self, a):
 		v = None
 
-		for i in xrange(len(a)):
+		for i in range(len(a)):
 			if a[i] != None:
 				v = a[i]
 				break
@@ -177,7 +177,7 @@ class Attractor(object):
 
 		for vv in a[i+1:]:
 			if vv == None: continue
-			for k, e in vv.iteritems():
+			for k, e in vv.items():
 				if k in v:
 					if self.dimension == 2:
 						v[k] += e
@@ -189,10 +189,10 @@ class Attractor(object):
 		# For 3D, translate the Z buffer to have min equal to 0
 		if self.dimension == 3:
 			m = min(v.values())
-			for k, e in v.iteritems():
+			for k, e in v.items():
 				v[k] -= m
 
-		self.logger.debug("%d points in the attractor before any dithering done." % (len(v.keys())))
+		self.logger.debug("%d points in the attractor before any dithering done." % (len(v)))
 		return v
 
 	def createFrequencyMap(self, screenDim, nthreads):
@@ -231,7 +231,7 @@ class Attractor(object):
 		for pt in a.keys():
 			boxCoordinates = (int(pt[0]/sideLength), int(pt[1]/sideLength))
 			boxes[boxCoordinates] = True
-		n = len(boxes.keys())
+		n = len(boxes)
 
 		try:
 			self.fdim = math.log(n)/math.log(1/(sideLength*pixelSize))
@@ -267,7 +267,7 @@ class Attractor(object):
 			self.fdim = 0.0 # Impossible to find small circles... very scattered points
 
 class PolynomialAttractor(Attractor):
-	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
+	codelist     = list(range(48,58)) + list(range(65,91)) + list(range(97,123)) # ASCII values for code
 	codeStep     = .125 # Step to use to map ASCII character to coef
 
 	def __init__(self, **kwargs):
@@ -337,7 +337,7 @@ class PolynomialAttractor(Attractor):
 		return equation
 
 	def getPolynomLength(self):
-		self.pl = math.factorial(self.order+self.dimension)/math.factorial(self.order)/math.factorial(self.dimension)
+		self.pl = int(math.factorial(self.order+self.dimension)/math.factorial(self.order)/math.factorial(self.dimension))
 
 	def getRandomCoef(self):
 		self.coef = [[random.randint(-30, 31)*self.codeStep for _ in range(0, self.pl)] for __ in range(self.dimension)]
@@ -369,7 +369,7 @@ class PolynomialAttractor(Attractor):
 		self.computeBoxCountingDimension(a, screenDim, windowC)
 
 class DeJongAttractor(Attractor):
-	codelist     = range(48,58) + range(65,91) + range(97,123) # ASCII values for code
+	codelist     = list(range(48,58)) + list(range(65,91)) + list(range(97,123)) # ASCII values for code
 	codeStep     = .125 # Step to use to map ASCII character to coef
 
 	def __init__(self, **kwargs):

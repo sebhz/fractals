@@ -8,8 +8,8 @@ try:
 	import png
 except:
 	import sys
-	print >> sys.stderr, "this program requires the pyPNG module"
-	print >> sys.stderr, "available at https://github.com/drj11/pypng"
+	print("this program requires the pyPNG module", file=sys.stderr)
+	print("available at https://github.com/drj11/pypng", file=sys.stderr)
 	raise SystemExit
 
 INTERNAL_BPC=16
@@ -51,7 +51,7 @@ class Renderer(object):
 		M = max(at.values())
 
 		# Now send the map in the [0, (1<<INTERNAL_BPC)-1] range
-		for i, pt in at.iteritems():
+		for i, pt in at.items():
 			at[i] = int (pt * ((1<<INTERNAL_BPC)-1)/M)
 
 		# Equalize the attractor (histogram equalization)
@@ -69,10 +69,10 @@ class Renderer(object):
 
 		a = [self.backgroundColor]*w*h
 
-		for c, v in p.iteritems():
+		for c, v in p.items():
 			offset = c[0] + c[1]*w
 			try:
-				a[offset] = v >> self.shift
+				a[offset] = int(v) >> self.shift
 			except IndexError as e:
 				# This can occur if the bounds were not correctly assessed
 				# and a point of the atractor happens to fall out of them.
@@ -84,7 +84,7 @@ class Renderer(object):
 		pools = [0]*(1<<INTERNAL_BPC)
 
 		# Create cumulative distribution
-		for v in p.itervalues():
+		for v in p.values():
 			pools[v] += 1
 		for i in range(len(pools) - 1):
 			pools[i+1] += pools[i]
@@ -110,7 +110,7 @@ class Renderer(object):
 
 		nat = dict()
 
-		for pt, color in at.iteritems():
+		for pt, color in at.items():
 			xsub = int(pt[0]/self.subsample)
 			ysub = int(pt[1]/self.subsample)
 			if (xsub,ysub) in nat: # We already subsampled this square
@@ -142,7 +142,7 @@ class Renderer(object):
 	def writeAttractorPNG(self, a, filepath):
 		self.logger.debug("Now writing attractor %s on disk." % filepath)
 
-		w = png.Writer(size=[x/self.subsample for x in self.geometry], greyscale = True, bitdepth=self.bpc, interlace=True, transparent = self.backgroundColor if self.transparentbg else None)
+		w = png.Writer(size=[int(x/self.subsample) for x in self.geometry], greyscale = True, bitdepth=self.bpc, interlace=True, transparent = self.backgroundColor if self.transparentbg else None)
 		aa = w.array_scanlines(a)
 		with open(filepath, "wb") as f:
 			w.write(f, aa)
@@ -153,7 +153,7 @@ class Renderer(object):
 		attractors covers more than coverLimit percent of the window.
 		"""
 		if not a: return False
-		nPoints = len(a.keys())
+		nPoints = len(a)
 		sSize   = self.geometry[0]*self.geometry[1]
 		coverRatio = float(nPoints)/sSize
 		self.logger.debug("Attractor cover ratio is %.2f%%" % (100.0*coverRatio))

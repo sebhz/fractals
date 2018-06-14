@@ -1,4 +1,4 @@
-#!/usr/bin/python2.7
+#!/usr/bin/python3
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -72,10 +72,10 @@ def createAttractor():
 def getCloseCoef(a, step):
 	coefMod=list()
 	if args.type == 'polynomial':
-		for d in xrange(a.dimension):
+		for d in range(a.dimension):
 			coefMod.append((random.randint(0, a.pl-1), step*random.choice((-1, 1))))
 	else:
-		for d in xrange(2):
+		for d in range(2):
 			coefMod.append((random.randint(0, 1), step*random.choice((-1, 1))))
 	return coefMod
 
@@ -98,7 +98,7 @@ def generateAttractorSequence(r, nthreads):
 	bounds   = at.bound
 	args.code = None
 
-	for num in xrange(sequenceSize):
+	for num in range(sequenceSize):
 		logging.debug("Attractor #%d in sequence." % (num))
 		coefList.append([ x[:] for x in at.coef ])
 		bounds = [min(x) for x in zip(bounds[0:3], at.bound[0:3])] + [max(x) for x in zip(bounds[3:6], at.bound[3:6])]
@@ -107,7 +107,7 @@ def generateAttractorSequence(r, nthreads):
 		while True:
 			coefMod = getCloseCoef(at, coefStep)
 			at.bound = None # We only update bounds if they do not exist !
-			for d in xrange(at.dimension):
+			for d in range(at.dimension):
 				coefModPosition = coefMod[d][0]
 				at.coef[d][coefModPosition] += coefMod[d][1]
 			if at.checkConvergence():
@@ -172,13 +172,13 @@ def generateAttractor(geometry, nthreads):
 
 def parseArgs():
 	parser = argparse.ArgumentParser(description='Playing with strange attractors')
-	parser.add_argument('-b', '--bpc',          help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=range(1, 17))
+	parser.add_argument('-b', '--bpc',          help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=list(range(1, 17)))
 	parser.add_argument('-c', '--code',         help='attractor code', type=str)
 	parser.add_argument('-C', '--colorscheme',  help='attractor color scheme ("light" or "dark")', type=str, choices=('light', 'dark'), default=defaultParameters['colorscheme'])
 	parser.add_argument('-d', '--dimension',  help='attractor dimension (2 or 3)', type=int, choices=(2, 3), default=defaultParameters['dimension'])
 	parser.add_argument('-g', '--geometry',     help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
 	parser.add_argument('-j', '--threads',      help='Number of threads to use (default = %d)' % defaultParameters['threads'], type=int, default=defaultParameters['threads'])
-	parser.add_argument('-l', '--loglevel',     help='Sets log level (the higher the more verbose - default = %d)' % defaultParameters['loglevel'], default=defaultParameters['loglevel'], type=int, choices=range(len(LOGLEVELS)))
+	parser.add_argument('-l', '--loglevel',     help='Sets log level (the higher the more verbose - default = %d)' % defaultParameters['loglevel'], default=defaultParameters['loglevel'], type=int, choices=list(range(len(LOGLEVELS))))
 	parser.add_argument('-i', '--iter',         help='attractor number of iterations', type=int)
 	parser.add_argument('-n', '--number',       help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
 	parser.add_argument('-o', '--order',        help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
@@ -208,5 +208,5 @@ elif args.iter < idealIter:
 
 if args.code or args.sequence: args.number = 1
 
-for i in xrange(0, args.number):
+for i in range(0, args.number):
 	generateAttractor(g, args.threads)
