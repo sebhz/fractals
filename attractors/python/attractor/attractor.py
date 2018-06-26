@@ -250,7 +250,7 @@ class Attractor(object):
 		d1 = 4*radiusRatio*diagonal
 		d2 = float(d1)/base/base
 		n1, n2 = (0, 0)
-		points = a.keys()
+		points = list(a.keys())
 		l = len(points)
 
 		for p in points: # Iterate on each attractor point
