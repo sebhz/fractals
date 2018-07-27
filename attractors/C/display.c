@@ -110,7 +110,7 @@ drawInfo ()
     glMatrixMode (GL_MODELVIEW);
     glLoadIdentity ();
 
-    printw (20, y, viewport[3], "fps : %4.2f", dset.fps);
+    printw (20, y, viewport[3], "fps: %4.2f", dset.fps);
 /*
     if (dset.speed != 0) {
         y += 20;
@@ -140,9 +140,11 @@ drawInfo ()
     }
 */
     y += 20;
-    printw (20, y, viewport[3], "Radius :%f", at[frontBuffer]->r);
+    printw (20, y, viewport[3], "Radius: %f", at[frontBuffer]->r);
     y += 20;
-    printw (20, y, viewport[3], "Code :%s", at[frontBuffer]->code);
+    printw (20, y, viewport[3], "Correlation dimension: %f", at[frontBuffer]->correlationDimension);
+    y += 20;
+    printw (20, y, viewport[3], "Code: %s", at[frontBuffer]->code);
 
     glMatrixMode (GL_PROJECTION);
     glPopMatrix ();
@@ -221,7 +223,7 @@ initDisplay ()
     }
 
     glEnable (GL_POINT_SMOOTH);
-    glPointSize (1.0f);
+    glPointSize (3.0f);
 }
 
 void

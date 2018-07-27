@@ -446,7 +446,7 @@ computeAttractor (struct attractor *a, char *code)
         gettimeofday (&t1, NULL);
         explore (a);
         gettimeofday (&t2, NULL);
-        diffTime ("Map exploration", &t1, &t2);
+        //diffTime ("Map exploration", &t1, &t2);
     }
     else {
         strncpy (a->code, code, a->polynom->length * a->dimension + 3);
@@ -457,16 +457,16 @@ computeAttractor (struct attractor *a, char *code)
 
     a->polynom->sum = getPolynomSum (a->polynom);
 
-    displayPolynom (a->polynom);
-    fprintf (stdout, "Lyapunov exponent: %.6f\n", a->lyapunov->ly);
+    //displayPolynom (a->polynom);
+    //fprintf (stdout, "Lyapunov exponent: %.6f\n", a->lyapunov->ly);
     gettimeofday (&t1, NULL);
     iterateMap (a);
     gettimeofday (&t2, NULL);
-    diffTime ("Map iteration", &t1, &t2);
+    //diffTime ("Map iteration", &t1, &t2);
     a->r = getRadius (a);
     centerAttractor (a);
     computeDimension (a);
-    fprintf (stdout, "Correlation dimension: %.6f\n",
-             a->correlationDimension);
-    fprintf (stdout, "Code: %s\n", a->code);
+    //fprintf (stdout, "Correlation dimension: %.6f\n",
+    //         a->correlationDimension);
+    //fprintf (stdout, "Code: %s\n", a->code);
 }
