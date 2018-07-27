@@ -54,7 +54,7 @@ main (int argc, char **argv)
                       fset.numPoints);
 
     computeAttractor (at[frontBuffer], fset.code);
-    computeAttractor (at[1 - frontBuffer], at[frontBuffer]->code);
+//    computeAttractor (at[1 - frontBuffer], at[frontBuffer]->code);
 
     animate (argc, argv);
     freeAttractor (at[frontBuffer]);

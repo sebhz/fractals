@@ -21,6 +21,7 @@
 #include <stdarg.h>
 #include <math.h>
 #include <time.h>
+#include <unistd.h>
 #include <sys/time.h>
 #include <pthread.h>
 #ifdef __MINGW__
@@ -95,8 +96,7 @@ printw (float x, float y, int v, char *format, ...)
 void
 drawInfo ()
 {
-    int i, j, y = 30;
-    char *s;
+    int y = 30;
     int viewport[4];
 
     glColor4f (1.0f, 1.0f, 0.0f, 1.0f);
@@ -111,6 +111,7 @@ drawInfo ()
     glLoadIdentity ();
 
     printw (20, y, viewport[3], "fps : %4.2f", dset.fps);
+/*
     if (dset.speed != 0) {
         y += 20;
         printw (20, y, viewport[3], "Speed: %d degrees/s", dset.speed);
@@ -118,10 +119,11 @@ drawInfo ()
         printw (20, y, viewport[3], "Angle: %d",
                 (int) floor (dset.angle) % 360);
     }
+*/
     y += 20;
     printw (20, y, viewport[3], "Lyapunov exponent: %f",
             at[frontBuffer]->lyapunov->ly);
-
+/*
     if ((s = malloc (3 + (at[frontBuffer]->polynom->length) * 8 + 1)) != NULL) {
         s[0] = '[';
         s[1] = ' ';
@@ -136,8 +138,11 @@ drawInfo ()
         }
         free (s);
     }
+*/
     y += 20;
-    printw (20, y, viewport[3], "Divergence :%f", dset.divergence);
+    printw (20, y, viewport[3], "Radius :%f", at[frontBuffer]->r);
+    y += 20;
+    printw (20, y, viewport[3], "Code :%s", at[frontBuffer]->code);
 
     glMatrixMode (GL_PROJECTION);
     glPopMatrix ();
@@ -149,41 +154,20 @@ drawInfo ()
 void
 positionLight ()
 {
-    GLfloat ambient[] = { 0.1f, 0.1f, 0.1f };
-    GLfloat diffuse1[] = { 0.5f, 0.0f, 0.0f, 1.0f };
-    GLfloat diffuse2[] = { 0.0f, 0.5f, 0.0f, 1.0f };
-    GLfloat diffuse3[] = { 0.0f, 0.0f, 0.5f, 1.0f };
-    GLfloat specular1[] = { 1.0f, 0.5f, 0.5f, 1.0f };
-    GLfloat specular2[] = { 0.5f, 1.0f, 0.5f, 1.0f };
-    GLfloat specular3[] = { 0.5f, 0.5f, 1.0f, 1.0f };
-    GLfloat position1[] = { 0.0f, 0.0f, -10.0f, 1.0f };
-    GLfloat position2[] = { -10.0f, 0.0f, 10.0f, 1.0f };
-    GLfloat position3[] = { 10.0f, 0.0f, 10.0f, 1.0f };
+    GLfloat position[] = { 0.0f, 0.0f, -1.0f, 1.0f };
+    GLfloat ambient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    GLfloat diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    GLfloat specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-    glLightfv (GL_LIGHT7, GL_AMBIENT, ambient);
-    glEnable (GL_LIGHT7);
-    glLightfv (GL_LIGHT0, GL_DIFFUSE, diffuse1);
-    glLightfv (GL_LIGHT0, GL_POSITION, position1);
+    glLightfv (GL_LIGHT0, GL_POSITION, position);
+    glLightfv (GL_LIGHT0, GL_AMBIENT, ambient);
+    glLightfv (GL_LIGHT0, GL_DIFFUSE, diffuse);
+    glLightfv (GL_LIGHT0, GL_SPECULAR, specular);
     glEnable (GL_LIGHT0);
-    glLightfv (GL_LIGHT1, GL_DIFFUSE, diffuse2);
-    glLightfv (GL_LIGHT1, GL_POSITION, position2);
-    glEnable (GL_LIGHT1);
-    glLightfv (GL_LIGHT2, GL_DIFFUSE, diffuse3);
-    glLightfv (GL_LIGHT2, GL_POSITION, position3);
-    glEnable (GL_LIGHT2);
-    glLightfv (GL_LIGHT3, GL_DIFFUSE, specular1);
-    glLightfv (GL_LIGHT3, GL_POSITION, position1);
-    glEnable (GL_LIGHT3);
-    glLightfv (GL_LIGHT4, GL_DIFFUSE, specular2);
-    glLightfv (GL_LIGHT4, GL_POSITION, position2);
-    glEnable (GL_LIGHT4);
-    glLightfv (GL_LIGHT5, GL_DIFFUSE, specular3);
-    glLightfv (GL_LIGHT5, GL_POSITION, position3);
-    glEnable (GL_LIGHT5);
 }
 
 void
-centerProjection (w, h)
+centerProjection (int w, int h)
 {
     const float margin = 1.05;
     GLdouble aRadius = at[frontBuffer]->r * margin;
@@ -218,7 +202,7 @@ void
 initDisplay ()
 {
     glClearColor (0.0f, 0.0f, 0.0f, 1.0f);
-    glColor4f (1.0f, 1.0f, 1.0f, COLOR_ALPHA);
+    //glColor4f (1.0f, 1.0f, 1.0f, COLOR_ALPHA);
     glViewport (0, 0, dset.old_w, dset.old_h);
 
     centerDisplay ();
@@ -228,8 +212,12 @@ initDisplay ()
         glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
     else {
+        GLfloat emission[] = {0.0f, 0.0f, 0.0f, 1.0f};
+        glEnable (GL_NORMALIZE);
         glEnable (GL_LIGHTING);
-        glDisable (GL_COLOR_MATERIAL);
+        glEnable (GL_COLOR_MATERIAL);
+        glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, emission);
     }
 
     glEnable (GL_POINT_SMOOTH);
@@ -263,7 +251,7 @@ drawAttractor (void)
         glColor4f (1.0f, 1.0f, 1.0f, 1.0f);
         glEnable (GL_LIGHTING);
         positionLight ();
-        glRotatef (dset.angle, 1.0, 1.0, 1.0);
+        glRotatef (dset.angle, dset.angle/2, dset.angle/4, 1.0);
     }
     glBegin (GL_POINTS);
     for (i = 0; i < at[frontBuffer]->numPoints; i++) {
@@ -271,7 +259,6 @@ drawAttractor (void)
             glVertex2dv (at[frontBuffer]->array[i]);
         else {
             glVertex3dv (at[frontBuffer]->array[i]);
-            /* Normal equal to the vector -> vertex redirects light in the same direction */
             glNormal3dv (at[frontBuffer]->array[i]);
         }
     }
@@ -378,11 +365,8 @@ static void *
 backgroundCompute (void *v)
 {
     struct attractor *a;
-    int i, dir, iter;
-    double baseSum = AT_INFINITY;
+    int i;
 
-    dir = -1;
-    iter = 0;
     /* Under windows, random is working strangely with threads */
 #ifdef __MINGW__
     srand (time (NULL));
@@ -390,22 +374,7 @@ backgroundCompute (void *v)
 
     while (1) {
         a = at[1 - frontBuffer];
-        do {
-            copyPolynom (a, at[frontBuffer]->polynom);
-            strncpy (a->code, at[frontBuffer]->code,
-                     a->polynom->length * a->dimension + 3);
-            setClosePolynom (a, at[frontBuffer]->polynom, dir);
-            iter++;
-            dset.divergence = fabs (baseSum - a->polynom->sum);
-            if (baseSum == AT_INFINITY || iter > MAX_ITER
-                || dset.divergence > MAX_DIVERGENCE) {
-                baseSum = a->polynom->sum;
-                dir = -dir;
-                iter = 0;
-            }
-        }
-        while (!isAttractorConverging (a));
-
+        computeAttractor(a, NULL);
         // OK is now using a polynom close to its sibling. And it is converging - time to do the full calculation
         for (i = 0; i < a->numPoints; i++) {
             free (a->array[i]);
@@ -422,6 +391,7 @@ backgroundCompute (void *v)
         threadRunning = 0;
         pthread_mutex_unlock (&mt);
         while (threadRunning == 0);
+        sleep(15);
     }
     /* To please the compiler */
     return NULL;

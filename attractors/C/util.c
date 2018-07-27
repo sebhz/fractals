@@ -35,7 +35,7 @@ diffTime (const char *caption, struct timeval *t1, struct timeval *t2)
 
 /* Probably best algo as we are dealing with low exponents here (typically < 5)
      so no need to bother with exponentation by squaring */
-inline GLdouble
+GLdouble
 power (GLdouble base, unsigned int exp)
 {
     int i;
@@ -46,7 +46,7 @@ power (GLdouble base, unsigned int exp)
     return result;
 }
 
-inline point
+point
 newPoint (void)
 {
     point p;
@@ -71,7 +71,7 @@ euclidianDistance (point a, point b)
     return d;
 }
 
-inline point
+point
 _scalar_mul (point p, GLdouble m)
 {
     int i;
@@ -82,7 +82,7 @@ _scalar_mul (point p, GLdouble m)
     return p;
 }
 
-inline GLdouble
+GLdouble
 _modulus (point p)
 {
     GLdouble m = 0;
@@ -94,7 +94,7 @@ _modulus (point p)
     return m;
 }
 
-inline GLdouble
+GLdouble
 _abs (point p)
 {
     GLdouble a = 0;
@@ -106,7 +106,7 @@ _abs (point p)
     return a;
 }
 
-inline point
+point
 _sub (point a, point b)
 {
     point c = newPoint ();
@@ -118,7 +118,7 @@ _sub (point a, point b)
     return c;
 }
 
-inline point
+point
 _middle (point a, point b)
 {
     point c = newPoint ();
@@ -130,7 +130,7 @@ _middle (point a, point b)
     return c;
 }
 
-static point
+point
 fastEval (point p, struct polynom *polynom)
 {                               /* For polynoms of order 2 */
     int i;

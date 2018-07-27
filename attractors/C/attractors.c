@@ -443,7 +443,10 @@ computeAttractor (struct attractor *a, char *code)
     struct timeval t1, t2;
 
     if (code == NULL || checkCode (code)) {
+        gettimeofday (&t1, NULL);
         explore (a);
+        gettimeofday (&t2, NULL);
+        diffTime ("Map exploration", &t1, &t2);
     }
     else {
         strncpy (a->code, code, a->polynom->length * a->dimension + 3);

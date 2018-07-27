@@ -1,6 +1,6 @@
-CC=gcc 
-TAR=tar 
-INDENT=indent 
+CC=gcc
+TAR=tar
+INDENT=indent
 CFLAGS=-Wall -O3
 LDFLAGS=-lm -lpthread -lglut -lGLU -lGL
 OBJS=attractors.o util.o main.o args.o display.o
