@@ -222,7 +222,7 @@ def getMailText(MAP):
 def getMailHTML(MAP):
 	return (fillTemplate(MAIL_HTML_TEMPLATE, MAP))
 
-def send_mail(MAP, server, send_from, send_to, subject, files=None):
+def send_mail(MAP, server, send_from, send_to, subject, files=None, multiple=False):
 	if not isinstance(send_to, list):
 		logging.warning("Badly formed recipient list. Not sending any mail.")
 		return
@@ -230,7 +230,6 @@ def send_mail(MAP, server, send_from, send_to, subject, files=None):
 	# Root message
 	msg = MIMEMultipart('related')
 	msg['From'] = send_from
-	msg['To'] = COMMASPACE.join(send_to)
 	msg['Date'] = formatdate(localtime=True)
 	msg['Subject'] = subject
 
@@ -261,13 +260,25 @@ def send_mail(MAP, server, send_from, send_to, subject, files=None):
 		logging.warning("Unable to connect to SMTP server. Not sending any mail.")
 		return
 
+	send_to = list(set(send_to)) # Removes possible duplicates in to list
 	try:
-		refused = smtp.sendmail(send_from, send_to, msg.as_string())
+		refused = dict()
+		if multiple: # send one message per recipient
+			for dest in send_to:
+				if 'To' in msg:
+					msg.replace_header('To', dest)
+				else:
+					msg['To'] = dest
+				d = smtp.sendmail(send_from, dest, msg.as_string())
+				refused.update(d)
+		else: # send only one message with everyone in To-List
+			msg['To'] = COMMASPACE.join(send_to)
+			refused = smtp.sendmail(send_from, send_to, msg.as_string())
 	except smtplib.SMTPException as e:
-		logging.warning(sys.stderr, "Error sending mail:", repr(e))
+		logging.warning(sys.stderr, "Error sending mail: %s." % (repr(e)))
 	else:
 		if refused:
-			logging.warning(sys.stderr, "Some mails could not be delivered:", refused)
+			logging.warning(sys.stderr, "Some mails could not be delivered: %s.", str(refused))
 
 	smtp.quit()
 
@@ -294,7 +305,7 @@ def processMail(MAP):
 		logging.info("Sending emails to %s, using SMTP server %s." % (args.recipients, args.server))
 		toaddr   = args.recipients.split(',') # Hopefully there won't be any comma in the addresses
 		subject  = "%s : Strange attractor of the day" % (MAP['__date'])
-		send_mail(MAP, args.server, args.fromaddr, toaddr, subject, ("png/"+MAP['__link'],))
+		send_mail(MAP, args.server, args.fromaddr, toaddr, subject, ("png/"+MAP['__link'],), True)
 
 def sec2hms(seconds):
 	m, s = divmod(seconds, 60)
@@ -355,7 +366,9 @@ def processAttractor(AttractorNum):
 				colormode=colorscheme,
 				dimension=dimension)
 			a = at.createFrequencyMap(r.geometry, args.nthreads)
-			if not r.isNice(a) : break
+			if not r.isNice(a):
+				logging.debug("Attractor too thin. Trying to find a better one.")
+				break
 			a = r.renderAttractor(a)
 			if a == None: break
 
