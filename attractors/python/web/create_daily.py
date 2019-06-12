@@ -197,6 +197,7 @@ def parseArgs():
 	parser = argparse.ArgumentParser(description='generation of strange attractor web page')
 	parser.add_argument('-a', '--all',  help='Regenerates all pages from the beginning of time (2016-07-27) until today', action='store_true', default=False)
 	parser.add_argument('-d', '--date', help='Forces date. Format of input: YYYY-MM-DD', type=str)
+	parser.add_argument('-e', '--ephemerous', help='Ephemerous. Do not generate HTML, do not keep the attractor image', action='store_true', default=False)
 	parser.add_argument('-f', '--fromaddr', help='From address', type=str, default='attractors@attractor.org')
 	parser.add_argument('-j', '--nthreads', help='Number of threads to use', type=int, default=NUM_THREADS)
 	parser.add_argument('-m', '--mail', help='Mail the attractor(s)', action='store_true', default=False)
@@ -346,7 +347,7 @@ def processAttractor(AttractorNum):
 	MAP['__order'] = t + 1
 
 	subsampling = 3
-	colorscheme = random.choice(('light', 'dark'))
+	colorscheme = random.choice(('light', 'dark')) #, 'color'))
 	dimension = 2 if MAP['__type'] == "dejong" or MAP['__order'] > 4 else random.choice((2,3))
 	logging.info("Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum)))
 	logging.info("We have a %s attractor (order %d, dimension %d)." % (MAP['__type'], MAP['__order'], dimension))
@@ -422,6 +423,13 @@ def processThumbnails(MAP):
 			logging.error("Problem invoking convert or mogrify utility. Is ImageMagick installed ?")
 			break
 
+def removeThumbnails(MAP):
+	filename = MAP['__code'] + "_8.png"
+	for d in ("png", "png_thumb", "png_tile"):
+		if not os.path.exists(d) or not os.path.isdir(d):
+			continue
+		os.remove(os.path.join(d, filename))
+
 #
 # Main program
 #
@@ -450,7 +458,14 @@ else:
 
 for attractorNum in attractorRange:
 	MAP = processAttractor(attractorNum)
+
 	processThumbnails(MAP)
-	processHTML(attractorNum, MAP)
+	if not args.ephemerous:
+		processHTML(attractorNum, MAP)
+
 	processMail(MAP)
+
+	if args.ephemerous:
+		logging.info("Ephemerous mode chosen. Cleaning up attractors. Root attractor can still be found in %s" % (os.path.join("/tmp", MAP['__code'] + "_8.png")))
+		removeThumbnails(MAP)
 
