@@ -33,7 +33,9 @@ defaultParameters = {
 	'code' : None,
 	'dimension' : 2,
 }
-modulus = lambda x,y,z: x*x + y*y + z*z
+modulus   = lambda x,y,z: x*x + y*y + z*z
+codelist  = list(range(48,58)) + list(range(65,91)) + list(range(97,123)) # ASCII values for code
+coderange = (-int(len(codelist)/2)+1, int(len(codelist)/2))
 
 class Attractor(object):
 	"""
@@ -267,7 +269,6 @@ class Attractor(object):
 			self.fdim = 0.0 # Impossible to find small circles... very scattered points
 
 class PolynomialAttractor(Attractor):
-	codelist     = list(range(48,58)) + list(range(65,91)) + list(range(97,123)) # ASCII values for code
 	codeStep     = .125 # Step to use to map ASCII character to coef
 
 	def __init__(self, **kwargs):
@@ -287,14 +288,14 @@ class PolynomialAttractor(Attractor):
 		self.order = int(self.code[1])
 		self.getPolynomLength()
 
-		d = dict([(v, i) for i, v in enumerate(self.codelist)])
+		d = dict([(v, i) for i, v in enumerate(codelist)])
 		self.coef = [[(d[ord(_)]-30)*self.codeStep for _ in self.code[3+__*self.pl:3+(__+1)*self.pl]] for __ in range(self.dimension)]
 
 	def createCode(self):
 		self.code = str(self.dimension)+str(self.order)
 		self.code += "_"
 		# ASCII codes of digits and letters
-		cl = [self.codelist[int(x/self.codeStep)+30] for c in self.coef for x in c]
+		cl = [codelist[int(x/self.codeStep)+30] for c in self.coef for x in c]
 		self.code +="".join(map(chr,cl))
 
 	# Outputs a human readable string of the polynom. If isHTML is True
@@ -369,7 +370,6 @@ class PolynomialAttractor(Attractor):
 		self.computeBoxCountingDimension(a, screenDim, windowC)
 
 class DeJongAttractor(Attractor):
-	codelist     = list(range(48,58)) + list(range(65,91)) + list(range(97,123)) # ASCII values for code
 	codeStep     = .125 # Step to use to map ASCII character to coef
 
 	def __init__(self, **kwargs):
@@ -383,15 +383,15 @@ class DeJongAttractor(Attractor):
 	def createCode(self):
 		self.code = "j"
 		# ASCII codes of digits and letters
-		c = [self.codelist[int(x/self.codeStep)+30] for d in self.coef for x in d]
+		c = [codelist[int(x/self.codeStep)-coderange[0]] for d in self.coef for x in d]
 		self.code +="".join(map(chr,c))
 
 	def decodeCode(self):
-		d = dict([(v, i) for i, v in enumerate(self.codelist)])
-		self.coef = [ [(d[ord(_)]-30)*self.codeStep for _ in self.code[1+2*__:3+2*__]] for __ in range(2) ]
+		d = dict([(v, i) for i, v in enumerate(codelist)])
+		self.coef = [ [(d[ord(_)]+coderange[0])*self.codeStep for _ in self.code[1+2*__:3+2*__]] for __ in range(2) ]
 
 	def getRandomCoef(self):
-		self.coef = [[random.randint(-30, 31)*self.codeStep for _ in range(2)] for __ in range(2)]
+		self.coef = [[random.randint(*coderange)*self.codeStep for _ in range(2)] for __ in range(2)]
 
 	def getNextPoint(self, p):
 		return ( math.sin(self.coef[0][0]*p[1]) - math.cos(self.coef[0][1]*p[0]),
