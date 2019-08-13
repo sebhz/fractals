@@ -302,7 +302,7 @@ class PolynomialAttractor(Attractor):
 
 	# Outputs a human readable string of the polynom. If isHTML is True
 	# outputs an HTML blurb of the equation. Else output a plain text.
-	def humanReadable(self, isHTML):
+	def humanReadable(self, isHTML=False):
 		variables = ('xn', 'yn', 'zn')
 		equation = [""]*self.dimension
 		for v, c in enumerate(self.coef): # Iterate on each dimension
@@ -385,25 +385,25 @@ class DeJongAttractor(Attractor):
 	def createCode(self):
 		self.code = "j"
 		# ASCII codes of digits and letters
-		c = [codelist[int(x/self.codeStep)-coderange[0]] for d in self.coef for x in d]
+		c = [codelist[int(_/self.codeStep)-coderange[0]] for _ in self.coef]
 		self.code +="".join(map(chr,c))
 
 	def decodeCode(self):
 		d = dict([(v, i) for i, v in enumerate(codelist)])
-		self.coef = [ [(d[ord(_)]+coderange[0])*self.codeStep for _ in self.code[1+2*__:3+2*__]] for __ in range(2) ]
+		self.coef = [(d[ord(_)]+coderange[0])*self.codeStep for _ in self.code[1:]]
 
 	def getRandomCoef(self):
-		self.coef = [[random.randint(*coderange)*self.codeStep for _ in range(2)] for __ in range(2)]
+		self.coef = [random.randint(*coderange)*self.codeStep for _ in range(4)]
 
 	def getNextPoint(self, p):
-		return ( math.sin(self.coef[0][0]*p[1]) - math.cos(self.coef[0][1]*p[0]),
-		         math.sin(self.coef[1][0]*p[0]) - math.cos(self.coef[1][1]*p[1]),
+		return ( math.sin(self.coef[0]*p[1]) - math.cos(self.coef[1]*p[0]),
+		         math.sin(self.coef[2]*p[0]) - math.cos(self.coef[3]*p[1]),
 				 0, )
 
-	def humanReadable(self, isHTML):
+	def humanReadable(self, isHTML=False):
 		equation = list()
-		equation.append('xn+1=sin(%.3f*yn)-cos(%.3f*xn)' % (self.coef[0][0], self.coef[0][1]))
-		equation.append('yn+1=sin(%.3f*xn)-cos(%.3f*yn)' % (self.coef[1][0], self.coef[1][1]))
+		equation.append('xn+1=sin(%.3f*yn)-cos(%.3f*xn)' % (self.coef[0], self.coef[1]))
+		equation.append('yn+1=sin(%.3f*xn)-cos(%.3f*yn)' % (self.coef[2], self.coef[3]))
 
 		if isHTML: # Convert this in a nice HTML equation
 			for v in range(2):
