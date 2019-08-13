@@ -51,13 +51,16 @@ def sec2hms(seconds):
 	return "%dh%02dm%02ds" % (h, m, s)
 
 def createAttractor():
-	if args.type == 'polynomial':
+	if args.type == 'dejong':
+		at = attractor.DeJongAttractor(iter = int(args.iter/args.threads),
+	                code = args.code)
+	elif args.type == 'clifford':
+		at = attractor.CliffordAttractor(iter = int(args.iter/args.threads),
+	                code = args.code)
+	else:
 		at = attractor.PolynomialAttractor(order = args.order,
 	                iter = int(args.iter/args.threads),
 	                code = args.code, dimension = args.dimension)
-	else:
-		at = attractor.DeJongAttractor(iter = int(args.iter/args.threads),
-	                code = args.code)
 
 	if args.code:
 		if not at.checkConvergence():
@@ -185,9 +188,13 @@ def parseArgs():
 	parser.add_argument('-O', '--outdir',       help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
 	parser.add_argument('-q', '--sequence',     help='generate a sequence of SEQUENCE attractors', type=int)
 	parser.add_argument('-s', '--subsample',    help='subsampling rate (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3))
-	parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong"))
+	parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong", "clifford"))
 	args = parser.parse_args()
-	if args.code and args.code[0] == 'j': args.type = 'dejong'
+	if args.code:
+		if args.code[0] == 'j':
+			args.type = 'dejong'
+		elif args.code[0] == 'c':
+			args.type = 'clifford'
 	return args
 
 # ----------------------------- Main loop ----------------------------- #

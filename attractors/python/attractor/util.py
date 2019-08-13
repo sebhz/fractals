@@ -24,7 +24,7 @@ def getIdealIterationNumber(AttractorType, geometry, subsamplingRate=1):
 	pxSize = subsamplingRate*subsamplingRate*geometry[0]*geometry[1]
 
 	idealIter = int(OVERITERATE_FACTOR*pxSize)
-	if AttractorType == 'dejong':
+	if AttractorType == 'dejong' or AttractorType == 'clifford':
 		idealIter *=4
 
 	return idealIter

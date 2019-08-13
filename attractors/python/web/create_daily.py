@@ -73,7 +73,7 @@ __z_polynom
 <div>
 Generation and rendering time: __time
 </div>
-<p>For polynomial attractors, the dimension is an estimate of the <a href="https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension">Minkowski-Bouligand (=box counting) dimension</a>. For De Jong attractors, it is an estimate of the <a href="https://en.wikipedia.org/wiki/Correlation_dimension">correlation dimension</a>.</p>
+<p>For polynomial attractors, the dimension is an estimate of the <a href="https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension">Minkowski-Bouligand (=box counting) dimension</a>. For De Jong and Clifford attractors, it is an estimate of the <a href="https://en.wikipedia.org/wiki/Correlation_dimension">correlation dimension</a>.</p>
 </div>
 </div>
 <div class="box" id="uh_div">
@@ -154,7 +154,7 @@ Generation and rendering time: __time
 </div>
 </div>
 <p class="polite">Have a good day.</p>
-<p class="polite">For polynomial attractors, the dimension is an estimate of the <a href="https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension">Minkowski-Bouligand (=box counting) dimension</a>. For De Jong attractors, it is an estimate of the <a href="https://en.wikipedia.org/wiki/Correlation_dimension">correlation dimension</a>.</p>
+<p class="polite">For polynomial attractors, the dimension is an estimate of the <a href="https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension">Minkowski-Bouligand (=box counting) dimension</a>. For De Jong and Clifford attractors, it is an estimate of the <a href="https://en.wikipedia.org/wiki/Correlation_dimension">correlation dimension</a>.</p>
 </body>
 </html>
 '''
@@ -169,7 +169,7 @@ MAIL_TXT_TEMPLATE = '''Please find your strange attractor.
 
 Have a good day.
 
-[1] for polynomial attractors, the dimension is an estimate of the Minkowski-Bouligand (=box counting) dimension. For De Jong attractors, it is an estimate of the correlation dimension.
+[1] for polynomial attractors, the dimension is an estimate of the Minkowski-Bouligand (=box counting) dimension. For De Jong and Clifford attractors, it is an estimate of the correlation dimension.
 '''
 
 def numeral(n):
@@ -314,10 +314,12 @@ def sec2hms(seconds):
 	return "%dh%02dm%02ds" % (h, m, s)
 
 def createAttractor(AttractorType, AttractorOrder, AttractorDimension):
-	if AttractorType == 'polynomial':
-		at = attractor.PolynomialAttractor(order = AttractorOrder, dimension = AttractorDimension)
-	else:
+	if AttractorType == 'dejong':
 		at = attractor.DeJongAttractor()
+	elif AttractorType == 'clifford':
+		at = attractor.CliffordAttractor()
+	else:
+		at = attractor.PolynomialAttractor(order = AttractorOrder, dimension = AttractorDimension)
 	at.explore()
 	return at
 
@@ -342,13 +344,15 @@ def processAttractor(AttractorNum):
 	t = AttractorNum % 7
 	if t == 0:
 		MAP['__type'] = "dejong"
+	elif t == 6:
+		MAP['__type'] = "clifford"
 	else:
 		MAP['__type'] = "polynomial"
 	MAP['__order'] = t + 1
 
 	subsampling = 3
 	colorscheme = random.choice(('light', 'dark')) #, 'color'))
-	dimension = 2 if MAP['__type'] == "dejong" or MAP['__order'] > 4 else random.choice((2,3))
+	dimension = 2 if MAP['__type'] == "dejong" or MAP['__type'] == "clifford" or MAP['__order'] > 4 else random.choice((2,3))
 	logging.info("Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum)))
 	logging.info("We have a %s attractor (order %d, dimension %d)." % (MAP['__type'], MAP['__order'], dimension))
 	logging.info("Color scheme used: " + colorscheme)

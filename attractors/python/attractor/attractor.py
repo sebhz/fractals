@@ -40,7 +40,7 @@ coderange = (-int(len(codelist)/2)+1, int(len(codelist)/2))
 class Attractor(object):
 	"""
 	Base class representing an attractor. Should generally not be instanciated directly. Use one
-	of its subclasses: PolyomialAttractor or DeJongAttractor.
+	of its subclasses: PolyomialAttractor, DeJongAttractor or CliffordAttractor
 	"""
 	convDelay    = 128   # Number of points to ignore before checking convergence
 	convMaxIter  = 16384 # Check convergence on convMaxIter points only
@@ -404,6 +404,57 @@ class DeJongAttractor(Attractor):
 		equation = list()
 		equation.append('xn+1=sin(%.3f*yn)-cos(%.3f*xn)' % (self.coef[0], self.coef[1]))
 		equation.append('yn+1=sin(%.3f*xn)-cos(%.3f*yn)' % (self.coef[2], self.coef[3]))
+
+		if isHTML: # Convert this in a nice HTML equation
+			for v in range(2):
+				equation[v] = re.sub(r'\^(\d+)',r'<sup>\1</sup>', equation[v])
+				equation[v] = re.sub(r'n\+1=',r'<sub>n+1</sub>=', equation[v])
+				equation[v] = re.sub(r'(x|y)n',r'\1<sub>n</sub>', equation[v])
+
+		return equation
+
+	def computeFractalDimension(self, a, screenDim, windowC):
+		self.computeCorrelationDimension(a, screenDim + [0])
+
+class CliffordAttractor(Attractor):
+	""" CliffordAttractor. Very similar to De Jong, so could have been
+	    a subclass of DeJongAttractor, but probably clearer to subclass
+	    Attractor altogether
+	"""
+	codeStep     = .0625 # Step to use to map ASCII character to coef
+
+	def __init__(self, **kwargs):
+		super(CliffordAttractor, self).__init__(**kwargs)
+		if kwargs:
+			if 'code' in kwargs and kwargs['code'] != None:
+				self.code = kwargs['code']
+				self.decodeCode() # Will populate coef
+		self.dimension = 2
+
+	def createCode(self):
+		self.code = "c"
+		# ASCII codes of digits and letters
+		c = [codelist[int(_/self.codeStep)-coderange[0]] for _ in self.coef]
+		self.code +="".join(map(chr,c))
+
+	def decodeCode(self):
+		d = dict([(v, i) for i, v in enumerate(codelist)])
+		self.coef = [(d[ord(_)]+coderange[0])*self.codeStep for _ in self.code[1:]]
+
+	def getRandomCoef(self):
+		self.coef = [random.randint(*coderange)*self.codeStep for _ in range(4)]
+
+	def getNextPoint(self, p):
+		return ( math.sin(self.coef[0]*p[1]) + self.coef[1]*math.cos(self.coef[0]*p[0]),
+		         math.sin(self.coef[2]*p[0]) + self.coef[3]*math.cos(self.coef[2]*p[1]),
+				 0, )
+
+	def humanReadable(self, isHTML=False):
+		equation = list()
+		equation.append('xn+1=sin(%.4f*yn)+%.4f*cos(%.4f*xn)' % (self.coef[0], self.coef[1], self.coef[0]))
+		equation.append('yn+1=sin(%.4f*xn)+%.4f*cos(%.4f*yn)' % (self.coef[2], self.coef[3], self.coef[2]))
+		equation[0] = equation[0].replace("+-", "-")
+		equation[1] = equation[1].replace("+-", "-")
 
 		if isHTML: # Convert this in a nice HTML equation
 			for v in range(2):
