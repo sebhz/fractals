@@ -179,7 +179,7 @@ class Renderer(object):
     def isNice(self, a, coverLimit=0.01):
         """
         Checks if the attractor passed is 'nice': currently nice means that the
-        attractors covers more than coverLimit percent of the window.
+        attractor covers more than coverLimit percent of the window.
         """
         if not a: return False
         nPoints = len(a)

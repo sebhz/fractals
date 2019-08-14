@@ -73,7 +73,7 @@ __z_polynom
 <div>
 Generation and rendering time: __time
 </div>
-<p>For polynomial attractors, the dimension is an estimate of the <a href="https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension">Minkowski-Bouligand (=box counting) dimension</a>. For De Jong and Clifford attractors, it is an estimate of the <a href="https://en.wikipedia.org/wiki/Correlation_dimension">correlation dimension</a>.</p>
+<p>The fractal dimension is an estimate of the <a href="https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension">Minkowski-Bouligand (=box counting) dimension</a>.</p>
 </div>
 </div>
 <div class="box" id="uh_div">
@@ -154,7 +154,7 @@ Generation and rendering time: __time
 </div>
 </div>
 <p class="polite">Have a good day.</p>
-<p class="polite">For polynomial attractors, the dimension is an estimate of the <a href="https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension">Minkowski-Bouligand (=box counting) dimension</a>. For De Jong and Clifford attractors, it is an estimate of the <a href="https://en.wikipedia.org/wiki/Correlation_dimension">correlation dimension</a>.</p>
+<p class="polite">The fractal dimension is an estimate of the <a href="https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension">Minkowski-Bouligand (=box counting) dimension</a>.</p>
 </body>
 </html>
 '''
@@ -169,7 +169,7 @@ MAIL_TXT_TEMPLATE = '''Please find your strange attractor.
 
 Have a good day.
 
-[1] for polynomial attractors, the dimension is an estimate of the Minkowski-Bouligand (=box counting) dimension. For De Jong and Clifford attractors, it is an estimate of the correlation dimension.
+[1] The fractal dimension is an estimate of the Minkowski-Bouligand (=box counting) dimension.
 '''
 
 def numeral(n):
@@ -401,7 +401,7 @@ def processAttractor(AttractorNum):
 		MAP['__x_polynom'], MAP['__y_polynom'] = at.humanReadable(isHTML=True)
 
 	MAP['__iterations'] = str(at.iterations)
-	MAP['__dimension'] = "%.3f" % (at.fdim)
+	MAP['__dimension'] = 'not computed' if dimension == 3 else "%.3f" % (at.fdim)
 	MAP['__lyapunov'] = "%.3f" % (at.lyapunov['ly'])
 	MAP['__link'] = filePath
 	MAP['__prev'] = "#" if attractorNum == 1 else "%d.xhtml" % (attractorNum-1)

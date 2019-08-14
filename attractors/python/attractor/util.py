@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 
 import logging
+import random
+import math
 
 """
 Ancillary functions used for attractor generation and rendering.
@@ -66,4 +68,101 @@ def scaleBounds(wc, sd, pct=0.05):
 		return (nwc[0]-xoff, nwc[1], nwc[2]+xoff, nwc[3])
 
 	return wc
+
+def linearReg(x, y):
+	n = len(x)
+	sumxy = sum([v[0]*v[1] for v in zip(x, y)])
+	sumx2 = sum(map(lambda v: v**2, x))
+	sumy2 = sum(map(lambda v: v**2, y))
+	sumx  = sum(x)
+	sumy  = sum(y)
+
+	slope   = (n*sumxy - sumx*sumy) / (n*sumx2 - sumx*sumx)
+	rsquare = slope * math.sqrt((n*sumx2 - sumx*sumx) / (n*sumy2 - sumy*sumy))
+
+	return (slope, rsquare)
+
+def boxCount(a, origin, box_side):
+	boxes = dict()
+	for pt in a.keys():
+		box_c = tuple([ int((pt[i]-origin[i])/box_side) for i in range(0, len(origin)) ])
+		boxes[box_c] = True
+	return len(boxes)
+
+def computeBoxCountingDimension(a):
+	"""
+	Computes an estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
+	See https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension
+
+	Algorithm:
+		- Use cubic boxes
+		- Compute the bounding box of the attractor
+		- Start with boxes whose side S = bounding_box_diagonal/4
+		- Until S < bounding_box_diagonal/256
+			{
+			* Choose a random origin inside the bounding box
+			* Compute the number of boxes needed to cover the attractor (aligned on the origin)
+			} do this a number of time (8 ? 16 ?) and chose the minimum number N
+			Store S, N
+			S = S/1.5
+		- Perform a linear regression log(N), log(1/S). The slope is the dimension
+	"""
+	# Kludge: iterate over a.keys() but break after first iteration
+	for k in a.keys():
+		bb=[ [65535]*len(k), [-65535]*len(k) ]
+		break
+
+	for pt in a.keys():
+		for i, v in enumerate(pt):
+			bb[0][i] = min(bb[0][i], v)
+			bb[1][i] = max(bb[1][i], v)
+	diagonal = math.sqrt(sum(map(lambda v: v**2, [ p[1]-p[0] for p in zip(bb[0], bb[1]) ])))
+
+	ratio = 4
+	(logN, invLogS) = (list(), list())
+	BOXCOUNT_TRIAL = 8
+	while ratio < 256:
+		N = len(a)
+		S = diagonal/ratio
+		for i in range(0, BOXCOUNT_TRIAL):
+			origin = [ random.randint(bb[0][i], bb[1][i]) for i in range(0, len(bb[0])) ]
+			N = min(N, boxCount(a, origin, S))
+		logN.append(math.log(N))
+		invLogS.append(math.log(1/S))
+		ratio *= 1.8
+	try:
+		(slope, rsquare) = linearReg(invLogS, logN)
+		return slope
+	except ValueError:
+		logging.error("Math error when trying to compute dimension. Setting it to 0.")
+		return 0.0
+
+def computeCorrelationDimension(a, screenDim):
+	"""
+	Computes an estimate of the correlation dimension computed "a la Julien Sprott"
+	Estimate the probability that 2 points in the attractor are close enough
+	"""
+	modulus = lambda x,y,z: x*x + y*y + z*z
+	base = 10
+	radiusRatio = 0.001
+	diagonal = modulus(*screenDim)
+	d1 = 4*radiusRatio*diagonal
+	d2 = float(d1)/base/base
+	n1, n2 = (0, 0)
+	points = list(a.keys())
+	l = len(points)
+
+	for p in points: # Iterate on each attractor point
+		p2 = points[random.randint(0,l-1)] # Pick another point at random
+		d = modulus(p2[0]-p[0], p2[1]-p[1], 0)
+		if d == 0: continue # Oops we picked the same point twice
+		if d < d1: n2 += 1  # Distance within a big circle
+		if d > d2: continue # But out of a small circle
+		n1 += 1
+
+	try:
+		return math.log(float(n2)/n1, base)
+	except ZeroDivisionError:
+		logging.error("Math error when trying to compute dimension. Setting it to 0.")
+		return 0.0 # Impossible to find small circles... very scattered points
 

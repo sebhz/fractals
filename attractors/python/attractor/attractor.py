@@ -218,57 +218,10 @@ class Attractor(object):
 			aMerge = self.mergeAttractors(a)
 
 		if not aMerge: return aMerge
-		self.computeFractalDimension(aMerge, screenDim, windowC)
+		self.computeFractalDimension(aMerge, screenDim)
 
 		self.logger.debug("Time to render the attractor.")
 		return aMerge
-
-	def computeBoxCountingDimension(self, a, screenDim, windowC):
-		"""
-		Computes an estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
-		See https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension
-		"""
-		sideLength = 2 # Box side length, in pixels
-		pixelSize = (windowC[2]-windowC[0])/screenDim[0]
-
-		boxes = dict()
-		for pt in a.keys():
-			boxCoordinates = (int(pt[0]/sideLength), int(pt[1]/sideLength))
-			boxes[boxCoordinates] = True
-		n = len(boxes)
-
-		try:
-			self.fdim = math.log(n)/math.log(1/(sideLength*pixelSize))
-		except ValueError:
-			self.logger.error("Math error when trying to compute dimension. Setting it to 0")
-			self.fdim = 0
-
-	def computeCorrelationDimension(self, a, screenDim):
-		"""
-		Computes an estimate of the correlation dimension computed "a la Julien Sprott"
-		Estimate the probability that 2 points in the attractor are close enough
-		"""
-		base = 10
-		radiusRatio = 0.001
-		diagonal = modulus(*screenDim)
-		d1 = 4*radiusRatio*diagonal
-		d2 = float(d1)/base/base
-		n1, n2 = (0, 0)
-		points = list(a.keys())
-		l = len(points)
-
-		for p in points: # Iterate on each attractor point
-			p2 = points[random.randint(0,l-1)] # Pick another point at random
-			d = modulus(p2[0]-p[0], p2[1]-p[1], 0)
-			if d == 0: continue # Oops we picked the same point twice
-			if d < d1: n2 += 1  # Distance within a big circle
-			if d > d2: continue # But out of a small circle
-			n1 += 1
-
-		try:
-			self.fdim = math.log(float(n2)/n1, base)
-		except ZeroDivisionError:
-			self.fdim = 0.0 # Impossible to find small circles... very scattered points
 
 class PolynomialAttractor(Attractor):
 	codeStep     = .125 # Step to use to map ASCII character to coef
@@ -368,8 +321,10 @@ class PolynomialAttractor(Attractor):
 
 		return l if self.dimension == 3 else l + [0]
 
-	def computeFractalDimension(self, a, screenDim, windowC):
-		self.computeBoxCountingDimension(a, screenDim, windowC)
+	def computeFractalDimension(self, a, screenDim):
+		# We lost the 3rd dimension when computing a 3D attractor (directly computing a z-map)
+		# So fractal dimension has no meaning for 3D attractors
+		self.fdim = 0.0 if self.dimension == 3 else util.computeBoxCountingDimension(a)
 
 class DeJongAttractor(Attractor):
 	codeStep     = .125 # Step to use to map ASCII character to coef
@@ -413,8 +368,8 @@ class DeJongAttractor(Attractor):
 
 		return equation
 
-	def computeFractalDimension(self, a, screenDim, windowC):
-		self.computeCorrelationDimension(a, screenDim + [0])
+	def computeFractalDimension(self, a, screenDim):
+		self.fdim = min(2.0, util.computeBoxCountingDimension(a))
 
 class CliffordAttractor(Attractor):
 	""" CliffordAttractor. Very similar to De Jong, so could have been
@@ -464,6 +419,6 @@ class CliffordAttractor(Attractor):
 
 		return equation
 
-	def computeFractalDimension(self, a, screenDim, windowC):
-		self.computeCorrelationDimension(a, screenDim + [0])
+	def computeFractalDimension(self, a, screenDim):
+		self.fdim = min(2.0, util.computeBoxCountingDimension(a))
 
