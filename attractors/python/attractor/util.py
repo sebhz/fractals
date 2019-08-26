@@ -87,55 +87,60 @@ def boxCount(a, origin, box_side):
 	for pt in a.keys():
 		box_c = tuple([ int((pt[i]-origin[i])/box_side) for i in range(0, len(origin)) ])
 		boxes[box_c] = True
-	return len(boxes)
+	return boxes
 
-def computeBoxCountingDimension(a):
-	"""
-	Computes an estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
-	See https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension
+def computeBoxCountingDimension(at, scaling_factor=1.3):
+    """
+    Computes an estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
+    See https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension
 
-	Algorithm:
-		- Use cubic boxes
-		- Compute the bounding box of the attractor
-		- Start with boxes whose side S = bounding_box_diagonal/4
-		- Until S < bounding_box_diagonal/256
-			{
-			* Choose a random origin inside the bounding box
-			* Compute the number of boxes needed to cover the attractor (aligned on the origin)
-			} do this a number of time (8 ? 16 ?) and chose the minimum number N
-			Store S, N
-			S = S/1.5
-		- Perform a linear regression log(N), log(1/S). The slope is the dimension
-	"""
-	# Kludge: iterate over a.keys() but break after first iteration
-	for k in a.keys():
-		bb=[ [65535]*len(k), [-65535]*len(k) ]
-		break
+    Algorithm:
+        - Use cubic boxes
+        - Compute the bounding box of the attractor
+        - Start with boxes whose side S = bounding_box_diagonal/4
+        - Until S < bounding_box_diagonal/256
+            {
+            * Choose a random origin inside the bounding box
+            * Compute the number of boxes needed to cover the attractor (aligned on the origin)
+            }
+            In theory this should be done several time varying orientation and origin of
+            the boxes, and we should get the minimum. We just take one box count for performance
+            Store S, N
+            S = S/scaling_factor
+        - Perform a linear regression log(N), log(1/S). The slope is the dimension
+    """
+    # Kludge: iterate over a.keys() but break after first iteration
+    for k in at.keys():
+        attractor_dimension = len(k)
+        break
 
-	for pt in a.keys():
-		for i, v in enumerate(pt):
-			bb[0][i] = min(bb[0][i], v)
-			bb[1][i] = max(bb[1][i], v)
-	diagonal = math.sqrt(sum(map(lambda v: v**2, [ p[1]-p[0] for p in zip(bb[0], bb[1]) ])))
+    # Bounding box of the attractor
+    bb=[ [65535]*attractor_dimension, [-65535]*attractor_dimension ]
+    for pt in at.keys():
+        for i, v in enumerate(pt):
+            bb[0][i] = min(bb[0][i], v)
+            bb[1][i] = max(bb[1][i], v)
+    diagonal = math.sqrt(sum(map(lambda v: v**2, [ p[1]-p[0] for p in zip(bb[0], bb[1]) ])))
 
-	ratio = 4
-	(logN, invLogS) = (list(), list())
-	BOXCOUNT_TRIAL = 8
-	while ratio < 256:
-		N = len(a)
-		S = diagonal/ratio
-		for i in range(0, BOXCOUNT_TRIAL):
-			origin = [ random.randint(bb[0][i], bb[1][i]) for i in range(0, len(bb[0])) ]
-			N = min(N, boxCount(a, origin, S))
-		logN.append(math.log(N))
-		invLogS.append(math.log(1/S))
-		ratio *= 1.8
-	try:
-		(slope, rsquare) = linearReg(invLogS, logN)
-		return slope
-	except ValueError:
-		logging.error("Math error when trying to compute dimension. Setting it to 0.")
-		return 0.0
+    RATIO = 4
+    BOXCOUNT_TRIALS = 1
+    (logN, logInvS) = (list(), list())
+    while RATIO < 256:
+        S = int(diagonal/RATIO) # Round square side to ease visualization if needed
+        N = len(at.keys())
+        for iteration in range(0, BOXCOUNT_TRIALS):
+            origin = [ random.randint(bb[0][i], bb[1][i]) for i in range(0, attractor_dimension) ]
+            boxes = boxCount(at, origin, S)
+            N = min(N, len(boxes))
+        logN.append(math.log(N))
+        logInvS.append(math.log(1/S))
+        RATIO *= scaling_factor
+    try:
+        (slope, rsquare) = linearReg(logInvS, logN)
+        return slope
+    except ValueError:
+        logging.error("Math error when trying to compute dimension. Setting it to 0.")
+        return 0.0
 
 def computeCorrelationDimension(a, screenDim):
 	"""
