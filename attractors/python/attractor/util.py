@@ -125,6 +125,7 @@ def computeBoxCountingDimension(at, scaling_factor=1.3):
     RATIO = 4
     BOXCOUNT_TRIALS = 1
     (logN, logInvS) = (list(), list())
+    logging.debug("Starting box-counting dimension computation.")
     while RATIO < 256:
         S = int(diagonal/RATIO) # Round square side to ease visualization if needed
         N = len(at.keys())
@@ -137,37 +138,80 @@ def computeBoxCountingDimension(at, scaling_factor=1.3):
         RATIO *= scaling_factor
     try:
         (slope, rsquare) = linearReg(logInvS, logN)
+        logging.debug("Box-counting dimension: %.3f (rsquare: %.2f)" % (slope, rsquare))
         return slope
     except ValueError:
         logging.error("Math error when trying to compute dimension. Setting it to 0.")
         return 0.0
 
 def computeCorrelationDimension(a, screenDim):
-	"""
-	Computes an estimate of the correlation dimension computed "a la Julien Sprott"
-	Estimate the probability that 2 points in the attractor are close enough
-	"""
-	modulus = lambda x,y,z: x*x + y*y + z*z
-	base = 10
-	radiusRatio = 0.001
-	diagonal = modulus(*screenDim)
-	d1 = 4*radiusRatio*diagonal
-	d2 = float(d1)/base/base
-	n1, n2 = (0, 0)
-	points = list(a.keys())
-	l = len(points)
+    """
+    Computes an estimate of the correlation dimension "a la Julien Sprott"
+    Estimates the probability that 2 points in the attractor are close enough
+    """
+    modulus = lambda x,y,z: x*x + y*y + z*z
+    base = 10
+    radiusRatio = 0.001
+    diagonal = modulus(*screenDim)
+    d1 = 4*radiusRatio*diagonal
+    d2 = float(d1)/base/base
+    n1, n2 = (0, 0)
+    points = list(a.keys())
+    l = len(points)
 
-	for p in points: # Iterate on each attractor point
-		p2 = points[random.randint(0,l-1)] # Pick another point at random
-		d = modulus(p2[0]-p[0], p2[1]-p[1], 0)
-		if d == 0: continue # Oops we picked the same point twice
-		if d < d1: n2 += 1  # Distance within a big circle
-		if d > d2: continue # But out of a small circle
-		n1 += 1
+    for p in points: # Iterate on each attractor point
+        p2 = points[random.randint(0, l-1)] # Pick another point at random
+        d = modulus(p2[0]-p[0], p2[1]-p[1], 0)
+        if d == 0: continue # Oops we picked the same point twice
+        if d < d1: n2 += 1  # Distance within a big circle
+        if d > d2: continue # But out of a small circle
+        n1 += 1
 
-	try:
-		return math.log(float(n2)/n1, base)
-	except ZeroDivisionError:
-		logging.error("Math error when trying to compute dimension. Setting it to 0.")
-		return 0.0 # Impossible to find small circles... very scattered points
+    try:
+        return math.log(float(n2)/n1, base)
+    except ZeroDivisionError:
+        logging.error("Math error when trying to compute dimension. Setting it to 0.")
+        return 0.0 # Impossible to find small circles... very scattered points
+
+def computeTrueCorrelationDimension(a, screenDim, maxPoints=4096):
+    """
+    Computes an estimate of the correlation dimension with the naive
+    algorithm. See https://en.wikipedia.org/wiki/Correlation_dimension 
+    VERY inefficient and time consuming -> O(N²)
+    """
+    modulus = lambda x,y: x*x + y*y
+    dist2 = lambda p1, p2: (p2[0]-p1[0])**2 + (p2[1]-p1[1])**2
+    points = list(a.keys())
+    diagonal2 = modulus(*screenDim)
+
+    BINRATIOS = (4, 8, 16, 32, 64, 128, 256, 512)
+    bins_epsilon2 = [diagonal2/x/x for x in BINRATIOS]
+
+    bins = dict()
+    for epsilon2 in bins_epsilon2:
+        bins[epsilon2] = 0
+
+    l = min(maxPoints, len(points))
+    logging.debug("Starting true correlation dimension computation on %d points." % (l))
+
+    for i in range(0, l-1):
+        p1 = points[i]
+        for j in range(i+1, l):
+            p2 = points[j]
+            d2 = dist2(p2, p1)
+            for epsilon2 in bins_epsilon2:
+                if d2 < epsilon2:
+                    bins[epsilon2] += 1
+
+    bins_log = dict()
+    for k, v in bins.items():
+        try:
+            bins_log[math.log(math.sqrt(k))] = math.log(v/l/l)
+        except ValueError:
+            pass # if a bin is empty
+
+    (slope, rsquare) = linearReg(list(bins_log.keys()), list(bins_log.values()))
+    logging.debug("Correlation dimension: %.3f (rsquare: %.2f)" % (slope, rsquare))
+
+    return slope
 
