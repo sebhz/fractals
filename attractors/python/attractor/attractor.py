@@ -218,7 +218,7 @@ class Attractor(object):
 			aMerge = self.mergeAttractors(a)
 
 		if not aMerge: return aMerge
-		self.computeFractalDimension(aMerge, screenDim)
+		self.computeFractalDimension(aMerge)
 
 		self.logger.debug("Time to render the attractor.")
 		return aMerge
@@ -321,7 +321,7 @@ class PolynomialAttractor(Attractor):
 
 		return l if self.dimension == 3 else l + [0]
 
-	def computeFractalDimension(self, a, screenDim):
+	def computeFractalDimension(self, a):
 		# We lost the 3rd dimension when computing a 3D attractor (directly computing a z-map)
 		# So fractal dimension has no meaning for 3D attractors
 		self.fdim = 0.0 if self.dimension == 3 else util.computeBoxCountingDimension(a)
@@ -368,7 +368,7 @@ class DeJongAttractor(Attractor):
 
 		return equation
 
-	def computeFractalDimension(self, a, screenDim):
+	def computeFractalDimension(self, a):
 		self.fdim = min(2.0, util.computeBoxCountingDimension(a))
 
 class CliffordAttractor(Attractor):
@@ -419,6 +419,6 @@ class CliffordAttractor(Attractor):
 
 		return equation
 
-	def computeFractalDimension(self, a, screenDim):
+	def computeFractalDimension(self, a):
 		self.fdim = min(2.0, util.computeBoxCountingDimension(a))
 

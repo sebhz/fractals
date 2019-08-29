@@ -8,6 +8,9 @@ import math
 Ancillary functions used for attractor generation and rendering.
 """
 
+modulus = lambda p: sum([v*v for v in p])
+dist2 = lambda p1, p2: modulus([v[1]-v[0] for v in zip(p1, p2)])
+
 def getIdealIterationNumber(AttractorType, geometry, subsamplingRate=1):
 	"""
 	Computes the number of iterations necessary to have the attractor
@@ -89,14 +92,28 @@ def boxCount(a, origin, box_side):
 		boxes[box_c] = True
 	return boxes
 
-def computeBoxCountingDimension(at, scaling_factor=1.3):
+def getAttractorBoundingBox(at):
+    # Kludge: iterate over a.keys() but break after first iteration
+    for k in at.keys():
+        attractor_dimension = len(k)
+        break
+
+    # Bounding box of the attractor
+    bb=[ [65535]*attractor_dimension, [-65535]*attractor_dimension ]
+    for pt in at.keys():
+        for i, v in enumerate(pt):
+            bb[0][i] = min(bb[0][i], v)
+            bb[1][i] = max(bb[1][i], v)
+
+    return bb
+
+def computeBoxCountingDimension(at, scaling_factor=1.5):
     """
     Computes an estimate of the Minkowski-Bouligand dimension (a.k.a box-counting)
     See https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension
 
     Algorithm:
         - Use cubic boxes
-        - Compute the bounding box of the attractor
         - Start with boxes whose side S = bounding_box_diagonal/4
         - Until S < bounding_box_diagonal/256
             {
@@ -109,19 +126,8 @@ def computeBoxCountingDimension(at, scaling_factor=1.3):
             S = S/scaling_factor
         - Perform a linear regression log(N), log(1/S). The slope is the dimension
     """
-    # Kludge: iterate over a.keys() but break after first iteration
-    for k in at.keys():
-        attractor_dimension = len(k)
-        break
-
-    # Bounding box of the attractor
-    bb=[ [65535]*attractor_dimension, [-65535]*attractor_dimension ]
-    for pt in at.keys():
-        for i, v in enumerate(pt):
-            bb[0][i] = min(bb[0][i], v)
-            bb[1][i] = max(bb[1][i], v)
-    diagonal = math.sqrt(sum(map(lambda v: v**2, [ p[1]-p[0] for p in zip(bb[0], bb[1]) ])))
-
+    bb = getAttractorBoundingBox(at)
+    diagonal = math.sqrt(dist2(*bb))
     RATIO = 4
     BOXCOUNT_TRIALS = 1
     (logN, logInvS) = (list(), list())
@@ -130,7 +136,7 @@ def computeBoxCountingDimension(at, scaling_factor=1.3):
         S = int(diagonal/RATIO) # Round square side to ease visualization if needed
         N = len(at.keys())
         for iteration in range(0, BOXCOUNT_TRIALS):
-            origin = [ random.randint(bb[0][i], bb[1][i]) for i in range(0, attractor_dimension) ]
+            origin = [ random.randint(bb[0][i], bb[1][i]) for i in range(0, len(bb[0])) ]
             boxes = boxCount(at, origin, S)
             N = min(N, len(boxes))
         logN.append(math.log(N))
@@ -141,18 +147,18 @@ def computeBoxCountingDimension(at, scaling_factor=1.3):
         logging.debug("Box-counting dimension: %.3f (rsquare: %.2f)" % (slope, rsquare))
         return slope
     except ValueError:
-        logging.error("Math error when trying to compute dimension. Setting it to 0.")
+        logging.error("Math error when trying to compute box-counting dimension. Setting it to 0.")
         return 0.0
 
-def computeCorrelationDimension(a, screenDim):
+def computeCorrelationDimension(a):
     """
     Computes an estimate of the correlation dimension "a la Julien Sprott"
     Estimates the probability that 2 points in the attractor are close enough
     """
-    modulus = lambda x,y,z: x*x + y*y + z*z
     base = 10
     radiusRatio = 0.001
-    diagonal = modulus(*screenDim)
+    bb = getAttractorBoundingBox(a)
+    diagonal = dist2(*bb)
     d1 = 4*radiusRatio*diagonal
     d2 = float(d1)/base/base
     n1, n2 = (0, 0)
@@ -161,7 +167,7 @@ def computeCorrelationDimension(a, screenDim):
 
     for p in points: # Iterate on each attractor point
         p2 = points[random.randint(0, l-1)] # Pick another point at random
-        d = modulus(p2[0]-p[0], p2[1]-p[1], 0)
+        d = dist2(p, p2)
         if d == 0: continue # Oops we picked the same point twice
         if d < d1: n2 += 1  # Distance within a big circle
         if d > d2: continue # But out of a small circle
@@ -173,16 +179,15 @@ def computeCorrelationDimension(a, screenDim):
         logging.error("Math error when trying to compute dimension. Setting it to 0.")
         return 0.0 # Impossible to find small circles... very scattered points
 
-def computeTrueCorrelationDimension(a, screenDim, maxPoints=4096):
+def computeTrueCorrelationDimension(a, maxPoints=4096):
     """
     Computes an estimate of the correlation dimension with the naive
     algorithm. See https://en.wikipedia.org/wiki/Correlation_dimension 
     VERY inefficient and time consuming -> O(N²)
     """
-    modulus = lambda x,y: x*x + y*y
-    dist2 = lambda p1, p2: (p2[0]-p1[0])**2 + (p2[1]-p1[1])**2
     points = list(a.keys())
-    diagonal2 = modulus(*screenDim)
+    bb = getAttractorBoundingBox(a)
+    diagonal2 = dist2(*bb)
 
     BINRATIOS = (4, 8, 16, 32, 64, 128, 256, 512)
     bins_epsilon2 = [diagonal2/x/x for x in BINRATIOS]
