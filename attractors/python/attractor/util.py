@@ -3,6 +3,7 @@
 import logging
 import random
 import math
+import operator
 
 """
 Ancillary functions used for attractor generation and rendering.
@@ -93,17 +94,10 @@ def boxCount(a, origin, box_side):
 	return boxes
 
 def getAttractorBoundingBox(at):
-    # Kludge: iterate over a.keys() but break after first iteration
-    for k in at.keys():
-        attractor_dimension = len(k)
-        break
+    l = list(at.keys())
+    d = len(l[0])       # Attractor dimension - always 2 in current version
 
-    # Bounding box of the attractor
-    bb=[ [65535]*attractor_dimension, [-65535]*attractor_dimension ]
-    for pt in at.keys():
-        for i, v in enumerate(pt):
-            bb[0][i] = min(bb[0][i], v)
-            bb[1][i] = max(bb[1][i], v)
+    bb = [[f(l, key=operator.itemgetter(i))[i] for i in range(0, d)] for f in (min, max)]
 
     return bb
 
