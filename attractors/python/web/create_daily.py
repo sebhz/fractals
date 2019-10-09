@@ -27,6 +27,11 @@ PAGE_TEMPLATE='''<?xml version="1.0" encoding="UTF-8"?>
 <head dir="ltr" id="head-id" lang="EN" profile="http://gmpg.org/xfn/11">
 	<title>Strange attractor of the day</title>
 	<link rel="stylesheet" href="css/stylesheet.css" type="text/css" media="all"/>
+	<link rel="shortcut icon" href="icons/favicon.ico" type="image/x-icon" id="favicon" />
+	<link rel="icon" type="image/png" href="icons/favicon-16x16.png" sizes="16x16"/>
+	<link rel="icon" type="image/png" href="icons/favicon-32x32.png" sizes="32x32"/>
+	<link rel="icon" type="image/png" href="icons/favicon-48x48.png" sizes="48x48"/>
+	<link rel="icon" type="image/png" href="icons/favicon-96x96.png" sizes="96x96"/>
 	<script src="js/navigation.js" type="text/javascript"></script>
 </head>
 
