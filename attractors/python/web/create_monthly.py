@@ -63,16 +63,19 @@ def fillTemplate(template, MAP):
 
 def getImage(num):
 	filename = str(num) + ".xhtml"
-	with open(filename, 'r') as f:
-		for line in f:
-			if 'png' in line:
-				m = re.search('alt="(([\dA-Za-z_])+)"', line)
-				if m:
-					return m.group(1)
+	try:
+		with open(filename, 'r') as f:
+			for line in f:
+				if 'png' in line:
+					m = re.search('alt="(([\dA-Za-z_])+)"', line)
+					if m:
+						return m.group(1)
+	except Exception as e:
+		print(e, "\nIgnoring it and trying to go on.")
+		return None
 
 def daysBetween(d1, d2):
 	return abs((d2 - d1).days)
-
 
 def createImageMap():
 	h=dict()
@@ -113,6 +116,7 @@ def createTiles(tileList):
 imageMap = createImageMap()
 lastDate = sorted(imageMap.keys())[-1]
 for (k, v) in sorted(imageMap.items()):
+	if v == None: continue
 	MAP   = {
 		'__date'  : formatDate(k),
 		'__tiles' : createTiles(v),
