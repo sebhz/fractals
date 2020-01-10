@@ -237,6 +237,7 @@ class PolynomialAttractor(Attractor):
 			self.coef       = None
 			self.getPolynomLength()
 		if self.dimension == 3: self.codeStep /= 4
+		self.subtype = None
 
 	def decodeCode(self):
 		self.dimension = int(self.code[0])
@@ -245,6 +246,7 @@ class PolynomialAttractor(Attractor):
 
 		d = dict([(v, i) for i, v in enumerate(codelist)])
 		self.coef = [[(d[ord(_)]-30)*self.codeStep for _ in self.code[3+__*self.pl:3+(__+1)*self.pl]] for __ in range(self.dimension)]
+		self.subtype = self.getSubtype()
 
 	def createCode(self):
 		self.code = str(self.dimension)+str(self.order)
@@ -297,6 +299,15 @@ class PolynomialAttractor(Attractor):
 
 	def getRandomCoef(self):
 		self.coef = [[random.randint(-30, 31)*self.codeStep for _ in range(0, self.pl)] for __ in range(self.dimension)]
+		self.subtype = self.getSubtype()
+
+	def getSubtype(self):
+		if self.dimension == 2:
+			pass
+			# Need to check self.coef for subtypes
+			# Henon map: xn+1 = 1 -axn**2 + yn, yn+1 = bxn
+			# Tinkerbell map: xn+1 = xn2 - yn2 + axn + byn, yn+1=2*xn*yn + cxn+dyn
+		return None
 
 	def getNextPoint(self, p):
 		l = list()
