@@ -83,9 +83,10 @@ class Renderer(object):
         w = int ((sd[0])/self.subsample)
         h = int ((sd[1])/self.subsample)
 
+        (ncol_base, ncol_shift) = (dict(), dict())
         coef = (random.randint(1,4), random.randint(1,4), random.randint(1,4),)
         if self.colormode == 'color':
-            logging.debug("Color coefficients: (R, G, B) = (%d, %d, %d)" % coef)
+            self.logger.debug("Color coefficients: (R, G, B) = (%d, %d, %d)" % coef)
             a = [ (self.backgroundColor, self.backgroundColor, self.backgroundColor) ]*w*h
         else:
             a = [ self.backgroundColor ]*w*h
@@ -97,10 +98,13 @@ class Renderer(object):
                     a[offset] = self.colorize_pixel(v, coef)
                 else:
                     a[offset] = int(v) >> self.shift
+                    ncol_base[int(v)] = 1
+                    ncol_shift[a[offset]] = 1
             except IndexError as e:
                 # This can occur if the bounds were not correctly assessed
                 # and a point of the attractor happens to fall out of them.
-                logging.debug("Looks like a point fell out of our bounds. Ignoring it.")
+                self.logger.debug("Looks like a point fell out of our bounds. Ignoring it.")
+        self.logger.debug("Number of unique colors in the attractor: %d before shift, %d after shift." % (len(ncol_base), len(ncol_shift)))
         return a
 
     # Performs histogram equalization on the attractor pixels
