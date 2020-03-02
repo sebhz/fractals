@@ -67,16 +67,24 @@ class Renderer(object):
 
         return at
 
-    def colorize_pixel(self, v, coef):
-        # Ramp mapping 0->512 to 0->256
-        per_color = lambda x: 128 + x if x < 128 else 383 - x if x < 384 else x - 384
-
-        sqv = 2*math.sqrt(v)
-        r = per_color(int(math.floor(sqv * coef[0])) % 512)
-        g = per_color(int(math.floor(sqv * coef[1])) % 512)
-        b = per_color(int(math.floor(sqv * coef[2])) % 512)
-
-        return (r, g, b,)
+    def colorize_pixel(self, v, coef, ncol_base, ncol_shift):
+        if self.colormode == 'color':
+            self.logger.debug("Color coefficients: (R, G, B) = (%d, %d, %d)" % coef)
+            # Ramp mapping 0->512 to 0->256
+            per_color = lambda x: 128 + x if x < 128 else 383 - x if x < 384 else x - 384
+            sqv = 2*math.sqrt(v)
+            r = per_color(int(math.floor(sqv * coef[0])) % 512)
+            g = per_color(int(math.floor(sqv * coef[1])) % 512)
+            b = per_color(int(math.floor(sqv * coef[2])) % 512)
+            return (r, g, b,)
+        else:
+            if self.colormode == 'light':
+                v_tmp = (((1<<self.INTERNAL_BPC)-1) - int(v)) >> self.shift
+            else:
+                v_tmp = int(v) >> self.shift
+            ncol_base[int(v)] = 1
+            ncol_shift[v_tmp] = 1
+            return (v_tmp, v_tmp, v_tmp,)
 
     # Creates the final image array
     def createImageArray(self, p, sd):
@@ -85,25 +93,16 @@ class Renderer(object):
 
         (ncol_base, ncol_shift) = (dict(), dict())
         coef = (random.randint(1,4), random.randint(1,4), random.randint(1,4),)
-        if self.colormode == 'color':
-            self.logger.debug("Color coefficients: (R, G, B) = (%d, %d, %d)" % coef)
-            a = [ (self.backgroundColor, self.backgroundColor, self.backgroundColor) ]*w*h
-        else:
-            a = [ self.backgroundColor ]*w*h
-
+        a = [ (self.backgroundColor, self.backgroundColor, self.backgroundColor) ]*w*h
         for c, v in p.items():
             offset = c[0] + c[1]*w
             try:
-                if self.colormode == 'color':
-                    a[offset] = self.colorize_pixel(v, coef)
-                else:
-                    a[offset] = int(v) >> self.shift
-                    ncol_base[int(v)] = 1
-                    ncol_shift[a[offset]] = 1
+                a[offset] = self.colorize_pixel(v, coef, ncol_base, ncol_shift)
             except IndexError as e:
                 # This can occur if the bounds were not correctly assessed
                 # and a point of the attractor happens to fall out of them.
                 self.logger.debug("Looks like a point fell out of our bounds. Ignoring it.")
+
         self.logger.debug("Number of unique colors in the attractor: %d before shift, %d after shift." % (len(ncol_base), len(ncol_shift)))
         return a
 
@@ -122,15 +121,8 @@ class Renderer(object):
             pools[i] = 1+((1<<self.INTERNAL_BPC)-2)*(pools[i]-pools[0])/(pools[-1]-pools[0])
 
         # Now reapply the stretched values
-        if self.dimension == 2:
-            for k in p:
-                if self.colormode == 'light': # invert the values so that high order pixels are dark
-                    p[k] = ((1<<self.INTERNAL_BPC)-1) - pools[p[k]]
-                else:
-                    p[k] = pools[p[k]]
-        else:
-            for k in p:
-                p[k] = pools[p[k]]
+        for k in p:
+            p[k] = pools[p[k]]
 
     def subsampleAttractor(self, at):
 
@@ -170,15 +162,10 @@ class Renderer(object):
     def writeAttractorPNG(self, a, filepath):
         self.logger.debug("Now writing attractor %s on disk." % filepath)
 
-        if self.colormode == 'color':
-            w = png.Writer(size=[int(x/self.subsample) for x in self.geometry], bitdepth=self.bpc, interlace=True, transparent = self.backgroundColor if self.transparentbg else None)
-            aa = a
-        else:
-            w = png.Writer(size=[int(x/self.subsample) for x in self.geometry], greyscale = True, bitdepth=self.bpc, interlace=True, transparent = self.backgroundColor if self.transparentbg else None)
-            aa = w.array_scanlines(a)
+        w = png.Writer(size=[int(x/self.subsample) for x in self.geometry], bitdepth=self.bpc, interlace=True, transparent = self.backgroundColor if self.transparentbg else None)
 
         with open(filepath, "wb") as f:
-            w.write(f, aa)
+            w.write(f, a)
 
     def isNice(self, a, coverLimit=0.01):
         """
