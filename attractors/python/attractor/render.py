@@ -26,8 +26,11 @@ class Renderer(object):
     def __init__(self, **kwargs):
         getParam = lambda k: kwargs[k] if kwargs and k in kwargs else defaultParameters[k]
 
+        self.INTERNAL_BPC=16
+        self.fullRange  = (1<<self.INTERNAL_BPC)-1
         self.logger     = logging.getLogger(__name__)
         self.bpc        = getParam('bpc')
+        self.shift      = self.INTERNAL_BPC - self.bpc
         self.subsample  = getParam('subsample')
         self.geometry   = getParam('geometry')
         self.colormode  = getParam('colormode')
@@ -35,17 +38,11 @@ class Renderer(object):
         self.transparentbg  = getParam('transparentbg')
         self.backgroundColor = (1<<self.bpc) - 1 if self.colormode == 'light' else 0
         self.geometry   = [x*self.subsample for x in self.geometry]
-        self.internalbg = 0xFFFF if self.colormode == 'light' else 0
+        self.internalbg = self.fullRange if self.colormode == 'light' else 0
         if self.dimension < 2 or self.dimension > 3:
             self.logger.warning("Trying to create renderer with invalid dimension (" + self.dimension + "). Defaulting to 2.")
             self.dimension = 2
 
-        if self.colormode == 'color':
-            self.INTERNAL_BPC=11
-        else:
-            self.INTERNAL_BPC=16
-
-        self.shift      = self.INTERNAL_BPC - self.bpc
 
     # Equalize the attractor
     # attractor: attractor points: dict (X,Y) and containing :
@@ -57,7 +54,7 @@ class Renderer(object):
 
         # Now send the map in the [0, (1<<self.INTERNAL_BPC)-1] range
         for i, pt in at.items():
-            at[i] = int (pt * ((1<<self.INTERNAL_BPC)-1)/M)
+            at[i] = int (pt*self.fullRange/M)
 
         # Equalize the attractor (histogram equalization)
         self.equalizeAttractor(at)
@@ -79,7 +76,7 @@ class Renderer(object):
             return (r, g, b,)
         else:
             if self.colormode == 'light':
-                v_tmp = (((1<<self.INTERNAL_BPC)-1) - int(v)) >> self.shift
+                v_tmp = (self.fullRange - int(v)) >> self.shift
             else:
                 v_tmp = int(v) >> self.shift
             ncol_base[int(v)] = 1
@@ -118,7 +115,7 @@ class Renderer(object):
 
         # Stretch the values to the [1, (1<<INTERNAL_BPC)-1] range
         for i, v in enumerate(pools):
-            pools[i] = 1+((1<<self.INTERNAL_BPC)-2)*(pools[i]-pools[0])/(pools[-1]-pools[0])
+            pools[i] = 1+(self.fullRange-1)*(pools[i]-pools[0])/(pools[-1]-pools[0])
 
         # Now reapply the stretched values
         for k in p:
@@ -176,7 +173,7 @@ class Renderer(object):
         nPoints = len(a)
         sSize   = self.geometry[0]*self.geometry[1]
         coverRatio = float(nPoints)/sSize
-        self.logger.debug("Attractor cover ratio is %.2f%%" % (100.0*coverRatio))
+        self.logger.debug("Attractor cover ratio is %.2f%% (limit is %.2f%%)" % (100.0*coverRatio, 100.0*coverLimit))
         if coverRatio < coverLimit:
             return False
 
