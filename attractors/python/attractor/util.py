@@ -127,7 +127,7 @@ def computeBoxCountingDimension(at, scaling_factor=1.5):
     (logN, logInvS) = (list(), list())
     logging.debug("Starting box-counting dimension computation.")
     while RATIO < 256:
-        S = int(diagonal/RATIO) # Round square side to ease visualization if needed
+        S = diagonal/RATIO
         N = len(at.keys())
         for iteration in range(0, BOXCOUNT_TRIALS):
             origin = [ random.randint(bb[0][i], bb[1][i]) for i in range(0, len(bb[0])) ]

@@ -3,6 +3,8 @@
 import logging
 import random
 import math
+import colorsys
+import random
 
 try:
     import png
@@ -11,7 +13,6 @@ except:
     print("this program requires the pyPNG module", file=sys.stderr)
     print("available at https://github.com/drj11/pypng", file=sys.stderr)
     raise SystemExit
-
 
 defaultParameters = {
     'transparentbg': False,
@@ -38,7 +39,7 @@ class Renderer(object):
         self.transparentbg  = getParam('transparentbg')
         self.backgroundColor = (1<<self.bpc) - 1 if self.colormode == 'light' else 0
         self.geometry   = [x*self.subsample for x in self.geometry]
-        self.internalbg = self.fullRange if self.colormode == 'light' else 0
+        self.internalbg = 0
         if self.dimension < 2 or self.dimension > 3:
             self.logger.warning("Trying to create renderer with invalid dimension (" + self.dimension + "). Defaulting to 2.")
             self.dimension = 2
@@ -52,6 +53,7 @@ class Renderer(object):
     def postprocessAttractor(self, at):
         M = max(at.values())
 
+        self.logger.debug("Number of frequencies in attractor (before subsampling): %d" % (len(list(set(at.values())))))
         # Now send the map in the [0, (1<<self.INTERNAL_BPC)-1] range
         for i, pt in at.items():
             at[i] = int (pt*self.fullRange/M)
@@ -61,26 +63,22 @@ class Renderer(object):
 
         # Subsample here
         at = self.subsampleAttractor(at)
+        self.logger.debug("Number of frequencies in attractor (after equalization and subsampling): %d" % (len(list(set(at.values())))))
 
         return at
 
-    def colorize_pixel(self, v, coef, ncol_base, ncol_shift):
+    def colorize_pixel(self, pixel, hue):
         if self.colormode == 'color':
-            self.logger.debug("Color coefficients: (R, G, B) = (%d, %d, %d)" % coef)
-            # Ramp mapping 0->512 to 0->256
-            per_color = lambda x: 128 + x if x < 128 else 383 - x if x < 384 else x - 384
-            sqv = 2*math.sqrt(v)
-            r = per_color(int(math.floor(sqv * coef[0])) % 512)
-            g = per_color(int(math.floor(sqv * coef[1])) % 512)
-            b = per_color(int(math.floor(sqv * coef[2])) % 512)
-            return (r, g, b,)
+            (h, s, v) = colorsys.rgb_to_hsv(pixel/self.fullRange, pixel/self.fullRange, pixel/self.fullRange)
+            # TODO: use pixel value as index in an HSV color gradient of fixed value
+            # TODO: harmonize generation of B&W and color images by using a specific gradient for B&W
+            (r, g, b) = colorsys.hsv_to_rgb(hue, 0.5, v)
+            return tuple([round(x*255) for x in (r, g, b)])
         else:
             if self.colormode == 'light':
-                v_tmp = (self.fullRange - int(v)) >> self.shift
+                v_tmp = (self.fullRange - round(pixel)) >> self.shift
             else:
-                v_tmp = int(v) >> self.shift
-            ncol_base[int(v)] = 1
-            ncol_shift[v_tmp] = 1
+                v_tmp = round(pixel) >> self.shift
             return (v_tmp, v_tmp, v_tmp,)
 
     # Creates the final image array
@@ -88,20 +86,28 @@ class Renderer(object):
         w = int ((sd[0])/self.subsample)
         h = int ((sd[1])/self.subsample)
 
-        (ncol_base, ncol_shift) = (dict(), dict())
-        coef = (random.randint(1,4), random.randint(1,4), random.randint(1,4),)
+        # TODO: create a color gradient there and make background be dependent on gradient
+        hue = random.random()
+        if self.colormode == "color":
+            self.logger.debug("Hue is %.2f" % (hue))
         a = [ (self.backgroundColor, self.backgroundColor, self.backgroundColor) ]*w*h
+        # TODO: generate directly pyPNG-friendly format
         for c, v in p.items():
             offset = c[0] + c[1]*w
             try:
-                a[offset] = self.colorize_pixel(v, coef, ncol_base, ncol_shift)
+                a[offset] = self.colorize_pixel(v, hue)
             except IndexError as e:
                 # This can occur if the bounds were not correctly assessed
                 # and a point of the attractor happens to fall out of them.
                 self.logger.debug("Looks like a point fell out of our bounds. Ignoring it.")
 
-        self.logger.debug("Number of unique colors in the attractor: %d before shift, %d after shift." % (len(ncol_base), len(ncol_shift)))
-        return a
+        self.logger.debug("Number of unique colors in the attractor after colorization: %d." % (len(list(set(a)))))
+        # Now reformat the array to please latest pypng versions
+        # pypng now expects a table of one flat array per row
+        b = []
+        for row in range(0, h):
+            b.append([component for rgb_color in a[row*w:(row+1)*w] for component in rgb_color])
+        return b
 
     # Performs histogram equalization on the attractor pixels
     def equalizeAttractor(self, p):
@@ -159,7 +165,7 @@ class Renderer(object):
     def writeAttractorPNG(self, a, filepath):
         self.logger.debug("Now writing attractor %s on disk." % filepath)
 
-        w = png.Writer(size=[int(x/self.subsample) for x in self.geometry], bitdepth=self.bpc, interlace=True, transparent = self.backgroundColor if self.transparentbg else None)
+        w = png.Writer(size=[int(x/self.subsample) for x in self.geometry], bitdepth=self.bpc, interlace=True, greyscale = False, transparent = self.backgroundColor if self.transparentbg else None)
 
         with open(filepath, "wb") as f:
             w.write(f, a)

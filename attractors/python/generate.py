@@ -141,6 +141,7 @@ def generateSingleAttractor(r, nthreads):
 			a = r.renderAttractor(a)
 			break
 
+    # TODO: display directly on screen using matplotlib
 	suffix = str(args.bpc)
 	filepath = os.path.join(args.outdir, at.code + "_" + suffix + ".png")
 	r.writeAttractorPNG(a, filepath)
