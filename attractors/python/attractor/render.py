@@ -44,6 +44,34 @@ class Renderer(object):
             self.logger.warning("Trying to create renderer with invalid dimension (" + self.dimension + "). Defaulting to 2.")
             self.dimension = 2
 
+    def getGradient(self, controlColors, n, reverse=False, space="hsv"):
+        grad = list()
+        l = len(controlColors)
+        nInSlice = int(n/(l-1))
+        for i, color in enumerate(controlColors):
+            if i == l-1: break
+            startColor = color
+            endColor = controlColors[i+1]
+            add = [(x-y)/nInSlice for (x, y) in zip(endColor, startColor)]
+            for s in range(0, nInSlice):
+                color = [x+s*y for (x,y) in zip(startColor, add)]
+                if space == "hsv":
+                    hsv_color = color
+                else:
+                    hsv_color = colorsys.rgb_to_hsv(*color)
+                grad.append(tuple(hsv_color))
+        if reverse:
+            grad=list(reversed(grad))
+        return grad
+
+    def getRandomGradient(self, n):
+        niceGradients = ([ (0.0, 1.0, 0.9), (1/3, 0.4, 1.0) ],   # From red to yellow
+                         [ (2/3, 1.0, 1.0), (1.0, 0.4, 1.0) ],   # From blue to red
+                        )
+        gradient = self.getGradient(random.choice(niceGradients), n)
+        while len(gradient) < n:
+            gradient.append(gradient[-1])
+        return gradient
 
     # Equalize the attractor
     # attractor: attractor points: dict (X,Y) and containing :
@@ -63,16 +91,17 @@ class Renderer(object):
 
         # Subsample here
         at = self.subsampleAttractor(at)
-        self.logger.debug("Number of frequencies in attractor (after equalization and subsampling): %d" % (len(list(set(at.values())))))
+        self.logger.debug("Number of frequencies in attractor (after subsampling): %d" % (len(list(set(at.values())))))
 
         return at
 
-    def colorize_pixel(self, pixel, hue):
+    def colorize_pixel(self, pixel, gradient_map):
         if self.colormode == 'color':
+            # We extract the current pixel HSV to reuse the Value component.
             (h, s, v) = colorsys.rgb_to_hsv(pixel/self.fullRange, pixel/self.fullRange, pixel/self.fullRange)
-            # TODO: use pixel value as index in an HSV color gradient of fixed value
+            # TODO: change background color based on gradient
             # TODO: harmonize generation of B&W and color images by using a specific gradient for B&W
-            (r, g, b) = colorsys.hsv_to_rgb(hue, 0.5, v)
+            (r, g, b) = colorsys.hsv_to_rgb(gradient_map[pixel][0], gradient_map[pixel][1], v)
             return tuple([round(x*255) for x in (r, g, b)])
         else:
             if self.colormode == 'light':
@@ -86,16 +115,18 @@ class Renderer(object):
         w = int ((sd[0])/self.subsample)
         h = int ((sd[1])/self.subsample)
 
-        # TODO: create a color gradient there and make background be dependent on gradient
-        hue = random.random()
-        if self.colormode == "color":
-            self.logger.debug("Hue is %.2f" % (hue))
+        frequencies = list(set(p.values()))
+        grd = self.getRandomGradient(len(frequencies))
+        gradient = dict()
+        for i, freq in enumerate(sorted(frequencies)):
+            gradient[freq] = grd[i]
+
         a = [ (self.backgroundColor, self.backgroundColor, self.backgroundColor) ]*w*h
         # TODO: generate directly pyPNG-friendly format
         for c, v in p.items():
             offset = c[0] + c[1]*w
             try:
-                a[offset] = self.colorize_pixel(v, hue)
+                a[offset] = self.colorize_pixel(v, gradient)
             except IndexError as e:
                 # This can occur if the bounds were not correctly assessed
                 # and a point of the attractor happens to fall out of them.
