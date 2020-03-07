@@ -26,6 +26,8 @@ import argparse
 import sys
 import os
 import logging
+import numpy as np
+from matplotlib import pyplot as plt
 from time import time
 
 LOGLEVELS = (logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG, logging.NOTSET)
@@ -141,10 +143,20 @@ def generateSingleAttractor(r, nthreads):
 			a = r.renderAttractor(a)
 			break
 
-    # TODO: display directly on screen using matplotlib
 	suffix = str(args.bpc)
 	filepath = os.path.join(args.outdir, at.code + "_" + suffix + ".png")
-	r.writeAttractorPNG(a, filepath)
+	if args.png:
+		r.writeAttractorPNG(a, filepath)
+	else:
+        # a is an array with flat component per row. matplotlib expects R,G,B tuples
+		reformatted_a = list()
+		for row in a:
+			nrow = list()
+			for x in range(0, len(row), 3):
+				nrow.append((row[x], row[x+1], row[x+2], ))
+			reformatted_a.append(nrow)
+		plt.imshow(np.asarray(reformatted_a).astype(np.uint8))
+		plt.show()
 	t1 = time()
 
 	logging.info("Attractor type: %s" % args.type)
@@ -187,6 +199,7 @@ def parseArgs():
 	parser.add_argument('-n', '--number',       help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
 	parser.add_argument('-o', '--order',        help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
 	parser.add_argument('-O', '--outdir',       help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
+	parser.add_argument('-p', '--png',          help='save the attractor in a png file', action='store_true')
 	parser.add_argument('-q', '--sequence',     help='generate a sequence of SEQUENCE attractors', type=int)
 	parser.add_argument('-s', '--subsample',    help='subsampling rate (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3))
 	parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong", "clifford"))
