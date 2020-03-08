@@ -65,7 +65,7 @@ class Renderer(object):
         return grad
 
     def getRandomGradient(self, n):
-        niceGradients = ([ (0.0, 1.0, 0.9), (1/3, 0.4, 1.0) ],   # From red to yellow
+        niceGradients = ([ (0.0, 1.0, 0.9), (1/3, 0.5, 1.0) ],   # From red to yellow
                          [ (2/3, 1.0, 1.0), (1.0, 0.4, 1.0) ],   # From blue to red
                         )
         gradient = self.getGradient(random.choice(niceGradients), n)

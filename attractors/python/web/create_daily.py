@@ -356,7 +356,7 @@ def processAttractor(AttractorNum):
 	MAP['__order'] = t + 1
 
 	subsampling = 3
-	colorscheme = random.choice(('light', 'dark')) #, 'color'))
+	colorscheme = random.choice(('light', 'dark', 'color'))
 	dimension = 2 if MAP['__type'] == "dejong" or MAP['__type'] == "clifford" or MAP['__order'] > 4 else random.choice((2,3))
 	logging.info("Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum)))
 	logging.info("We have a %s attractor (order %d, dimension %d)." % (MAP['__type'], MAP['__order'], dimension))
