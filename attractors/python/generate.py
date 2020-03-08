@@ -34,7 +34,6 @@ LOGLEVELS = (logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO, log
 
 defaultParameters = {
     'bpc': 8,
-    'colorscheme': 'light',
     'geometry': '1280x1024',
     'iter': 1280*1024*4,
     'loglevel': 3,
@@ -172,7 +171,6 @@ def generateAttractor(geometry, nthreads):
     r  = render.Renderer(bpc=args.bpc,
             geometry=geometry,
             subsample=args.subsample,
-            colormode=args.colorscheme,
             dimension=args.dimension)
 
     try:
@@ -190,7 +188,6 @@ def parseArgs():
     parser = argparse.ArgumentParser(description='Playing with strange attractors')
     parser.add_argument('-b', '--bpc',          help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=list(range(1, 17)))
     parser.add_argument('-c', '--code',         help='attractor code', type=str)
-    parser.add_argument('-C', '--colorscheme',  help='attractor color scheme ("light", "dark" or "color")', type=str, choices=('light', 'dark', 'color'), default=defaultParameters['colorscheme'])
     parser.add_argument('-d', '--dimension',  help='attractor dimension (2 or 3)', type=int, choices=(2, 3), default=defaultParameters['dimension'])
     parser.add_argument('-g', '--geometry',     help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
     parser.add_argument('-j', '--threads',      help='Number of threads to use (default = %d)' % defaultParameters['threads'], type=int, default=defaultParameters['threads'])

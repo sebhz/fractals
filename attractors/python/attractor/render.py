@@ -16,7 +16,6 @@ except:
 
 defaultParameters = {
     'transparentbg': False,
-    'colormode': 'light',
     'subsample': 1,
     'bpc' : 8,
     'dimension' : 2,
@@ -34,16 +33,15 @@ class Renderer(object):
         self.shift      = self.INTERNAL_BPC - self.bpc
         self.subsample  = getParam('subsample')
         self.geometry   = getParam('geometry')
-        self.colormode  = getParam('colormode')
+        self.negative   = True
         self.dimension  = getParam('dimension')
         self.transparentbg  = getParam('transparentbg')
-        self.backgroundColor = (1<<self.bpc) - 1 if self.colormode == 'light' else 0
         self.geometry   = [x*self.subsample for x in self.geometry]
-        self.internalbg = 0
         if self.dimension < 2 or self.dimension > 3:
             self.logger.warning("Trying to create renderer with invalid dimension (" + self.dimension + "). Defaulting to 2.")
             self.dimension = 2
 
+    # TODO: put palette and gradients in their own module
     def getGradient(self, controlColors, n, reverse=False, space="hsv"):
         grad = list()
         l = len(controlColors)
@@ -64,81 +62,73 @@ class Renderer(object):
             grad=list(reversed(grad))
         return grad
 
-    def getRandomGradient(self, n):
-        niceGradients = ([ (0.0, 1.0, 0.9), (1/3, 0.5, 1.0) ],   # From red to yellow
-                         [ (2/3, 1.0, 1.0), (1.0, 0.4, 1.0) ],   # From blue to red
-                        )
-        gradient = self.getGradient(random.choice(niceGradients), n)
-        while len(gradient) < n:
+    def getRandomPalette(self, frequencies):
+        templates = (( [ (0.0, 1.0, 0.9), (1/3, 0.5, 1.0) ], (0, 0, 0), False ),   # From red to yellow
+                     ( [ (2/3, 1.0, 1.0), (1.0, 0.4, 1.0) ], (0, 0, 0), False ),   # From blue to red
+                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (0, 0, 0), False ),   # Pure white (will become greyscale)
+                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (1, 1, 1), True ),    # Pure black (will become greyscale)
+                    )
+        template = random.choice(templates)
+#        template = templates[0]
+        gradient = self.getGradient(template[0], len(frequencies))
+        while len(gradient) < len(frequencies):
             gradient.append(gradient[-1])
-        return gradient
 
-    # Equalize the attractor
-    # attractor: attractor points: dict (X,Y) and containing :
-    # - frequency for 2D
-    # - Z for 3D
-    # Returns the attractor points: dict indexed by (X, Y) and containing COLOR, 
-    def postprocessAttractor(self, at):
-        M = max(at.values())
-
-        self.logger.debug("Number of frequencies in attractor (before subsampling): %d" % (len(list(set(at.values())))))
-        # Now send the map in the [0, (1<<self.INTERNAL_BPC)-1] range
-        for i, pt in at.items():
-            at[i] = int (pt*self.fullRange/M)
-
-        # Equalize the attractor (histogram equalization)
-        self.equalizeAttractor(at)
-
-        # Subsample here
-        at = self.subsampleAttractor(at)
-        self.logger.debug("Number of frequencies in attractor (after subsampling): %d" % (len(list(set(at.values())))))
-
-        return at
-
-    def colorize_pixel(self, pixel, gradient_map):
-        if self.colormode == 'color':
-            # We extract the current pixel HSV to reuse the Value component.
-            (h, s, v) = colorsys.rgb_to_hsv(pixel/self.fullRange, pixel/self.fullRange, pixel/self.fullRange)
-            # TODO: change background color based on gradient
-            # TODO: harmonize generation of B&W and color images by using a specific gradient for B&W
-            (r, g, b) = colorsys.hsv_to_rgb(gradient_map[pixel][0], gradient_map[pixel][1], v)
-            return tuple([round(x*255) for x in (r, g, b)])
-        else:
-            if self.colormode == 'light':
-                v_tmp = (self.fullRange - round(pixel)) >> self.shift
-            else:
-                v_tmp = round(pixel) >> self.shift
-            return (v_tmp, v_tmp, v_tmp,)
-
-    # Creates the final image array
-    def createImageArray(self, p, sd):
-        w = int ((sd[0])/self.subsample)
-        h = int ((sd[1])/self.subsample)
-
-        frequencies = list(set(p.values()))
-        grd = self.getRandomGradient(len(frequencies))
-        gradient = dict()
+        colormap = dict()
         for i, freq in enumerate(sorted(frequencies)):
-            gradient[freq] = grd[i]
+            colormap[freq] = gradient[i]
 
-        a = [ (self.backgroundColor, self.backgroundColor, self.backgroundColor) ]*w*h
-        # TODO: generate directly pyPNG-friendly format
+        palette = dict()
+        palette['colormap']   = colormap
+        palette['background'] = template[1]
+        palette['negative']   = template[2]
+
+        return palette
+
+    def colorize_pixel(self, pixel):
+        # We extract the current pixel HSV to reuse the Value component.
+        (h, s, v) = colorsys.rgb_to_hsv(pixel/self.fullRange, pixel/self.fullRange, pixel/self.fullRange)
+        if self.palette['negative']: v = 1.0-v
+        (r, g, b) = colorsys.hsv_to_rgb(self.palette['colormap'][pixel][0], self.palette['colormap'][pixel][1], v)
+        return tuple([round(x*((1 << self.bpc)-1)) for x in (r, g, b)])
+
+    def colorizeAttractor(self, p):
+        frequencies  = list(set(p.values()))
+        self.palette = self.getRandomPalette(frequencies)
+        self.palette['background'] = tuple([round(component * ((1 << self.bpc)-1)) for component in self.palette['background']])
+
         for c, v in p.items():
-            offset = c[0] + c[1]*w
-            try:
-                a[offset] = self.colorize_pixel(v, gradient)
-            except IndexError as e:
-                # This can occur if the bounds were not correctly assessed
-                # and a point of the attractor happens to fall out of them.
-                self.logger.debug("Looks like a point fell out of our bounds. Ignoring it.")
+            p[c] = self.colorize_pixel(v)
 
-        self.logger.debug("Number of unique colors in the attractor after colorization: %d." % (len(list(set(a)))))
-        # Now reformat the array to please latest pypng versions
-        # pypng now expects a table of one flat array per row
-        b = []
-        for row in range(0, h):
-            b.append([component for rgb_color in a[row*w:(row+1)*w] for component in rgb_color])
-        return b
+        self.logger.debug("Number of unique colors in the attractor after colorization: %d." % (len(list(set(p.values())))))
+
+    # Attractor subsampling. Will have weird effects on color attractors !
+    def subsampleAttractor(self, at):
+        nat = dict()
+
+        for pt, color in at.items():
+            xsub = int(pt[0]/self.subsample)
+            ysub = int(pt[1]/self.subsample)
+            if (xsub,ysub) in nat: # We already subsampled this square
+                continue
+            n = 0
+            c = 0
+            x0 = xsub*self.subsample
+            y0 = ysub*self.subsample
+            for x in range(x0, x0+self.subsample):
+                for y in range(y0, y0+self.subsample):
+                    if (x, y) in at:
+                        n += 1
+                        c += at[(x, y)]
+            # OK now we have accumulated all colors in the attractors
+            # The pixels on the edge should be weighted with black (no color)
+            v = 0*(self.subsample*self.subsample-n) # In case we want to change the color someday
+            c += v
+            # Time to weight with the background color
+            c = round(c/(self.subsample*self.subsample))
+            nat[(xsub,ysub)] = c
+
+        return nat
 
     # Performs histogram equalization on the attractor pixels
     def equalizeAttractor(self, p):
@@ -158,34 +148,43 @@ class Renderer(object):
         for k in p:
             p[k] = pools[p[k]]
 
-    def subsampleAttractor(self, at):
+    # Postprocess the attractor
+    # attractor: attractor points: dict (X,Y) and containing :
+    # - frequency for 2D
+    # - Z for 3D
+    #
+    # 1- Perform histogram equalization on the attractor frequency
+    # 2- If needed subsample the frequencies (to smooth transitions)
+    # 3- Colorize the attractor
+    def postprocessAttractor(self, at):
+        M = max(at.values())
 
-        if self.subsample == 1: return at
+        self.logger.debug("Number of frequencies in attractor (before subsampling): %d" % (len(list(set(at.values())))))
+        # Now send the map in the [0, (1<<self.INTERNAL_BPC)-1] range
+        for i, pt in at.items():
+            at[i] = int (pt*self.fullRange/M)
 
-        nat = dict()
+        self.equalizeAttractor(at)
+        if self.subsample > 1:
+            at = self.subsampleAttractor(at)
+            self.logger.debug("Number of frequencies in attractor (after subsampling): %d" % (len(list(set(at.values())))))
+        self.colorizeAttractor(at)
+        return at
 
-        for pt, color in at.items():
-            xsub = int(pt[0]/self.subsample)
-            ysub = int(pt[1]/self.subsample)
-            if (xsub,ysub) in nat: # We already subsampled this square
-                continue
-            n = 0
-            c = 0
-            x0 = xsub*self.subsample
-            y0 = ysub*self.subsample
-            for x in range(x0, x0+self.subsample):
-                for y in range(y0, y0+self.subsample):
-                    if (x, y) in at:
-                        n += 1
-                        c += at[(x, y)]
-            # OK now we have accumulated all colors in the attractors
-            # Time to weight with the background color
-            v = self.internalbg*(self.subsample*self.subsample-n)
-            c += v
-            c = int(c/(self.subsample*self.subsample))
-            nat[(xsub,ysub)] = c
+    # Creates the final image array
+    def createImageArray(self, p, sd):
+        (w, h) = [ int(coord/self.subsample) for coord in sd[0:2] ]
 
-        return nat
+        img = [ list(self.palette['background'])*w for y in range(0,h) ]
+        for c, v in p.items():
+            (col, row) = c
+            try:
+                img[row][col*3:(col+1)*3] = v
+            except IndexError as e:
+                # This can occur if the bounds were not correctly assessed
+                # and a point of the attractor happens to fall out of them.
+                self.logger.debug("Looks like a point fell out of our bounds. Ignoring it.")
+        return img
 
     def renderAttractor(self, a):
         if not a: return None
@@ -196,7 +195,7 @@ class Renderer(object):
     def writeAttractorPNG(self, a, filepath):
         self.logger.debug("Now writing attractor %s on disk." % filepath)
 
-        w = png.Writer(size=[int(x/self.subsample) for x in self.geometry], bitdepth=self.bpc, interlace=True, greyscale = False, transparent = self.backgroundColor if self.transparentbg else None)
+        w = png.Writer(size=[int(x/self.subsample) for x in self.geometry], bitdepth=self.bpc, interlace=True, greyscale = False, transparent = self.palette['background'] if self.transparentbg else None)
 
         with open(filepath, "wb") as f:
             w.write(f, a)
