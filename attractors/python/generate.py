@@ -141,21 +141,6 @@ def generateSingleAttractor(r, nthreads):
         if r.isNice(a) or args.code:
             a = r.renderAttractor(a)
             break
-
-    suffix = str(args.bpc)
-    filepath = os.path.join(args.outdir, at.code + "_" + suffix + ".png")
-    if args.png:
-        r.writeAttractorPNG(a, filepath)
-    else:
-        # a is an array with flat component per row. matplotlib expects R,G,B tuples
-        reformatted_a = list()
-        for row in a:
-            nrow = list()
-            for x in range(0, len(row), 3):
-                nrow.append((row[x], row[x+1], row[x+2], ))
-            reformatted_a.append(nrow)
-        plt.imshow(np.asarray(reformatted_a).astype(np.uint8))
-        plt.show()
     t1 = time()
 
     logging.info("Attractor type: %s" % args.type)
@@ -166,6 +151,21 @@ def generateSingleAttractor(r, nthreads):
     logging.info("Code: %s" % at.code)
     logging.info("Iterations: %d" % args.iter)
     logging.info("Attractor generation and rendering took %s." % sec2hms(t1-t0))
+
+    if args.png:
+        suffix = str(args.bpc)
+        filepath = os.path.join(args.outdir, at.code + "_" + suffix + ".png")
+        r.writeAttractorPNG(a, filepath)
+    else:
+        # a is an array with flat component per row. matplotlib expects R,G,B tuples
+        reformatted_a = list()
+        for row in a:
+            nrow = list()
+            for x in range(0, len(row), 3):
+                nrow.append(tuple(row[x:x+3]))
+            reformatted_a.append(nrow)
+        plt.imshow(np.asarray(reformatted_a).astype(np.uint8))
+        plt.show()
 
 def generateAttractor(geometry, nthreads):
     r  = render.Renderer(bpc=args.bpc,

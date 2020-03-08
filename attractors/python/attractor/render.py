@@ -26,17 +26,15 @@ class Renderer(object):
     def __init__(self, **kwargs):
         getParam = lambda k: kwargs[k] if kwargs and k in kwargs else defaultParameters[k]
 
-        self.INTERNAL_BPC=16
-        self.fullRange  = (1<<self.INTERNAL_BPC)-1
-        self.logger     = logging.getLogger(__name__)
-        self.bpc        = getParam('bpc')
-        self.shift      = self.INTERNAL_BPC - self.bpc
-        self.subsample  = getParam('subsample')
-        self.geometry   = getParam('geometry')
-        self.negative   = True
-        self.dimension  = getParam('dimension')
+        self.INTERNAL_BPC   = 16
+        self.fullRange      = (1<<self.INTERNAL_BPC)-1
+        self.logger         = logging.getLogger(__name__)
         self.transparentbg  = getParam('transparentbg')
-        self.geometry   = [x*self.subsample for x in self.geometry]
+        self.subsample      = getParam('subsample')
+        self.bpc            = getParam('bpc')
+        self.dimension      = getParam('dimension')
+        self.geometry       = getParam('geometry')
+        self.geometry       = [x*self.subsample for x in self.geometry]
         if self.dimension < 2 or self.dimension > 3:
             self.logger.warning("Trying to create renderer with invalid dimension (" + self.dimension + "). Defaulting to 2.")
             self.dimension = 2
@@ -63,14 +61,16 @@ class Renderer(object):
         return grad
 
     def getRandomPalette(self, frequencies):
-        templates = (( [ (0.0, 1.0, 0.9), (1/3, 0.5, 1.0) ], (0, 0, 0), False ),   # From red to yellow
-                     ( [ (2/3, 1.0, 1.0), (1.0, 0.4, 1.0) ], (0, 0, 0), False ),   # From blue to red
-                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (0, 0, 0), False ),   # Pure white (will become greyscale)
-                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (1, 1, 1), True ),    # Pure black (will become greyscale)
+        templates = (( [ (0.0, 1.0, 0.9), (1/3, 0.5, 1.0) ], (0, 0, 0), False, "hsv" ),   # From red to yellow
+                     ( [ (2/3, 1.0, 1.0), (1.0, 0.4, 1.0) ], (0, 0, 0), False, "hsv" ),   # From blue to red
+                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (0, 0, 0), False, "hsv" ),   # Pure white (will become greyscale)
+                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (1, 1, 1), True,  "hsv" ),   # Pure black (will become greyscale)
+                     ( [ (0.0, 1.0, 1.0), (1/6, 1.0, 1.0) ], (0, 0, 0), True,  "hsv" ),   # From red to black
+                     ( [ (0.38, 0.0, 0.88), (0.94, 1.0, 0.13) ], (0, 0, 0), False, "rgb" ), # From blue to yellow
                     )
         template = random.choice(templates)
-#        template = templates[0]
-        gradient = self.getGradient(template[0], len(frequencies))
+#        template = templates[5]
+        gradient = self.getGradient(template[0], len(frequencies), False, template[3])
         while len(gradient) < len(frequencies):
             gradient.append(gradient[-1])
 
