@@ -21,14 +21,14 @@
 # http://ianwitham.wordpress.com/category/graphics/strange-attractors-graphics/
 
 from attractor import attractor, render, util
+from time import time
+
 import random
 import argparse
 import sys
 import os
 import logging
-import numpy as np
-from matplotlib import pyplot as plt
-from time import time
+import cv2
 
 LOGLEVELS = (logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG, logging.NOTSET)
 
@@ -139,7 +139,7 @@ def generateSingleAttractor(r, nthreads):
         a = at.createFrequencyMap(r.geometry, nthreads)
         # Will also test if a is null
         if r.isNice(a) or args.code:
-            a = r.renderAttractor(a)
+            img = r.renderAttractor(a)
             break
     t1 = time()
 
@@ -155,22 +155,16 @@ def generateSingleAttractor(r, nthreads):
     if args.png:
         suffix = str(args.bpc)
         filepath = os.path.join(args.outdir, at.code + "_" + suffix + ".png")
-        r.writeAttractorPNG(a, filepath)
+        cv2.imwrite(filepath, img)
     else:
-        # a is an array with flat component per row. matplotlib expects R,G,B tuples
-        reformatted_a = list()
-        for row in a:
-            nrow = list()
-            for x in range(0, len(row), 3):
-                nrow.append(tuple(row[x:x+3]))
-            reformatted_a.append(nrow)
-        plt.imshow(np.asarray(reformatted_a).astype(np.uint8))
-        plt.show()
+        cv2.imshow(at.code, img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
 def generateAttractor(geometry, nthreads):
     r  = render.Renderer(bpc=args.bpc,
             geometry=geometry,
-            subsample=args.subsample,
+            downsampleRatio=args.downsample,
             dimension=args.dimension)
 
     try:
@@ -198,7 +192,7 @@ def parseArgs():
     parser.add_argument('-O', '--outdir',       help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
     parser.add_argument('-p', '--png',          help='save the attractor in a png file', action='store_true')
     parser.add_argument('-q', '--sequence',     help='generate a sequence of SEQUENCE attractors', type=int)
-    parser.add_argument('-s', '--subsample',    help='subsampling rate (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3))
+    parser.add_argument('-s', '--downsample',   help='downsample ratio (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3, 4))
     parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong", "clifford"))
     args = parser.parse_args()
     if args.code:
@@ -217,7 +211,7 @@ random.seed()
 g = [int(x) for x in args.geometry.split('x')]
 #TODO - check validity of g
 
-idealIter = util.getIdealIterationNumber(args.type, g, args.subsample)
+idealIter = util.getIdealIterationNumber(args.type, g, args.downsample)
 if args.iter == None:
     args.iter = idealIter
     logging.debug("Setting iteration number to %d." % (args.iter))

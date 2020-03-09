@@ -7,6 +7,7 @@ import logging
 import smtplib
 import random
 import subprocess
+import cv2
 
 from attractor import attractor, render, util
 from time import time
@@ -355,25 +356,22 @@ def processAttractor(AttractorNum):
 		MAP['__type'] = "polynomial"
 	MAP['__order'] = t + 1
 
-	subsampling = 3
-	colorscheme = random.choice(('light', 'dark', 'color'))
+	downsampling = 3
 	dimension = 2 if MAP['__type'] == "dejong" or MAP['__type'] == "clifford" or MAP['__order'] > 4 else random.choice((2,3))
 	logging.info("Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum)))
 	logging.info("We have a %s attractor (order %d, dimension %d)." % (MAP['__type'], MAP['__order'], dimension))
-	logging.info("Color scheme used: " + colorscheme)
 
 	while True:
 		done = False
 		at = createAttractor(MAP['__type'], MAP['__order'], dimension)
 		for parameters in ( {'geometry': (1000, 1000), 'directory': '/tmp'}, ):
 			t0 = time()
-			iterations = util.getIdealIterationNumber(MAP['__type'], parameters['geometry'], subsampling)
+			iterations = util.getIdealIterationNumber(MAP['__type'], parameters['geometry'], downsampling)
 			logging.debug("Num iterations: %d", iterations)
 			at.iterations = iterations
 			r = render.Renderer(bpc=8,
 				geometry=parameters['geometry'],
-				subsample=subsampling,
-				colormode=colorscheme,
+				downsample=downsampling,
 				dimension=dimension)
 			a = at.createFrequencyMap(r.geometry, args.nthreads)
 			if not r.isNice(a):
@@ -389,7 +387,7 @@ def processAttractor(AttractorNum):
 				filePath = at.code[:maxFileNameLength-len(suffix)-1] + '#' + suffix
 			# TODO: we should check that full path is not too long
 			fname = os.path.join(parameters['directory'], filePath)
-			r.writeAttractorPNG(a, fname)
+			cv2.imwrite(fname, a)
 			done = True
 			t1 = time()
 		if done: break
