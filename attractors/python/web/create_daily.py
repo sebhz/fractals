@@ -378,7 +378,7 @@ def processAttractor(AttractorNum):
 				logging.debug("Attractor too thin. Trying to find a better one.")
 				break
 			a = r.renderAttractor(a)
-			if a == None: break
+#			if a == None: break
 
 			suffix = '_8.png'
 			if len(at.code) < maxFileNameLength - len(suffix):
