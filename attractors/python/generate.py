@@ -123,14 +123,13 @@ def generateAttractorSequence(r, nthreads):
     logging.debug("Attractors bounding box: %s." % (str(bounds)))
 
     for i, c in enumerate(coefList):
-        at.coef = c
+        at.coef  = c
         at.bound = bounds
-        a = at.createFrequencyMap(r.geometry, nthreads)
-        a = r.renderAttractor(a)
-        if not a : continue
+        a        = at.createFrequencyMap(r.geometry, nthreads)
+        img      = r.renderAttractor(a)
 
         path = os.path.join(args.outdir, at.code + "_" + "%04d" % i + ".png")
-        r.writeAttractorPNG(a, path)
+        cv2.imwrite(path, img)
 
 def generateSingleAttractor(r, nthreads):
     t0 = time()
@@ -153,8 +152,7 @@ def generateSingleAttractor(r, nthreads):
     logging.info("Attractor generation and rendering took %s." % sec2hms(t1-t0))
 
     if args.png:
-        suffix = str(args.bpc)
-        filepath = os.path.join(args.outdir, at.code + "_" + suffix + ".png")
+        filepath = os.path.join(args.outdir, at.code + ".png")
         cv2.imwrite(filepath, img)
     else:
         cv2.imshow(at.code, img)
@@ -162,10 +160,14 @@ def generateSingleAttractor(r, nthreads):
         cv2.destroyAllWindows()
 
 def generateAttractor(geometry, nthreads):
+    if args.palette == None:
+        args.palette = random.choice(range(len(render.Renderer.pal_templates)))
+
     r  = render.Renderer(bpc=args.bpc,
             geometry=geometry,
             downsampleRatio=args.downsample,
-            dimension=args.dimension)
+            dimension=args.dimension,
+            paletteIndex=args.palette)
 
     try:
         os.makedirs(args.outdir)
@@ -182,7 +184,7 @@ def parseArgs():
     parser = argparse.ArgumentParser(description='Playing with strange attractors')
     parser.add_argument('-b', '--bpc',          help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=list(range(1, 17)))
     parser.add_argument('-c', '--code',         help='attractor code', type=str)
-    parser.add_argument('-d', '--dimension',  help='attractor dimension (2 or 3)', type=int, choices=(2, 3), default=defaultParameters['dimension'])
+    parser.add_argument('-d', '--dimension',    help='attractor dimension (2 or 3)', type=int, choices=(2, 3), default=defaultParameters['dimension'])
     parser.add_argument('-g', '--geometry',     help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
     parser.add_argument('-j', '--threads',      help='Number of threads to use (default = %d)' % defaultParameters['threads'], type=int, default=defaultParameters['threads'])
     parser.add_argument('-l', '--loglevel',     help='Sets log level (the higher the more verbose - default = %d)' % defaultParameters['loglevel'], default=defaultParameters['loglevel'], type=int, choices=list(range(len(LOGLEVELS))))
@@ -191,6 +193,7 @@ def parseArgs():
     parser.add_argument('-o', '--order',        help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
     parser.add_argument('-O', '--outdir',       help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
     parser.add_argument('-p', '--png',          help='save the attractor in a png file', action='store_true')
+    parser.add_argument('-P', '--palette',      help='color palette number', type=int, choices=range(len(render.Renderer.pal_templates)))
     parser.add_argument('-q', '--sequence',     help='generate a sequence of SEQUENCE attractors', type=int)
     parser.add_argument('-s', '--downsample',   help='downsample ratio (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3, 4))
     parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong", "clifford"))

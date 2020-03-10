@@ -356,8 +356,9 @@ def processAttractor(AttractorNum):
 		MAP['__type'] = "polynomial"
 	MAP['__order'] = t + 1
 
-	downsampling = 3
-	dimension = 2 if MAP['__type'] == "dejong" or MAP['__type'] == "clifford" or MAP['__order'] > 4 else random.choice((2,3))
+	downsampling = 2 # odd numbers seem to create strange artifacts. Keep it safe :-)
+	#dimension = 2 if MAP['__type'] == "dejong" or MAP['__type'] == "clifford" or MAP['__order'] > 4 else random.choice((2,3))
+	dimension = 2
 	logging.info("Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum)))
 	logging.info("We have a %s attractor (order %d, dimension %d)." % (MAP['__type'], MAP['__order'], dimension))
 

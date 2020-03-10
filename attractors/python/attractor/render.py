@@ -13,9 +13,18 @@ defaultParameters = {
     'bpc' : 8,
     'dimension' : 2,
     'geometry' : (800, 600),
+    'paletteIndex': None
 }
 
 class Renderer(object):
+    pal_templates = (( [ (0.0, 1.0, 0.9), (1/3, 0.5, 1.0) ], (0, 0, 0), False, "hsv" ),     # From red to green
+                     ( [ (2/3, 1.0, 1.0), (1.0, 0.4, 1.0) ], (0, 0, 0), False, "hsv" ),     # From blue to red
+                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (0, 0, 0), False, "hsv" ),     # Pure white (will become greyscale)
+                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (1, 1, 1), True,  "hsv" ),     # Pure black (will become greyscale)
+                     ( [ (0.38, 0.0, 0.88), (0.94, 1.0, 0.13) ], (0, 0, 0), False, "rgb" ), # From blue to yellow
+                     ( [ (0.4, 1.0, 0.5), (0.0, 0.5, 1.0) ], (0, 0, 0), False, "hsv" ),     # From green to red
+                    )
+
     def __init__(self, **kwargs):
         getParam = lambda k: kwargs[k] if kwargs and k in kwargs else defaultParameters[k]
 
@@ -26,10 +35,13 @@ class Renderer(object):
         self.bpc             = getParam('bpc')
         self.dimension       = getParam('dimension')
         self.geometry        = getParam('geometry')
+        self.paletteIndex    = getParam('paletteIndex')
         self.geometry        = [x*self.downsampleRatio for x in self.geometry]
         if self.dimension < 2 or self.dimension > 3:
             self.logger.warning("Trying to create renderer with invalid dimension (" + self.dimension + "). Defaulting to 2.")
             self.dimension = 2
+        if self.paletteIndex == None:
+            self.paletteIndex = random.choice(range(len(self.pal_templates)))
 
     # TODO: put palette and gradients in their own module
     def getGradient(self, controlColors, n, reverse=False, space="hsv"):
@@ -52,16 +64,10 @@ class Renderer(object):
             grad=list(reversed(grad))
         return grad
 
-    def getRandomPalette(self, frequencies):
-        templates = (( [ (0.0, 1.0, 0.9), (1/3, 0.5, 1.0) ], (0, 0, 0), False, "hsv" ),     # From red to green
-                     ( [ (2/3, 1.0, 1.0), (1.0, 0.4, 1.0) ], (0, 0, 0), False, "hsv" ),     # From blue to red
-                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (0, 0, 0), False, "hsv" ),     # Pure white (will become greyscale)
-                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (1, 1, 1), True,  "hsv" ),     # Pure black (will become greyscale)
-                     ( [ (0.38, 0.0, 0.88), (0.94, 1.0, 0.13) ], (0, 0, 0), False, "rgb" ), # From blue to yellow
-                     ( [ (0.4, 1.0, 0.5), (0.0, 0.5, 1.0) ], (0, 0, 0), False, "hsv" ),     # From green to red
-                    )
-        template = random.choice(templates)
-        #template = templates[-1]
+    def getPalette(self, frequencies):
+        #template = random.choice(pal_templates)
+        self.logger.debug("Chosing palette #%d" % (self.paletteIndex))
+        template = self.pal_templates[self.paletteIndex]
         gradient = self.getGradient(template[0], len(frequencies), space=template[3])
         while len(gradient) < len(frequencies):
             gradient.append(gradient[-1])
@@ -86,7 +92,7 @@ class Renderer(object):
 
     def colorizeAttractor(self, p):
         frequencies  = list(set(p.values()))
-        self.palette = self.getRandomPalette(frequencies)
+        self.palette = self.getPalette(frequencies)
         self.palette['background'] = tuple([round(component * ((1 << self.bpc)-1)) for component in self.palette['background']])
 
         for c, v in p.items():

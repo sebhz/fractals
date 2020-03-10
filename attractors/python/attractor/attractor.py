@@ -59,8 +59,8 @@ class Attractor(object):
 		if self.dimension < 2 or self.dimension > 3:
 			self.logger.warning("Invalid dimension value " + self.dimension + ". Forcing 2D.")
 			self.dimension = 2
-		# convMaxIter must be < iterations, but at least self.iterations/64
-		self.convMaxIter = int(min(max(self.convMaxIter, self.iterations/64), self.iterations))
+		# If self.iterations is lower than convMaxIter...
+		self.convMaxIter = min(self.convMaxIter, self.iterations)
 
 	def __str__(self):
 		return self.code if self.code else super(Attractor, self).__str__()
