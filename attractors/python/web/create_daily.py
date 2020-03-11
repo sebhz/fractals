@@ -7,6 +7,7 @@ import logging
 import smtplib
 import random
 import subprocess
+import cv2
 
 from attractor import attractor, render, util
 from time import time
@@ -19,6 +20,7 @@ from email.utils import COMMASPACE, formatdate
 REFERENCE_DATE = datetime(2016, 7, 27)
 CURRENT_FILE = "strange_attractor.xhtml"
 NUM_THREADS = 4
+IMAGE_SUFFIX = ".png"
 
 PAGE_TEMPLATE='''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
@@ -51,8 +53,6 @@ __date
 </div>
 <div id="info_div">
 Attractor type: <span class="code">__type</span>
-<br></br>
-Polynom order: <span class="code">__order</span>
 <br></br>
 Fractal dimension: <span class="code">__dimension</span>
 <br></br>
@@ -134,8 +134,6 @@ MAIL_HTML_TEMPLATE='''<?xml version="1.0" encoding="UTF-8"?>
 <div id="info_div">
 Attractor type: <span class="code">__type</span>
 <br></br>
-Polynom order: <span class="code">__order</span>
-<br></br>
 Fractal dimension: <span class="code">__dimension</span>
 <br></br>
 Sprott's code: <span class="code">__code</span>
@@ -167,7 +165,6 @@ Generation and rendering time: __time
 MAIL_TXT_TEMPLATE = '''Please find your strange attractor.
 
 	- Type: __type
-	- Order: __order
 	- # Iterations: _iterations
 	- Fractal dimension: __dimension [1]
 	- Generation and rendering time: __time
@@ -355,50 +352,45 @@ def processAttractor(AttractorNum):
 		MAP['__type'] = "polynomial"
 	MAP['__order'] = t + 1
 
-	subsampling = 3
-	colorscheme = random.choice(('light', 'dark')) #, 'color'))
-	dimension = 2 if MAP['__type'] == "dejong" or MAP['__type'] == "clifford" or MAP['__order'] > 4 else random.choice((2,3))
+	downsampling = 2 # odd numbers seem to create strange artifacts. Keep it safe :-)
+	#dimension = 2 if MAP['__type'] == "dejong" or MAP['__type'] == "clifford" or MAP['__order'] > 4 else random.choice((2,3))
+	dimension = 2
 	logging.info("Today is %s. %s attractor generation starts." % (MAP['__date'], numeral(attractorNum)))
-	logging.info("We have a %s attractor (order %d, dimension %d)." % (MAP['__type'], MAP['__order'], dimension))
-	logging.info("Color scheme used: " + colorscheme)
+	logging.info("We have a %s attractor%s (dimension %d)." % (MAP['__type'], " of order %d" % (MAP['__order']) if MAP['__type'] == "polynomial" else "", dimension))
 
 	while True:
 		done = False
 		at = createAttractor(MAP['__type'], MAP['__order'], dimension)
 		for parameters in ( {'geometry': (1000, 1000), 'directory': '/tmp'}, ):
 			t0 = time()
-			iterations = util.getIdealIterationNumber(MAP['__type'], parameters['geometry'], subsampling)
+			iterations = util.getIdealIterationNumber(MAP['__type'], parameters['geometry'], downsampling)
 			logging.debug("Num iterations: %d", iterations)
 			at.iterations = iterations
 			r = render.Renderer(bpc=8,
 				geometry=parameters['geometry'],
-				subsample=subsampling,
-				colormode=colorscheme,
+				downsample=downsampling,
 				dimension=dimension)
 			a = at.createFrequencyMap(r.geometry, args.nthreads)
 			if not r.isNice(a):
 				logging.debug("Attractor too thin. Trying to find a better one.")
 				break
-			a = r.renderAttractor(a)
-			if a == None: break
+			at.computeFractalDimension(a)
+			img = r.renderAttractor(a)
 
-			suffix = '_8.png'
-			if len(at.code) < maxFileNameLength - len(suffix):
-				filePath = at.code + suffix
+			if len(at.code) < maxFileNameLength - len(IMAGE_SUFFIX):
+				filePath = at.code + IMAGE_SUFFIX
 			else:
-				filePath = at.code[:maxFileNameLength-len(suffix)-1] + '#' + suffix
+				filePath = at.code[:maxFileNameLength-len(IMAGE_SUFFIX)-1] + '#' + suffix
 			# TODO: we should check that full path is not too long
 			fname = os.path.join(parameters['directory'], filePath)
-			r.writeAttractorPNG(a, fname)
+			cv2.imwrite(fname, img)
 			done = True
 			t1 = time()
 		if done: break
 
 	MAP['__code'] = at.code
 	if MAP['__type'] == 'polynomial':
-		MAP['__order'] = str(at.order)
-	else:
-		MAP['__order'] = 'irrelevant'
+		MAP['__type'] += " (order " + str(at.order) + ")"
 
 	if dimension == 3:
 		MAP['__x_polynom'], MAP['__y_polynom'], MAP['__z_polynom'] = at.humanReadable(isHTML=True)
@@ -414,7 +406,7 @@ def processAttractor(AttractorNum):
 	return MAP
 
 def processThumbnails(MAP):
-	filename = MAP['__code'] + "_8.png"
+	filename = MAP['__code'] + IMAGE_SUFFIX
 	radius = 15
 	for d in (("960x960", "png"), ("600x600", "png_thumb"), ("128x128", "png_tile")):
 		if not os.path.exists(d[1]):
@@ -433,7 +425,7 @@ def processThumbnails(MAP):
 			break
 
 def removeThumbnails(MAP):
-	filename = MAP['__code'] + "_8.png"
+	filename = MAP['__code'] + IMAGE_SUFFIX
 	for d in ("png", "png_thumb", "png_tile"):
 		if not os.path.exists(d) or not os.path.isdir(d):
 			continue
@@ -475,6 +467,6 @@ for attractorNum in attractorRange:
 	processMail(MAP)
 
 	if args.ephemerous:
-		logging.info("Ephemerous mode chosen. Cleaning up attractors. Root attractor can still be found in %s" % (os.path.join("/tmp", MAP['__code'] + "_8.png")))
+		logging.info("Ephemerous mode chosen. Cleaning up attractors. Root attractor can still be found in %s" % (os.path.join("/tmp", MAP['__code'] + IMAGE_SUFFIX)))
 		removeThumbnails(MAP)
 

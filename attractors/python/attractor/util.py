@@ -26,12 +26,10 @@ def getIdealIterationNumber(AttractorType, geometry, subsamplingRate=1):
 	Returns the correct number of iteration to have the attractor look reasonably good.
 	"""
 
-	OVERITERATE_FACTOR=4
+	OVERITERATE_FACTOR=32
 	pxSize = subsamplingRate*subsamplingRate*geometry[0]*geometry[1]
 
 	idealIter = int(OVERITERATE_FACTOR*pxSize)
-	if AttractorType == 'dejong' or AttractorType == 'clifford':
-		idealIter *=4
 
 	return idealIter
 
@@ -127,7 +125,7 @@ def computeBoxCountingDimension(at, scaling_factor=1.5):
     (logN, logInvS) = (list(), list())
     logging.debug("Starting box-counting dimension computation.")
     while RATIO < 256:
-        S = int(diagonal/RATIO) # Round square side to ease visualization if needed
+        S = diagonal/RATIO
         N = len(at.keys())
         for iteration in range(0, BOXCOUNT_TRIALS):
             origin = [ random.randint(bb[0][i], bb[1][i]) for i in range(0, len(bb[0])) ]

@@ -21,181 +21,189 @@
 # http://ianwitham.wordpress.com/category/graphics/strange-attractors-graphics/
 
 from attractor import attractor, render, util
+from time import time
+
 import random
 import argparse
 import sys
 import os
 import logging
-from time import time
+import cv2
 
 LOGLEVELS = (logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG, logging.NOTSET)
 
 defaultParameters = {
-	'bpc': 8,
-	'colorscheme': 'light',
-	'geometry': '1280x1024',
-	'iter': 1280*1024*4,
-	'loglevel': 3,
-	'number': 1,
-	'order': 2,
-	'outdir': 'png',
-	'sub': 1,
-	'threads': 1,
-	'type': 'polynomial',
-	'dimension': 2,
+    'bpc': 8,
+    'geometry': '1280x1024',
+    'iter': 1280*1024*4,
+    'loglevel': 3,
+    'number': 1,
+    'order': 2,
+    'outdir': 'png',
+    'sub': 1,
+    'threads': 1,
+    'type': 'polynomial',
+    'dimension': 2,
 }
 
 def sec2hms(seconds):
-	m, s = divmod(seconds, 60)
-	h, m = divmod(m, 60)
-	return "%dh%02dm%02ds" % (h, m, s)
+    m, s = divmod(seconds, 60)
+    h, m = divmod(m, 60)
+    return "%dh%02dm%02ds" % (h, m, s)
 
 def createAttractor():
-	if args.type == 'dejong':
-		at = attractor.DeJongAttractor(iter = int(args.iter/args.threads),
-	                code = args.code)
-	elif args.type == 'clifford':
-		at = attractor.CliffordAttractor(iter = int(args.iter/args.threads),
-	                code = args.code)
-	else:
-		at = attractor.PolynomialAttractor(order = args.order,
-	                iter = int(args.iter/args.threads),
-	                code = args.code, dimension = args.dimension)
+    if args.type == 'dejong':
+        at = attractor.DeJongAttractor(iter = int(args.iter/args.threads),
+                    code = args.code)
+    elif args.type == 'clifford':
+        at = attractor.CliffordAttractor(iter = int(args.iter/args.threads),
+                    code = args.code)
+    else:
+        at = attractor.PolynomialAttractor(order = args.order,
+                    iter = int(args.iter/args.threads),
+                    code = args.code, dimension = args.dimension)
 
-	if args.code:
-		if not at.checkConvergence():
-			logging.warning("Not an attractor it seems... but trying to display it anyway.")
-	else:
-		at.explore()
+    if args.code:
+        if not at.checkConvergence():
+            logging.warning("Not an attractor it seems... but trying to display it anyway.")
+    else:
+        at.explore()
 
-	logging.debug("Converging attractor found. Boundaries: %s" % (str(at.bound)))
+    logging.debug("Converging attractor found. Boundaries: %s" % (str(at.bound)))
 
-	return at
+    return at
 
 def getCloseCoef(a, step):
-	coefMod=list()
-	if args.type == 'polynomial':
-		for d in range(a.dimension):
-			coefMod.append((random.randint(0, a.pl-1), step*random.choice((-1, 1))))
-	else:
-		for d in range(2):
-			coefMod.append((random.randint(0, 1), step*random.choice((-1, 1))))
-	return coefMod
+    coefMod=list()
+    if args.type == 'polynomial':
+        for d in range(a.dimension):
+            coefMod.append((random.randint(0, a.pl-1), step*random.choice((-1, 1))))
+    else:
+        for d in range(2):
+            coefMod.append((random.randint(0, 1), step*random.choice((-1, 1))))
+    return coefMod
 
 """
 Generate a sequence of converging attractors "close to each other"
 """
 def generateAttractorSequence(r, nthreads):
-	sequenceSize = args.sequence or 1024
-	coefStep = 0.125/16
-	coefList = list()
+    sequenceSize = args.sequence or 1024
+    coefStep = 0.125/16
+    coefList = list()
 
-	# Find a nice attractor to start with !
-	while True:
-		at = createAttractor()
-		a = at.createFrequencyMap(r.geometry, nthreads)
-		# Will also test if a is null
-		if r.isNice(a):
-			break
+    # Find a nice attractor to start with !
+    while True:
+        at = createAttractor()
+        a = at.createFrequencyMap(r.geometry, nthreads)
+        # Will also test if a is null
+        if r.isNice(a):
+            break
+    bounds   = at.bound
+    args.code = None
 
-	bounds   = at.bound
-	args.code = None
+    for num in range(sequenceSize):
+        logging.debug("Attractor #%d in sequence." % (num))
+        coefList.append([ x[:] for x in at.coef ])
+        bounds = [min(x) for x in zip(bounds[0:3], at.bound[0:3])] + [max(x) for x in zip(bounds[3:6], at.bound[3:6])]
+        currentCoef = at.coef
+        # Modify the attractor coefficients. Backup and try gain until resulting attractor converges
+        while True:
+            coefMod = getCloseCoef(at, coefStep)
+            at.bound = None # We only update bounds if they do not exist !
+            for d in range(at.dimension):
+                coefModPosition = coefMod[d][0]
+                at.coef[d][coefModPosition] += coefMod[d][1]
+            if at.checkConvergence():
+                break
+            # We did not converge: backup one step and try again
+            at.coef = currentCoef
 
-	for num in range(sequenceSize):
-		logging.debug("Attractor #%d in sequence." % (num))
-		coefList.append([ x[:] for x in at.coef ])
-		bounds = [min(x) for x in zip(bounds[0:3], at.bound[0:3])] + [max(x) for x in zip(bounds[3:6], at.bound[3:6])]
-		currentCoef = at.coef
-		# Modify the attractor coefficients. Backup and try gain until resulting attractor converges
-		while True:
-			coefMod = getCloseCoef(at, coefStep)
-			at.bound = None # We only update bounds if they do not exist !
-			for d in range(at.dimension):
-				coefModPosition = coefMod[d][0]
-				at.coef[d][coefModPosition] += coefMod[d][1]
-			if at.checkConvergence():
-				break
-			# We did not converge: backup one step and try again
-			at.coef = currentCoef
+    logging.info("Attractor sequence generated. %d converging attractors in the sequence." % (sequenceSize))
+    logging.debug("Attractors bounding box: %s." % (str(bounds)))
 
-	logging.info("Attractor sequence generated. %d converging attractors in the sequence." % (sequenceSize))
-	logging.debug("Attractors bounding box: %s." % (str(bounds)))
+    for i, c in enumerate(coefList):
+        at.coef  = c
+        at.bound = bounds
+        a        = at.createFrequencyMap(r.geometry, nthreads)
+        img      = r.renderAttractor(a)
 
-	for i, c in enumerate(coefList):
-		at.coef = c
-		at.bound = bounds
-		a = at.createFrequencyMap(r.geometry, nthreads)
-		a = r.renderAttractor(a)
-		if not a : continue
-
-		path = os.path.join(args.outdir, at.code + "_" + "%04d" % i + ".png")
-		r.writeAttractorPNG(a, path)
+        path = os.path.join(args.outdir, at.code + "_" + "%04d" % i + ".png")
+        cv2.imwrite(path, img)
 
 def generateSingleAttractor(r, nthreads):
-	t0 = time()
-	while True:
-		at = createAttractor()
-		a = at.createFrequencyMap(r.geometry, nthreads)
-		# Will also test if a is null
-		if r.isNice(a) or args.code:
-			a = r.renderAttractor(a)
-			break
+    t0 = time()
+    while True:
+        at = createAttractor()
+        a = at.createFrequencyMap(r.geometry, nthreads)
+        # Will also test if a is null
+        if r.isNice(a) or args.code:
+            at.computeFractalDimension(a)
+            img = r.renderAttractor(a)
+            break
+    t1 = time()
 
-	suffix = str(args.bpc)
-	filepath = os.path.join(args.outdir, at.code + "_" + suffix + ".png")
-	r.writeAttractorPNG(a, filepath)
-	t1 = time()
+    logging.info("Attractor type: %s" % args.type)
+    if args.type == 'polynomial':
+        logging.info("Polynom order: %d" % int(at.code[1]))
+    logging.info("Dimension: %.3f" % at.fdim)
+    logging.info("Lyapunov exponent: %.3f" % at.lyapunov['ly'])
+    logging.info("Code: %s" % at.code)
+    logging.info("Iterations: %d" % args.iter)
+    logging.info("Attractor generation and rendering took %s." % sec2hms(t1-t0))
 
-	logging.info("Attractor type: %s" % args.type)
-	if args.type == 'polynomial':
-		logging.info("Polynom order: %d" % int(at.code[1]))
-	logging.info("Dimension: %.3f" % at.fdim)
-	logging.info("Lyapunov exponent: %.3f" % at.lyapunov['ly'])
-	logging.info("Code: %s" % at.code)
-	logging.info("Iterations: %d" % args.iter)
-	logging.info("Attractor generation and rendering took %s." % sec2hms(t1-t0))
+    if args.png:
+        filepath = os.path.join(args.outdir, at.code + ".png")
+        cv2.imwrite(filepath, img)
+    else:
+        cv2.imshow(at.code, img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
 def generateAttractor(geometry, nthreads):
-	r  = render.Renderer(bpc=args.bpc,
-			geometry=geometry,
-			subsample=args.subsample,
-			colormode=args.colorscheme,
-			dimension=args.dimension)
+    if args.palette == None:
+        args.palette = random.choice(range(len(render.Renderer.pal_templates)))
 
-	try:
-		os.makedirs(args.outdir)
-	except OSError:
-		if not os.path.isdir(args.outdir):
-			raise
+    r  = render.Renderer(bpc=args.bpc,
+            geometry=geometry,
+            downsampleRatio=args.downsample,
+            dimension=args.dimension,
+            paletteIndex=args.palette)
 
-	if args.sequence:
-		generateAttractorSequence(r, nthreads)
-	else:
-		generateSingleAttractor(r, nthreads)
+    try:
+        os.makedirs(args.outdir)
+    except OSError:
+        if not os.path.isdir(args.outdir):
+            raise
+
+    if args.sequence:
+        generateAttractorSequence(r, nthreads)
+    else:
+        generateSingleAttractor(r, nthreads)
 
 def parseArgs():
-	parser = argparse.ArgumentParser(description='Playing with strange attractors')
-	parser.add_argument('-b', '--bpc',          help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=list(range(1, 17)))
-	parser.add_argument('-c', '--code',         help='attractor code', type=str)
-	parser.add_argument('-C', '--colorscheme',  help='attractor color scheme ("light", "dark" or "color")', type=str, choices=('light', 'dark', 'color'), default=defaultParameters['colorscheme'])
-	parser.add_argument('-d', '--dimension',  help='attractor dimension (2 or 3)', type=int, choices=(2, 3), default=defaultParameters['dimension'])
-	parser.add_argument('-g', '--geometry',     help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
-	parser.add_argument('-j', '--threads',      help='Number of threads to use (default = %d)' % defaultParameters['threads'], type=int, default=defaultParameters['threads'])
-	parser.add_argument('-l', '--loglevel',     help='Sets log level (the higher the more verbose - default = %d)' % defaultParameters['loglevel'], default=defaultParameters['loglevel'], type=int, choices=list(range(len(LOGLEVELS))))
-	parser.add_argument('-i', '--iter',         help='attractor number of iterations', type=int)
-	parser.add_argument('-n', '--number',       help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
-	parser.add_argument('-o', '--order',        help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
-	parser.add_argument('-O', '--outdir',       help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
-	parser.add_argument('-q', '--sequence',     help='generate a sequence of SEQUENCE attractors', type=int)
-	parser.add_argument('-s', '--subsample',    help='subsampling rate (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3))
-	parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong", "clifford"))
-	args = parser.parse_args()
-	if args.code:
-		if args.code[0] == 'j':
-			args.type = 'dejong'
-		elif args.code[0] == 'c':
-			args.type = 'clifford'
-	return args
+    parser = argparse.ArgumentParser(description='Playing with strange attractors')
+    parser.add_argument('-b', '--bpc',          help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=list(range(1, 17)))
+    parser.add_argument('-c', '--code',         help='attractor code', type=str)
+    parser.add_argument('-d', '--dimension',    help='attractor dimension (2 or 3)', type=int, choices=(2, 3), default=defaultParameters['dimension'])
+    parser.add_argument('-g', '--geometry',     help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
+    parser.add_argument('-j', '--threads',      help='Number of threads to use (default = %d)' % defaultParameters['threads'], type=int, default=defaultParameters['threads'])
+    parser.add_argument('-l', '--loglevel',     help='Sets log level (the higher the more verbose - default = %d)' % defaultParameters['loglevel'], default=defaultParameters['loglevel'], type=int, choices=list(range(len(LOGLEVELS))))
+    parser.add_argument('-i', '--iter',         help='attractor number of iterations', type=int)
+    parser.add_argument('-n', '--number',       help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
+    parser.add_argument('-o', '--order',        help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
+    parser.add_argument('-O', '--outdir',       help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
+    parser.add_argument('-p', '--png',          help='save the attractor in a png file', action='store_true')
+    parser.add_argument('-P', '--palette',      help='color palette number', type=int, choices=range(len(render.Renderer.pal_templates)))
+    parser.add_argument('-q', '--sequence',     help='generate a sequence of SEQUENCE attractors', type=int)
+    parser.add_argument('-s', '--downsample',   help='downsample ratio (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3, 4))
+    parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong", "clifford"))
+    args = parser.parse_args()
+    if args.code:
+        if args.code[0] == 'j':
+            args.type = 'dejong'
+        elif args.code[0] == 'c':
+            args.type = 'clifford'
+    return args
 
 # ----------------------------- Main loop ----------------------------- #
 
@@ -206,14 +214,14 @@ random.seed()
 g = [int(x) for x in args.geometry.split('x')]
 #TODO - check validity of g
 
-idealIter = util.getIdealIterationNumber(args.type, g, args.subsample)
+idealIter = util.getIdealIterationNumber(args.type, g, args.downsample)
 if args.iter == None:
-	args.iter = idealIter
-	logging.debug("Setting iteration number to %d." % (args.iter))
+    args.iter = idealIter
+    logging.debug("Setting iteration number to %d." % (args.iter))
 elif args.iter < idealIter:
-	logging.warning("For better rendering, you should use at least %d iterations." % idealIter)
+    logging.warning("For better rendering, you should use at least %d iterations." % idealIter)
 
 if args.code or args.sequence: args.number = 1
 
 for i in range(0, args.number):
-	generateAttractor(g, args.threads)
+    generateAttractor(g, args.threads)

@@ -59,8 +59,8 @@ class Attractor(object):
 		if self.dimension < 2 or self.dimension > 3:
 			self.logger.warning("Invalid dimension value " + self.dimension + ". Forcing 2D.")
 			self.dimension = 2
-		# convMaxIter must be < iterations, but at least self.iterations/64
-		self.convMaxIter = int(min(max(self.convMaxIter, self.iterations/64), self.iterations))
+		# If self.iterations is lower than convMaxIter...
+		self.convMaxIter = min(self.convMaxIter, self.iterations)
 
 	def __str__(self):
 		return self.code if self.code else super(Attractor, self).__str__()
@@ -196,7 +196,7 @@ class Attractor(object):
 			for k, e in v.items():
 				v[k] -= m
 
-		self.logger.debug("%d points in the attractor before any dithering done." % (len(v)))
+		self.logger.debug("%d points in the attractor before any postprocessing." % (len(v)))
 		return v
 
 	def createFrequencyMap(self, screenDim, nthreads):
@@ -218,7 +218,7 @@ class Attractor(object):
 			aMerge = self.mergeAttractors(a)
 
 		if not aMerge: return aMerge
-		self.computeFractalDimension(aMerge)
+		#self.computeFractalDimension(aMerge)
 
 		self.logger.debug("Time to render the attractor.")
 		return aMerge
