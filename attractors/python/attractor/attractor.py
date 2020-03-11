@@ -196,7 +196,7 @@ class Attractor(object):
 			for k, e in v.items():
 				v[k] -= m
 
-		self.logger.debug("%d points in the attractor before any dithering done." % (len(v)))
+		self.logger.debug("%d points in the attractor before any postprocessing." % (len(v)))
 		return v
 
 	def createFrequencyMap(self, screenDim, nthreads):

@@ -17,12 +17,17 @@ defaultParameters = {
 }
 
 class Renderer(object):
-    pal_templates = (( [ (0.0, 1.0, 0.9), (1/3, 0.5, 1.0) ], (0, 0, 0), False, "hsv" ),     # From red to green
-                     ( [ (2/3, 1.0, 1.0), (1.0, 0.4, 1.0) ], (0, 0, 0), False, "hsv" ),     # From blue to red
-                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (0, 0, 0), False, "hsv" ),     # Pure white (will become greyscale)
-                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (1, 1, 1), True,  "hsv" ),     # Pure black (will become greyscale)
-                     ( [ (0.38, 0.0, 0.88), (0.94, 1.0, 0.13) ], (0, 0, 0), False, "rgb" ), # From blue to yellow
-                     ( [ (0.4, 1.0, 0.5), (0.0, 0.5, 1.0) ], (0, 0, 0), False, "hsv" ),     # From green to red
+    #                    Gradient template                   Bg color (BGR)     Space  Negative
+    pal_templates = (( [ (0.0, 1.0, 1.0), (1/3, 0.5, 1.0) ], (0, 0, 0),         "hsv", False ),     # From red to green
+                     ( [ (2/3, 1.0, 1.0), (1.2, 0.4, 1.0) ], (0, 0, 0),         "hsv", False ),     # From blue to red
+                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (0, 0, 0),         "hsv", False ),     # Pure white (will become greyscale)
+                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (1, 1, 1),         "hsv", True ),      # Pure black (will become greyscale)
+                     ( [ (0.38, 0.0, 0.88), (0.94, 1.0, 0.13) ], (0, 0, 0),     "rgb", False ), # From blue to yellow
+                     ( [ (0.4, 1.0, 1.0), (0.1, 1.0, 1.0), (-0.2, 0.9, 1.0) ],  (0, 0, 0), "hsv", False ),     # From green to red
+                     ( [ (0.0, 1.0, 1.0), (0.0, 1.0, 1.0) ], (91/255, 159/255, 184/255), "hsv", True ),      # Inverted red
+                     ( [ (2/3, 1.0, 1.0), (2/3, 1.0, 1.0) ], (184/255, 159/255, 91/255), "hsv", True ),      # Inverted blue
+            #         ( [ (6/12, 1.0, 1.0), (3/4, 1.0, 1.0) ], (0, 0, 0), "hsv", False ),  # Cyan to violet
+            #         ( [ (6/12, 1.0, 1.0), (1.0, 1.0, 1.0) ], (0, 0, 0), "hsv", False ),  # Cyan to red
                     )
 
     def __init__(self, **kwargs):
@@ -43,8 +48,8 @@ class Renderer(object):
         if self.paletteIndex == None:
             self.paletteIndex = random.choice(range(len(self.pal_templates)))
 
-    # TODO: put palette and gradients in their own module
-    def getGradient(self, controlColors, n, reverse=False, space="hsv"):
+    # TODO: put palette and gradients in their own module, or at least their own class
+    def getGradient(self, controlColors, n, space="hsv"):
         grad = list()
         l = len(controlColors)
         nInSlice = int(n/(l-1))
@@ -60,15 +65,12 @@ class Renderer(object):
                 else:
                     hsv_color = colorsys.rgb_to_hsv(*color)
                 grad.append(tuple(hsv_color))
-        if reverse:
-            grad=list(reversed(grad))
         return grad
 
     def getPalette(self, frequencies):
-        #template = random.choice(pal_templates)
-        self.logger.debug("Chosing palette #%d" % (self.paletteIndex))
+        self.logger.debug("Choosing palette %d" % (self.paletteIndex))
         template = self.pal_templates[self.paletteIndex]
-        gradient = self.getGradient(template[0], len(frequencies), space=template[3])
+        gradient = self.getGradient(template[0], len(frequencies), space=template[2])
         while len(gradient) < len(frequencies):
             gradient.append(gradient[-1])
 
@@ -79,15 +81,15 @@ class Renderer(object):
         palette = dict()
         palette['colormap']   = colormap
         palette['background'] = template[1]
-        palette['negative']   = template[2]
+        palette['negative']   = template[3]
 
         return palette
 
-    def colorize_pixel(self, pixel):
-        # We extract the current pixel HSV to reuse the Value component.
-        (h, s, v) = colorsys.rgb_to_hsv(pixel/self.fullRange, pixel/self.fullRange, pixel/self.fullRange)
+    def colorize_pixel(self, level):
+        # We use level of pixel (equalized frequency) as Value component.
+        v = level/self.fullRange
         if self.palette['negative']: v = 1.0-v
-        (r, g, b) = colorsys.hsv_to_rgb(self.palette['colormap'][pixel][0], self.palette['colormap'][pixel][1], v)
+        (r, g, b) = colorsys.hsv_to_rgb(self.palette['colormap'][level][0], self.palette['colormap'][level][1], v)
         return tuple([round(x*((1 << self.bpc)-1)) for x in (b, g, r)])
 
     def colorizeAttractor(self, p):
@@ -98,7 +100,7 @@ class Renderer(object):
         for c, v in p.items():
             p[c] = self.colorize_pixel(v)
 
-        self.logger.debug("Number of unique colors in the attractor after colorization: %d." % (len(list(set(p.values())))))
+        self.logger.debug("Number of unique colors in the attractor after colorization: %d." % (len(set(p.values()))))
 
     # Creates the final image array
     def createImageArray(self, p):
@@ -127,7 +129,7 @@ class Renderer(object):
 
         # Stretch the values to the [1, (1<<INTERNAL_BPC)-1] range
         for i, v in enumerate(pools):
-            pools[i] = 1+(self.fullRange-1)*(pools[i]-pools[0])/(pools[-1]-pools[0])
+            pools[i] = 1 + (self.fullRange - 1)*(pools[i]-pools[0])/(pools[-1]-pools[0])
 
         # Now reapply the stretched values
         for k in p:
@@ -145,7 +147,7 @@ class Renderer(object):
         if not a: return None
         M = max(a.values())
 
-        self.logger.debug("Number of frequencies in attractor: %d" % (len(list(set(a.values())))))
+        self.logger.debug("Number of frequencies in attractor: %d" % (len(set(a.values()))))
         # Now send the map in the [0, (1<<self.INTERNAL_BPC)-1] range
         for i, pt in a.items():
             a[i] = int (pt*self.fullRange/M)
@@ -154,6 +156,7 @@ class Renderer(object):
         self.colorizeAttractor(a)
         img = numpy.asarray(self.createImageArray(a)).astype(numpy.uint8)
         img = cv2.resize(img, tuple([int(v/self.downsampleRatio) for v in self.geometry[0:2]]), interpolation=cv2.INTER_CUBIC)
+        self.logger.debug("Number of colors in attractor after downsampling: %d." % (len(set([ tuple(color) for row in img for color in row]))))
 
         return img
 
