@@ -218,7 +218,7 @@ class Attractor(object):
 			aMerge = self.mergeAttractors(a)
 
 		if not aMerge: return aMerge
-		self.computeFractalDimension(aMerge)
+		#self.computeFractalDimension(aMerge)
 
 		self.logger.debug("Time to render the attractor.")
 		return aMerge

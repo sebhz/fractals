@@ -98,7 +98,6 @@ def generateAttractorSequence(r, nthreads):
         # Will also test if a is null
         if r.isNice(a):
             break
-
     bounds   = at.bound
     args.code = None
 
@@ -138,6 +137,7 @@ def generateSingleAttractor(r, nthreads):
         a = at.createFrequencyMap(r.geometry, nthreads)
         # Will also test if a is null
         if r.isNice(a) or args.code:
+            at.computeFractalDimension(a)
             img = r.renderAttractor(a)
             break
     t1 = time()
