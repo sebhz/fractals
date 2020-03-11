@@ -19,7 +19,7 @@ defaultParameters = {
 class Renderer(object):
     #                    Gradient template                   Bg color (BGR)     Space  Negative
     pal_templates = (( [ (0.0, 1.0, 1.0), (1/3, 0.5, 1.0) ], (0, 0, 0),         "hsv", False ),     # From red to green
-                     ( [ (2/3, 1.0, 1.0), (1.2, 0.4, 1.0) ], (0, 0, 0),         "hsv", False ),     # From blue to red
+                     ( [ (2/3, 1.0, 1.0), (1.0, 0.6, 1.0), (1.0, 0.4, 1.0) ], (0, 0, 0),         "hsv", False ),     # From blue to red
                      ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (0, 0, 0),         "hsv", False ),     # Pure white (will become greyscale)
                      ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (1, 1, 1),         "hsv", True ),      # Pure black (will become greyscale)
                      ( [ (0.38, 0.0, 0.88), (0.94, 1.0, 0.13) ], (0, 0, 0),     "rgb", False ), # From blue to yellow

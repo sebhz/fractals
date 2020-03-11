@@ -26,12 +26,10 @@ def getIdealIterationNumber(AttractorType, geometry, subsamplingRate=1):
 	Returns the correct number of iteration to have the attractor look reasonably good.
 	"""
 
-	OVERITERATE_FACTOR=4
+	OVERITERATE_FACTOR=32
 	pxSize = subsamplingRate*subsamplingRate*geometry[0]*geometry[1]
 
 	idealIter = int(OVERITERATE_FACTOR*pxSize)
-	if AttractorType == 'dejong' or AttractorType == 'clifford':
-		idealIter *=4
 
 	return idealIter
 
