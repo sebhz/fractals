@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import logging
 import random
@@ -17,19 +17,25 @@ defaultParameters = {
 }
 
 class Renderer(object):
-    # Gradient template, Bg color (BGR), colorspace, negative
-    pal_templates = (#From red to green/yellow
-                     ( [ (0.0, 1.0, 1.0), (1/3, 0.5, 1.0) ], (0, 0, 0), "hsv", False ),
+    # Gradient template, colorspace, Bg color (BGR), negative, value offset
+    pal_templates = (# From red to green/yellow
+                     ( [ (0.0, 1.0, 1.0), (1/3, 0.5, 1.0) ], "hsv", (0, 0, 0), False, 0 ),
                      # From blue to pinkish
-                     ( [ (2/3, 1.0, 1.0), (1.0, 0.6, 1.0), (1.0, 0.4, 1.0) ], (0, 0, 0), "hsv", False ),
+                     ( [ (2/3, 1.0, 1.0), (1.0, 0.6, 1.0), (1.0, 0.4, 1.0) ], "hsv", (0, 0, 0), False, 0 ),
                      # From blue to yellow
-                     ( [ (0.38, 0.0, 0.88), (0.94, 1.0, 0.13) ], (0, 0, 0), "rgb", False ),
+                     ( [ (0.38, 0.0, 0.88), (0.94, 1.0, 0.13) ], "rgb", (0, 0, 0), False, 0 ),
                      # From green to red
-                     ( [ (0.4, 1.0, 1.0), (0.1, 1.0, 1.0), (-0.2, 0.9, 1.0) ], (0, 0, 0), "hsv", False ),
+                     ( [ (0.4, 1.0, 1.0), (0.1, 1.0, 1.0), (-0.2, 0.9, 1.0) ], "hsv", (0, 0, 0), False, 0 ),
                      # Pure white (will become greyscale)
-                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (0, 0, 0), "hsv", False ),
+                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], "hsv", (0, 0, 0), False, 0 ),
                      # Pure black (will become greyscale
-                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (1, 1, 1), "hsv", True ),
+                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], "hsv", (1, 1, 1), True, 0 ),
+                     # Inverted red
+                     ( [ (0.0, 0.9, 1.0), (0.0, 1.0, 1.0) ], "hsv", (91/255, 159/255, 184/255), True, 0.5 ),
+                     # Inverted blue
+                     ( [ (2/3, 0.9, 1.0), (2/3, 1.0, 1.0) ], "hsv", (184/255, 159/255, 91/255), True, 0.5 ),
+                     # Full rainbow
+                     ( [ (0.5, 1.0, 1.0), (1.5, 0.6, 1.0) ], "hsv", (184/255, 159/255, 91/255), True, 0.5 ),
                     )
 
     def __init__(self, **kwargs):
@@ -72,7 +78,7 @@ class Renderer(object):
     def getPalette(self, frequencies):
         self.logger.debug("Choosing palette %d" % (self.paletteIndex))
         template = self.pal_templates[self.paletteIndex]
-        gradient = self.getGradient(template[0], len(frequencies), space=template[2])
+        gradient = self.getGradient(template[0], len(frequencies), space=template[1])
         while len(gradient) < len(frequencies):
             gradient.append(gradient[-1])
 
@@ -82,8 +88,9 @@ class Renderer(object):
 
         palette = dict()
         palette['colormap']   = colormap
-        palette['background'] = template[1]
+        palette['background'] = template[2]
         palette['negative']   = template[3]
+        palette['voffset']    = template[4]
 
         return palette
 
@@ -91,6 +98,7 @@ class Renderer(object):
         # We use level of pixel (equalized frequency) as Value component.
         v = level/self.fullRange
         if self.palette['negative']: v = 1.0-v
+        v = self.palette['voffset'] + v*(1-self.palette['voffset'])
         (r, g, b) = colorsys.hsv_to_rgb(self.palette['colormap'][level][0], self.palette['colormap'][level][1], v)
         return tuple([round(x*((1 << self.bpc)-1)) for x in (b, g, r)])
 
