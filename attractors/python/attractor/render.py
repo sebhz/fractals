@@ -17,17 +17,19 @@ defaultParameters = {
 }
 
 class Renderer(object):
-    #                    Gradient template                   Bg color (BGR)     Space  Negative
-    pal_templates = (( [ (0.0, 1.0, 1.0), (1/3, 0.5, 1.0) ], (0, 0, 0),         "hsv", False ),     # From red to green
-                     ( [ (2/3, 1.0, 1.0), (1.0, 0.6, 1.0), (1.0, 0.4, 1.0) ], (0, 0, 0),         "hsv", False ),     # From blue to red
-                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (0, 0, 0),         "hsv", False ),     # Pure white (will become greyscale)
-                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (1, 1, 1),         "hsv", True ),      # Pure black (will become greyscale)
-                     ( [ (0.38, 0.0, 0.88), (0.94, 1.0, 0.13) ], (0, 0, 0),     "rgb", False ), # From blue to yellow
-                     ( [ (0.4, 1.0, 1.0), (0.1, 1.0, 1.0), (-0.2, 0.9, 1.0) ],  (0, 0, 0), "hsv", False ),     # From green to red
-                     ( [ (0.0, 1.0, 1.0), (0.0, 1.0, 1.0) ], (91/255, 159/255, 184/255), "hsv", True ),      # Inverted red
-                     ( [ (2/3, 1.0, 1.0), (2/3, 1.0, 1.0) ], (184/255, 159/255, 91/255), "hsv", True ),      # Inverted blue
-            #         ( [ (6/12, 1.0, 1.0), (3/4, 1.0, 1.0) ], (0, 0, 0), "hsv", False ),  # Cyan to violet
-            #         ( [ (6/12, 1.0, 1.0), (1.0, 1.0, 1.0) ], (0, 0, 0), "hsv", False ),  # Cyan to red
+    # Gradient template, Bg color (BGR), colorspace, negative
+    pal_templates = (#From red to green/yellow
+                     ( [ (0.0, 1.0, 1.0), (1/3, 0.5, 1.0) ], (0, 0, 0), "hsv", False ),
+                     # From blue to pinkish
+                     ( [ (2/3, 1.0, 1.0), (1.0, 0.6, 1.0), (1.0, 0.4, 1.0) ], (0, 0, 0), "hsv", False ),
+                     # From blue to yellow
+                     ( [ (0.38, 0.0, 0.88), (0.94, 1.0, 0.13) ], (0, 0, 0), "rgb", False ),
+                     # From green to red
+                     ( [ (0.4, 1.0, 1.0), (0.1, 1.0, 1.0), (-0.2, 0.9, 1.0) ], (0, 0, 0), "hsv", False ),
+                     # Pure white (will become greyscale)
+                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (0, 0, 0), "hsv", False ),
+                     # Pure black (will become greyscale
+                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], (1, 1, 1), "hsv", True ),
                     )
 
     def __init__(self, **kwargs):
