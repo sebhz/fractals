@@ -372,7 +372,7 @@ def processAttractor(AttractorNum):
             at.iterations = iterations
             r = render.Renderer(bpc=8,
                 geometry=parameters['geometry'],
-                downsample=downsampling,
+                downsampleRatio=downsampling,
                 dimension=dimension)
             a = at.createFrequencyMap(r.geometry, args.nthreads)
             if not r.isNice(a):
