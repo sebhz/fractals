@@ -11,6 +11,7 @@ Ancillary functions used for attractor generation and rendering.
 
 modulus = lambda p: sum([v*v for v in p])
 dist2 = lambda p1, p2: modulus([v[1]-v[0] for v in zip(p1, p2)])
+OVERITERATE_FACTOR=32
 
 def getIdealIterationNumber(AttractorType, geometry, subsamplingRate=1):
 	"""
@@ -26,7 +27,6 @@ def getIdealIterationNumber(AttractorType, geometry, subsamplingRate=1):
 	Returns the correct number of iteration to have the attractor look reasonably good.
 	"""
 
-	OVERITERATE_FACTOR=32
 	pxSize = subsamplingRate*subsamplingRate*geometry[0]*geometry[1]
 
 	idealIter = int(OVERITERATE_FACTOR*pxSize)

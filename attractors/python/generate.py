@@ -35,7 +35,7 @@ LOGLEVELS = (logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO, log
 defaultParameters = {
     'bpc': 8,
     'geometry': '1280x1024',
-    'iter': 1280*1024*4,
+    'iter': 1280*1024*util.OVERITERATE_FACTOR,
     'loglevel': 3,
     'number': 1,
     'order': 2,
@@ -57,6 +57,9 @@ def createAttractor():
                     code = args.code)
     elif args.type == 'clifford':
         at = attractor.CliffordAttractor(iter = int(args.iter/args.threads),
+                    code = args.code)
+    elif args.type == 'icon':
+        at = attractor.SymIconAttractor(iter = int(args.iter/args.threads),
                     code = args.code)
     else:
         at = attractor.PolynomialAttractor(order = args.order,
@@ -196,13 +199,15 @@ def parseArgs():
     parser.add_argument('-P', '--palette',      help='color palette number', type=int, choices=range(len(render.Renderer.pal_templates)))
     parser.add_argument('-q', '--sequence',     help='generate a sequence of SEQUENCE attractors', type=int)
     parser.add_argument('-s', '--downsample',   help='downsample ratio (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3, 4))
-    parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong", "clifford"))
+    parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong", "clifford", "icon"))
     args = parser.parse_args()
     if args.code:
         if args.code[0] == 'j':
             args.type = 'dejong'
         elif args.code[0] == 'c':
             args.type = 'clifford'
+        elif args.code[0] == 's':
+            args.type = 'icon'
     return args
 
 # ----------------------------- Main loop ----------------------------- #
