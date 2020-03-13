@@ -396,7 +396,7 @@ def processAttractor(AttractorNum):
     if MAP['__type'] == 'polynomial':
         MAP['__type'] += " (order " + str(at.order) + ")"
     elif MAP['__type'] == 'icon':
-        MAP['__type'] = "Sprott / Field / Golubitsky symmetrical icon"
+        MAP['__type'] = "Sprott/Field/Golubitsky symmetrical icon"
 
     if dimension == 3:
         MAP['__x_polynom'], MAP['__y_polynom'], MAP['__z_polynom'] = at.humanReadable(isHTML=True)

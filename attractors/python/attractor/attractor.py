@@ -435,7 +435,7 @@ class CliffordAttractor(Attractor):
 class SymIconAttractor(Attractor):
     """ Symmetric icon attractors
     """
-    codeStep     = .0625 # Step to use to map ASCII character to coef
+    codeStep     = .125 # Step to use to map ASCII character to coef
 
     def __init__(self, **kwargs):
         super(SymIconAttractor, self).__init__(**kwargs)
@@ -471,7 +471,13 @@ class SymIconAttractor(Attractor):
         return ( znew.real, znew.imag, 0,)
 
     def humanReadable(self, isHTML=False):
-        return ("NA", "NA")
+        equation = list()
+        equation.append("Symmetry order: %d" % (self.coef[5]))
+        if isHTML:
+            equation.append("&lambda;=%.3f - &alpha;=%.3f - &beta;=%.3f - &gamma;=%.3f - &omega;=%.3f" % (self.coef[1], self.coef[0], self.coef[2], self.coef[3], self.coef[4]))
+        else:
+            equation.append("Lambda=%.3f - Alpha=%.3f - Beta=%.3f - Gamma=%.3f - Omega=%.3f" % (self.coef[1], self.coef[0], self.coef[2], self.coef[3], self.coef[4]))
+        return equation
 
     def computeFractalDimension(self, a):
         self.fdim = min(2.0, util.computeBoxCountingDimension(a))
