@@ -19,23 +19,23 @@ defaultParameters = {
 class Renderer(object):
     # Gradient template, colorspace, Bg color (BGR), negative, value offset
     pal_templates = (# From red to green/yellow
-                     ( [ (0.0, 1.0, 1.0), (1/3, 0.5, 1.0) ], "hsv", (0, 0, 0), False, 0 ),
+                     ( [ (0, 0.0, 1.0, 1.0), (1, 1/3, 0.5, 1.0) ], "hsv", (0, 0, 0), False, 0 ),
                      # From blue to pinkish
-                     ( [ (2/3, 1.0, 1.0), (1.0, 0.6, 1.0), (1.0, 0.4, 1.0) ], "hsv", (0, 0, 0), False, 0 ),
+                     ( [ (0, 2/3, 1.0, 1.0), (0.5, 1.0, 0.6, 1.0), (1, 1.0, 0.4, 1.0) ], "hsv", (0, 0, 0), False, 0 ),
                      # From blue to yellow
-                     ( [ (0.38, 0.0, 0.88), (0.94, 1.0, 0.13) ], "rgb", (0, 0, 0), False, 0 ),
+                     ( [ (0, 0.38, 0.0, 0.88), (1, 0.94, 1.0, 0.13) ], "rgb", (0, 0, 0), False, 0 ),
                      # From green to red
-                     ( [ (0.4, 1.0, 1.0), (0.1, 1.0, 1.0), (-0.2, 0.9, 1.0) ], "hsv", (0, 0, 0), False, 0 ),
+                     ( [ (0, 0.4, 1.0, 1.0), (0.5, 0.1, 1.0, 1.0), (1, -0.2, 0.9, 1.0) ], "hsv", (0, 0, 0), False, 0 ),
                      # Pure white (will become greyscale)
-                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], "hsv", (0, 0, 0), False, 0 ),
+                     ( [ (0, 0.0, 0.0, 1.0), (1, 0.0, 0.0, 1.0) ], "hsv", (0, 0, 0), False, 0 ),
                      # Pure black (will become greyscale
-                     ( [ (0.0, 0.0, 1.0), (0.0, 0.0, 1.0) ], "hsv", (1, 1, 1), True, 0 ),
+                     ( [ (0, 0.0, 0.0, 1.0), (1, 0.0, 0.0, 1.0) ], "hsv", (1, 1, 1), True, 0 ),
                      # Inverted red
-                     ( [ (0.0, 0.9, 1.0), (0.0, 1.0, 1.0) ], "hsv", (91/255, 159/255, 184/255), True, 0.5 ),
+                     ( [ (0, 0.0, 0.9, 1.0), (1, 0.0, 1.0, 1.0) ], "hsv", (91/255, 159/255, 184/255), True, 0.5 ),
                      # Inverted blue
-                     ( [ (2/3, 0.9, 1.0), (2/3, 1.0, 1.0) ], "hsv", (184/255, 159/255, 91/255), True, 0.5 ),
+                     ( [ (0, 2/3, 0.9, 1.0), (1, 2/3, 1.0, 1.0) ], "hsv", (184/255, 159/255, 91/255), True, 0.5 ),
                      # Full rainbow
-                     ( [ (0.5, 1.0, 1.0), (1.5, 0.6, 1.0) ], "hsv", (184/255, 159/255, 91/255), True, 0.5 ),
+                     ( [ (0, 0.5, 1.0, 1.0), (1, 1.5, 0.6, 1.0) ], "hsv", (184/255, 159/255, 91/255), True, 0.5 ),
                     )
 
     def __init__(self, **kwargs):
@@ -60,18 +60,18 @@ class Renderer(object):
     def getGradient(self, controlColors, n, space="hsv"):
         grad = list()
         l = len(controlColors)
-        nInSlice = int(n/(l-1))
         for i, color in enumerate(controlColors):
             if i == l-1: break
-            startColor = color
-            endColor = controlColors[i+1]
+            nInSlice = int(n/((l-1)*(controlColors[i+1][0]-color[0])))
+            startColor = color[1:]
+            endColor = controlColors[i+1][1:]
             add = [(x-y)/nInSlice for (x, y) in zip(endColor, startColor)]
             for s in range(0, nInSlice):
-                color = [x+s*y for (x,y) in zip(startColor, add)]
+                cur_color = [x+s*y for (x,y) in zip(startColor, add)]
                 if space == "hsv":
-                    hsv_color = color
+                    hsv_color = cur_color
                 else:
-                    hsv_color = colorsys.rgb_to_hsv(*color)
+                    hsv_color = colorsys.rgb_to_hsv(*cur_color)
                 grad.append(tuple(hsv_color))
         return grad
 
