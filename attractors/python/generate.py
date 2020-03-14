@@ -72,8 +72,11 @@ def createAttractor():
     else:
         at.explore()
 
-    logging.debug("Converging attractor found. Boundaries: %s" % (str(at.bound)))
-
+    logging.debug("Converging attractor found.")
+    if args.dimension == 3:
+        logging.debug("Boundaries: (%.3f, %.3f, %.3f) (%.3f, %.3f, %.3f)" % (tuple(at.bound)))
+    else:
+        logging.debug("Boundaries: (%.3f, %.3f) (%.3f, %.3f)" % (tuple(at.bound[0:2]+at.bound[3:5])))
     return at
 
 def getCloseCoef(a, step):
