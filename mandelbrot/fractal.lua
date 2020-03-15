@@ -30,7 +30,7 @@ end
 
 function complex.__mul(a, b)
 	if type(b) == "number" then return complex.new (a.real*b, a.imag*b) end
-	return complex:new( a.real*b.real - a.imag*b.imag, 
+	return complex:new( a.real*b.real - a.imag*b.imag,
 		                a.imag*b.real + a.real*b.imag)
 end
 
@@ -49,7 +49,7 @@ fractal = {}
 
 function fractal:new(l, m, t)
 	local f = { limit = l, maxiter = m }
-	
+
 	if t == "julia" then
 		f.f = self.julia
 	elseif t == "mandelbrot" then
@@ -65,21 +65,21 @@ end
 
 function fractal:julia(c, p)
 	local m, escape
-	
+
 	for i = 0,self.maxiter-1 do
 		c = c*c + p
 		m = c:modulus()
 		escape = i
 		if m > self.limit then break end
 	end
-	
+
 	return { escape, m }
 end
 
 function fractal:mandelbrot(c, p)
 	local z = complex:new(0)
 	local m, escape
-	
+
 	for i = 0,self.maxiter-1 do
 		z = z*z + c
 		m = z:modulus()
@@ -102,7 +102,7 @@ function fractal:compute(center, xres, yres, xlength, p)
 	local ylength = xlength * ratio
 	local l = {}
 	local i = 1
-	
+
 	for y=0, yres-1 do
 		for x=0, xres-1 do
 			local c = complex:new(xmin + (x - 0.0)*xlength/xres,
@@ -118,28 +118,28 @@ end
 -- coloring/display functions
 function colorize(l, ccoef, maxiter)
 	-- From 0->511 to 0->255 using a triangular map
-	local col = 
+	local col =
 		function(c) if c < 128 then	return c+128
 					elseif c < 384 then return 383-c
 					else return c-384 end
 		end
-	local log2 = function(x) return math.log(x)/math.log(2) end			
+	local log2 = function(x) return math.log(x)/math.log(2) end
 	local lc = {}
-	
+
 	for i, item in ipairs(l) do
 		if item[1] == maxiter - 1 then
 			lc[i] = { red = 0, green = 0, blue = 0 }
 		else
-			local v = 8 * math.sqrt(item[1] + 3 - 
+			local v = 8 * math.sqrt(item[1] + 3 -
 					  log2(math.log(math.sqrt (item[2]))));
-			lc[i] = { blue  = col(math.floor((v*ccoef.cblue))%512),  
+			lc[i] = { blue  = col(math.floor((v*ccoef.cblue))%512),
 			          green = col(math.floor((v*ccoef.cgreen))%512),
 					  red   = col(math.floor((v*ccoef.cred))%512) }
 		end
 	end
 	return lc
 end
-	
+
 function createImage(w, h, l)
 	local image = gd.createTrueColor(w, h)
 	for i, color in ipairs(l) do
