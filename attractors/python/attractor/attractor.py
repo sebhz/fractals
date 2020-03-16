@@ -33,7 +33,7 @@ defaultParameters = {
     'dimension' : 2,
 }
 modulus   = lambda x,y,z: x*x + y*y + z*z
-codelist  = list(range(48,58)) + list(range(65,91)) + list(range(97,123)) # ASCII values for code
+codelist  = [ord(c) for c in "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"]
 coderange = (-int(len(codelist)/2)+1, int(len(codelist)/2))
 
 class Attractor(object):
@@ -244,14 +244,14 @@ class PolynomialAttractor(Attractor):
         self.getPolynomLength()
 
         d = dict([(v, i) for i, v in enumerate(codelist)])
-        self.coef = [[(d[ord(_)]-30)*self.codeStep for _ in self.code[3+__*self.pl:3+(__+1)*self.pl]] for __ in range(self.dimension)]
+        self.coef = [[(d[ord(_)]+coderange[0])*self.codeStep for _ in self.code[3+__*self.pl:3+(__+1)*self.pl]] for __ in range(self.dimension)]
         self.subtype = self.getSubtype()
 
     def createCode(self):
         self.code = str(self.dimension)+str(self.order)
         self.code += "_"
         # ASCII codes of digits and letters
-        cl = [codelist[int(x/self.codeStep)+30] for c in self.coef for x in c]
+        cl = [codelist[int(x/self.codeStep)-coderange[0]] for c in self.coef for x in c]
         self.code +="".join(map(chr,cl))
 
     # Outputs a human readable string of the polynom. If isHTML is True
@@ -297,7 +297,7 @@ class PolynomialAttractor(Attractor):
         self.pl = int(math.factorial(self.order+self.dimension)/math.factorial(self.order)/math.factorial(self.dimension))
 
     def getRandomCoef(self):
-        self.coef = [[random.randint(-30, 31)*self.codeStep for _ in range(0, self.pl)] for __ in range(self.dimension)]
+        self.coef = [[random.randint(*coderange)*self.codeStep for _ in range(self.pl)] for __ in range(self.dimension)]
         self.subtype = self.getSubtype()
 
     def getSubtype(self):
