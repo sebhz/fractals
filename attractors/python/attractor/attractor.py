@@ -41,8 +41,8 @@ class Attractor(object):
     Base class representing an attractor. Should generally not be instanciated directly. Use one
     of its subclasses: PolyomialAttractor, DeJongAttractor or CliffordAttractor
     """
-    convDelay    = 128   # Number of points to ignore before checking convergence
-    convMaxIter  = 65536 # Check convergence on convMaxIter points only
+    convDelay    = 128     # Number of points to ignore before checking convergence
+    convMaxIter  = 4*65536 # Check convergence on convMaxIter points only... but we need quite a lot of points to get bounds right.
     epsilon      = 1e-6
 
     def __init__(self, **kwargs):
