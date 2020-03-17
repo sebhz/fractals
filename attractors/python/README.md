@@ -60,6 +60,6 @@ The images below were produced using the `generate.py` script, with 128.000.000 
 
 ### Symmetrical icon attractor
     * Symmetry order: 3
-    * lambda;=0.875 - &alpha;=-2.500 - &beta;=-0.750 - &gamma;=2.875 - &omega;=-1.375
+    * &#955;=0.875 - &#945;=-2.500 - &#946;=-0.750 - &947;=2.875 - &#969;=-1.375
 ![sAbOrJ3](https://sebhz.github.io/img/attractors/sAbOrJ3.png)
 
