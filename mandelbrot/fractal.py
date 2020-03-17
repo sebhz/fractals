@@ -9,7 +9,7 @@ except:
     print "this program requires the PIL module"
     print "available at http://www.pythonware.com/library/pil"
     raise SystemExit
-	
+
 class fractal(object):
 	def __init__(self, l, m, t):
 		self.limit = l
@@ -57,19 +57,19 @@ class fractal(object):
 		ymin = center.imag - xlength*ratio/2
 		ylength = xlength*ratio
 		l = list()
-		
+
 		for y in range(0,yres):
 			for x in range(0,xres):
 				c = complex(xmin + (float(x)-0.0)*xlength/xres,
 				            ymin + (float(y)-0.0)*ylength/yres)
 				l.append(self.f(c, *p))
 		return l
-		
+
 # From 0->511 to 0->255 using a triangular map
 def periodicColor(c):
 	v = c+128 if c < 128 else 383-c if c < 384 else c-384
 	return v
-	
+
 def colorize(l, ccoef, maxiter):
 	lc = list()
 	for item in l:
@@ -85,10 +85,10 @@ def colorize(l, ccoef, maxiter):
 			          periodicColor(int(math.floor(v*ccoef[1]))%512)*(1<< 8) + \
 					  periodicColor(int(math.floor(v*ccoef[2]))%512))
 	return lc
-	
+
 def createImage(w, h, l):
 	im = Image.new("RGB", (w, h), None)
-	im.putdata(l) 
+	im.putdata(l)
 	return im
 
 limit, maxiter, w, h = (8, 128, 2048, 1536)
