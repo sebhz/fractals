@@ -6,7 +6,7 @@ more or less as intended.
 
 Those little programs were mostly written out of boredom, or for exploration.
 If you are looking for *real* fractal generation and visualization software,
-there are plenty very good ones available. Ask your favorite search
+there are a lot of very good ones available out there. Ask your favorite search
 engine.
 
 # License
