@@ -27,35 +27,39 @@ Those scripts depend on python-opencv for image display, image saving (PNG forma
 
 # Images
 
-Those images were produced using the generate.py script, with 128.000.000 iterations and a downsampling factor of 2.
+The images below were produced using the `generate.py` script, with 128.000.000 iterations and a downsampling factor of 2.
 
-Order 2 polynomial attractor
+### Order 2 polynomial attractor
 ![22_TW1JgMMoaGoJ](https://sebhz.github.io/img/attractors/22_TW1JgMMoaGoJ.png)
 
-Order 3 polynomial attractor
+### Order 3 polynomial attractor
 ![23_UP35K8e7GLVe55YLOBR6](https://sebhz.github.io/img/attractors/23_UP35K8e7GLVe55YLOBR6.png)
 
-Order 4 polynomial attractor
+### Order 4 polynomial attractor
 ![24_bNHps9RshiGTdjPUcJ2KmlMGFAib2C](https://sebhz.github.io/img/attractors/24_bNHps9RshiGTdjPUcJ2KmlMGFAib2C.png)
 
-Order 5 polynomial attractor
+### Order 5 polynomial attractor
 ![25_WY8nMzJbpjKXXFqTkSfMgSkPU15XM6xKK1EBI1c3yR](https://sebhz.github.io/img/attractors/25_WY8nMzJbpjKXXFqTkSfMgSkPU15XM6xKK1EBI1c3yR.png)
 
-Clifford attractor
+### Clifford attractor
 ![cBK5w](https://sebhz.github.io/img/attractors/cBK5w.png)
 
-Clifford attractor
+### Clifford attractor
 ![ci8rg](https://sebhz.github.io/img/attractors/ci8rg.png)
 
-deJong attractor
+### deJong attractor
 ![jlPOC](https://sebhz.github.io/img/attractors/jlPOC.png)
 
-deJong attractor
+### deJong attractor
 ![jUE7x](https://sebhz.github.io/img/attractors/jUE7x.png)
 
-Symmetrical icon attractor
+### Symmetrical icon attractor
+    * Symmetry order: 3
+    * &lambda;=2.000 - &alpha;=-2.750 - &beta;=1.875 - &gamma;=0.125 - &omega;=0.250
 ![s8kjVW3](https://sebhz.github.io/img/attractors/s8kjVW3.png)
 
-Symmetrical icon attractor
+### Symmetrical icon attractor
+    * Symmetry order: 3
+    * lambda;=0.875 - &alpha;=-2.500 - &beta;=-0.750 - &gamma;=2.875 - &omega;=-1.375
 ![sAbOrJ3](https://sebhz.github.io/img/attractors/sAbOrJ3.png)
 
