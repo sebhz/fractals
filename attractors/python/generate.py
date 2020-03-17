@@ -68,7 +68,8 @@ def createAttractor():
 
     if args.code:
         if not at.checkConvergence():
-            logging.warning("Not an attractor it seems... but trying to display it anyway.")
+            logging.warning("The specified attractor does not seem to converge. Bailing out.")
+            sys.exit()
     else:
         at.explore()
 
@@ -79,64 +80,22 @@ def createAttractor():
         logging.debug("Boundaries: (%.3f, %.3f) (%.3f, %.3f)" % (tuple(at.bound[0:2]+at.bound[3:5])))
     return at
 
-def getCloseCoef(a, step):
-    coefMod=list()
-    if args.type == 'polynomial':
-        for d in range(a.dimension):
-            coefMod.append((random.randint(0, a.pl-1), step*random.choice((-1, 1))))
-    else:
-        for d in range(2):
-            coefMod.append((random.randint(0, 1), step*random.choice((-1, 1))))
-    return coefMod
+def generateAttractor(geometry, nthreads):
+    if args.palette == None:
+        palette = random.choice(range(len(render.Renderer.pal_templates)))
 
-"""
-Generate a sequence of converging attractors "close to each other"
-"""
-def generateAttractorSequence(r, nthreads):
-    sequenceSize = args.sequence or 1024
-    coefStep = 0.125/16
-    coefList = list()
+    r  = render.Renderer(bpc=args.bpc,
+            geometry=geometry,
+            downsampleRatio=args.downsample,
+            dimension=args.dimension,
+            paletteIndex=palette)
 
-    # Find a nice attractor to start with !
-    while True:
-        at = createAttractor()
-        a = at.createFrequencyMap(r.geometry, nthreads)
-        # Will also test if a is null
-        if r.isNice(a):
-            break
-    bounds   = at.bound
-    args.code = None
+    try:
+        os.makedirs(args.outdir)
+    except OSError:
+        if not os.path.isdir(args.outdir):
+            raise
 
-    for num in range(sequenceSize):
-        logging.debug("Attractor #%d in sequence." % (num))
-        coefList.append([ x[:] for x in at.coef ])
-        bounds = [min(x) for x in zip(bounds[0:3], at.bound[0:3])] + [max(x) for x in zip(bounds[3:6], at.bound[3:6])]
-        currentCoef = at.coef
-        # Modify the attractor coefficients. Backup and try gain until resulting attractor converges
-        while True:
-            coefMod = getCloseCoef(at, coefStep)
-            at.bound = None # We only update bounds if they do not exist !
-            for d in range(at.dimension):
-                coefModPosition = coefMod[d][0]
-                at.coef[d][coefModPosition] += coefMod[d][1]
-            if at.checkConvergence():
-                break
-            # We did not converge: backup one step and try again
-            at.coef = currentCoef
-
-    logging.info("Attractor sequence generated. %d converging attractors in the sequence." % (sequenceSize))
-    logging.debug("Attractors bounding box: %s." % (str(bounds)))
-
-    for i, c in enumerate(coefList):
-        at.coef  = c
-        at.bound = bounds
-        a        = at.createFrequencyMap(r.geometry, nthreads)
-        img      = r.renderAttractor(a)
-
-        path = os.path.join(args.outdir, at.code + "_" + "%04d" % i + ".png")
-        cv2.imwrite(path, img)
-
-def generateSingleAttractor(r, nthreads):
     t0 = time()
     while True:
         at = createAttractor()
@@ -166,27 +125,6 @@ def generateSingleAttractor(r, nthreads):
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-def generateAttractor(geometry, nthreads):
-    if args.palette == None:
-        args.palette = random.choice(range(len(render.Renderer.pal_templates)))
-
-    r  = render.Renderer(bpc=args.bpc,
-            geometry=geometry,
-            downsampleRatio=args.downsample,
-            dimension=args.dimension,
-            paletteIndex=args.palette)
-
-    try:
-        os.makedirs(args.outdir)
-    except OSError:
-        if not os.path.isdir(args.outdir):
-            raise
-
-    if args.sequence:
-        generateAttractorSequence(r, nthreads)
-    else:
-        generateSingleAttractor(r, nthreads)
-
 def parseArgs():
     parser = argparse.ArgumentParser(description='Playing with strange attractors')
     parser.add_argument('-b', '--bpc',          help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=list(range(1, 17)))
@@ -201,7 +139,6 @@ def parseArgs():
     parser.add_argument('-O', '--outdir',       help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
     parser.add_argument('-p', '--png',          help='save the attractor in a png file', action='store_true')
     parser.add_argument('-P', '--palette',      help='color palette number', type=int, choices=range(len(render.Renderer.pal_templates)))
-    parser.add_argument('-q', '--sequence',     help='generate a sequence of SEQUENCE attractors', type=int)
     parser.add_argument('-s', '--downsample',   help='downsample ratio (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3, 4))
     parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong", "clifford", "icon"))
     args = parser.parse_args()
@@ -230,7 +167,7 @@ if args.iter == None:
 elif args.iter < idealIter:
     logging.warning("For better rendering, you should use at least %d iterations." % idealIter)
 
-if args.code or args.sequence: args.number = 1
+if args.code: args.number = 1
 
 for i in range(0, args.number):
     generateAttractor(g, args.threads)
