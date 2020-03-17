@@ -29,24 +29,24 @@ Those scripts depend on python-opencv for image display, image saving (PNG forma
 
 Those images were produced using the generate.py script, with 128.000.000 iterations and a downsampling factor of 2.
 
-![22_TW1JgMMoaGoJ](http://sebhz.github.io/img/attractors/22_TW1JgMMoaGoJ.png)
+![22_TW1JgMMoaGoJ](https://sebhz.github.io/img/attractors/22_TW1JgMMoaGoJ.png)
 Order 2 polynomial attractor
-![23_UP35K8e7GLVe55YLOBR6](http://sebhz.github.io/img/attractors/23_UP35K8e7GLVe55YLOBR6.png)
+![23_UP35K8e7GLVe55YLOBR6](https://sebhz.github.io/img/attractors/23_UP35K8e7GLVe55YLOBR6.png)
 Order 3 polynomial attractor
-![24_bNHps9RshiGTdjPUcJ2KmlMGFAib2C](http://sebhz.github.io/img/attractors/24_bNHps9RshiGTdjPUcJ2KmlMGFAib2C)
+![24_bNHps9RshiGTdjPUcJ2KmlMGFAib2C](https://sebhz.github.io/img/attractors/24_bNHps9RshiGTdjPUcJ2KmlMGFAib2C)
 Order 4 polynomial attractor
-![25_WY8nMzJbpjKXXFqTkSfMgSkPU15XM6xKK1EBI1c3yR](http://sebhz.github.io/img/attractors/25_WY8nMzJbpjKXXFqTkSfMgSkPU15XM6xKK1EBI1c3yR.png)
+![25_WY8nMzJbpjKXXFqTkSfMgSkPU15XM6xKK1EBI1c3yR](https://sebhz.github.io/img/attractors/25_WY8nMzJbpjKXXFqTkSfMgSkPU15XM6xKK1EBI1c3yR.png)
 Order 5 polynomial attractor
-![cBK5w](http://sebhz.github.io/img/attractors/cBK5w.png)
+![cBK5w](https://sebhz.github.io/img/attractors/cBK5w.png)
 Clifford attractor
-![ci8rg](http://sebhz.github.io/img/attractors/ci8rg.png)
+![ci8rg](https://sebhz.github.io/img/attractors/ci8rg.png)
 Clifford attractor
-![jlPOc](http://sebhz.github.io/img/attractors/jlPOc.png)
+![jlPOc](https://sebhz.github.io/img/attractors/jlPOc.png)
 deJong attractor
-![jUE7x](http://sebhz.github.io/img/attractors/jUE7x.png)
+![jUE7x](https://sebhz.github.io/img/attractors/jUE7x.png)
 deJong attractor
-![s8kjVW3](http://sebhz.github.io/img/attractors/s8kjVW3.png)
+![s8kjVW3](https://sebhz.github.io/img/attractors/s8kjVW3.png)
 Symmetrical icon attractor
-![sABOrJ3](http://sebhz.github.io/img/attractors/sABOrJ3.png)
+![sABOrJ3](https://sebhz.github.io/img/attractors/sABOrJ3.png)
 Symmetrical icon attractor
 
