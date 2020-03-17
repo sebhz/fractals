@@ -59,13 +59,13 @@ y<sub>n+1</sub>=sin(1.4375&ast;x<sub>n</sub>)+0.7500&ast;cos(1.4375&ast;y<sub>n<
 
 ![ci8rg](https://sebhz.github.io/img/attractors/ci8rg.png)
 
-### deJong attractor
+### de Jong attractor
 x<sub>n+1</sub>=sin(2.125&ast;y<sub>n</sub>)-cos(-0.625&ast;x<sub>n</sub>)<br>
 y<sub>n+1</sub>=sin(-0.750&ast;x<sub>n</sub>)-cos(-2.250&ast;y<sub>n</sub>)
 
 ![jlPOC](https://sebhz.github.io/img/attractors/jlPOC.png)
 
-### deJong attractor
+### de Jong attractor
 x<sub>n+1</sub>=-cos(-2.000&ast;x<sub>n</sub>)<br>
 y<sub>n+1</sub>=sin(-2.875&ast;x<sub>n</sub>)-cos(3.625&ast;y<sub>n</sub>)
 

@@ -140,6 +140,7 @@ def generateSingleAttractor(r, nthreads):
     t0 = time()
     while True:
         at = createAttractor()
+        print(at.humanReadable(True))
         a = at.createFrequencyMap(r.geometry, nthreads)
         # Will also test if a is null
         if r.isNice(a) or args.code:
