@@ -25,9 +25,9 @@ There are many other softwares out there dealing with strange attractors generat
 
 Those scripts depend on python-opencv for image display, image saving (PNG format) and image resizing.
 
-# Images
+# Pictures
 
-The images below were produced using the `generate.py` script, with 128.000.000 iterations and a downsampling factor of 2.
+The pictures below were produced using the `generate.py` script, with 128.000.000 iterations and a downsampling factor of 2.
 
 ### Order 2 polynomial attractor
 x<sub>n+1</sub>=-0.125+0.250&ast;x<sub>n</sub>-3.625&ast;x<sub>n</sub><sup>2</sup>-1.375&ast;y<sub>n</sub>+1.500&ast;x<sub>n</sub>&ast;y<sub>n</sub>-1.000&ast;y<sub>n</sub><sup>2</sup><br>
