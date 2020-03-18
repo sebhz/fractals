@@ -9,7 +9,7 @@ This program depends on libsdl and libsdl_gfx. We are talking about libsdl1 here
 # Pictures
 
 ### Plant #1
-Angle: 25&degree;<br>
+Angle: 25&deg;<br>
 Initial string: X<br>
 Rules:<br>
     F -> FF<br>
@@ -18,7 +18,7 @@ Rules:<br>
 ![plant1](https://sebhz.github.io/img/lsystems/plant1.png)
 
 ### Plant #2
-Angle: 18&degree;<br>
+Angle: 18&deg;<br>
 Initial string: SLFFF<br>
 Rules:<br>
     H -> -Z[+H]L<br>
@@ -30,7 +30,7 @@ Rules:<br>
 ![plant2](https://sebhz.github.io/img/lsystems/plant2.png)
 
 ### Plant #3
-Angle: 22.5&degree;<br>
+Angle: 22.5&deg;<br>
 Initial string: F<br>
 Rules:<br>
     F -> FF-[-F+F+F]+[+F-F-F]
