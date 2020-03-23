@@ -462,21 +462,21 @@ class SymIconAttractor(Attractor):
         self.coef.append(random.choice(list(range(3, 13, 2))))
 
     def getNextPoint(self, p):
-        z0  = complex(*p[0:2])
-        rho = self.coef[0]*abs(z0)**2+self.coef[1]
-        z   = z0**(self.coef[5]-1)
-        zn  = z.real*z0.real - z.imag*z0.imag
-        rho += self.coef[2]*zn
-        znew = (complex(0, 1)*self.coef[4] + rho)*z0 + self.coef[3]*z.conjugate()
+        # Formula: znew = (lambda + i.omega + alpha.z.zbar + beta.re(z**m)).z + gamma.z**(m-1)bar
+        z         = complex(*p[0:2])
+        zmminus   = z**(self.coef[5]-1)
+        rezm      = (z*zmminus).real
+        znew      = (self.coef[1] + complex(0, 1)*self.coef[4] + self.coef[0]*z*z.conjugate() + self.coef[2]*rezm)*z + self.coef[3]*zmminus.conjugate()
         return ( znew.real, znew.imag, 0,)
 
     def humanReadable(self, isHTML=False):
         equation = list()
-        equation.append("Symmetry order: %d" % (self.coef[5]))
         if isHTML:
-            equation.append("&lambda;=%.3f - &alpha;=%.3f - &beta;=%.3f - &gamma;=%.3f - &omega;=%.3f" % (self.coef[1], self.coef[0], self.coef[2], self.coef[3], self.coef[4]))
+            equation.append('z<sub>n+1</sub>=(&lambda; + i&omega; + &alpha;z<sub>n</sub><span style="text-decoration:overline">z<sub>n</sub></span> + &beta;Re(z<sub>n</sub><sup>m</sup>))z<sub>n</sub> + &gamma;<span style="text-decoration:overline">z<sub>n</sub><sup>m-1</sup></span>')
+            equation.append("&lambda;=%.3f - &alpha;=%.3f - &beta;=%.3f - &gamma;=%.3f - &omega;=%.3f - m=%d" % (self.coef[1], self.coef[0], self.coef[2], self.coef[3], self.coef[4], self.coef[5]))
         else:
-            equation.append("Lambda=%.3f - Alpha=%.3f - Beta=%.3f - Gamma=%.3f - Omega=%.3f" % (self.coef[1], self.coef[0], self.coef[2], self.coef[3], self.coef[4]))
+            equation.append("zn+1 = (lambda + i.omega + alpha.zn.znbar + beta.re(zn**m)).z + gamma.zn**(m-1)bar")
+            equation.append("Lambda=%.3f - Alpha=%.3f - Beta=%.3f - Gamma=%.3f - Omega=%.3f - m=%d" % (self.coef[1], self.coef[0], self.coef[2], self.coef[3], self.coef[4], self.coef[5]))
         return equation
 
     def computeFractalDimension(self, a):
