@@ -456,17 +456,19 @@ class SymIconAttractor(Attractor):
         d = dict([(v, i) for i, v in enumerate(codelist)])
         self.coef = [(d[ord(_)]+coderange[0])*self.codeStep for _ in self.code[1:6]]
         self.coef.append(ord(self.code[6])-codelist[0])
+        self.w_i = self.coef[1] + complex(0,1)*self.coef[4]
 
     def getRandomCoef(self):
         self.coef = [random.randint(*coderange)*self.codeStep for _ in range(5)]
-        self.coef.append(random.choice(list(range(3, 13, 2))))
+        self.coef.append(random.choice(list(range(3, 9))))
+        self.w_i = self.coef[1] + complex(0,1)*self.coef[4]
 
     def getNextPoint(self, p):
         # Formula: znew = (lambda + i.omega + alpha.z.zbar + beta.re(z**m)).z + gamma.z**(m-1)bar
         z         = complex(*p[0:2])
         zmminus   = z**(self.coef[5]-1)
         rezm      = (z*zmminus).real
-        znew      = (self.coef[1] + complex(0, 1)*self.coef[4] + self.coef[0]*z*z.conjugate() + self.coef[2]*rezm)*z + self.coef[3]*zmminus.conjugate()
+        znew      = (self.w_i + self.coef[0]*z*z.conjugate() + self.coef[2]*rezm)*z + self.coef[3]*zmminus.conjugate()
         return ( znew.real, znew.imag, 0,)
 
     def humanReadable(self, isHTML=False):

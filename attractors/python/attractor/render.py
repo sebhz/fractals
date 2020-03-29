@@ -18,25 +18,26 @@ defaultParameters = {
 
 class Renderer(object):
     # Gradient template, colorspace, Bg color (BGR), negative, value offset
-    pal_templates = (# From red to green/yellow
-                     ( [ (0, 0.0, 1.0, 1.0), (1, 1/3, 0.5, 1.0) ], "hsv", (0, 0, 0), False, 0 ),
-                     # From blue to pinkish
-                     ( [ (0, 2/3, 1.0, 1.0), (0.5, 1.0, 0.6, 1.0), (1, 1.0, 0.4, 1.0) ], "hsv", (0, 0, 0), False, 0 ),
-                     # From blue to yellow
-                     ( [ (0, 0.38, 0.0, 0.88), (1, 0.94, 1.0, 0.13) ], "rgb", (0, 0, 0), False, 0 ),
-                     # From green to red
-                     ( [ (0, 0.4, 1.0, 1.0), (0.5, 0.1, 1.0, 1.0), (1, -0.2, 0.9, 1.0) ], "hsv", (0, 0, 0), False, 0 ),
-                     # Pure white (will become greyscale)
-                     ( [ (0, 0.0, 0.0, 1.0), (1, 0.0, 0.0, 1.0) ], "hsv", (0, 0, 0), False, 0 ),
-                     # Pure black (will become greyscale
-                     ( [ (0, 0.0, 0.0, 1.0), (1, 0.0, 0.0, 1.0) ], "hsv", (1, 1, 1), True, 0 ),
-                     # Inverted red
-                     ( [ (0, 0.0, 0.9, 1.0), (1, 0.0, 1.0, 1.0) ], "hsv", (91/255, 159/255, 184/255), True, 0.4 ),
-                     # Inverted blue
-                     ( [ (0, 2/3, 0.9, 1.0), (1, 2/3, 1.0, 1.0) ], "hsv", (184/255, 159/255, 91/255), True, 0.4 ),
-                     # Full rainbow
-                     ( [ (0, 0.5, 1.0, 1.0), (1, 1.5, 0.6, 1.0) ], "hsv", (184/255, 159/255, 91/255), True, 0.4 ),
-                    )
+    pal_templates = (
+        # From red to green/yellow
+        ( [ (0, 0.0, 1.0, 1.0, True), (1, 1/3, 1.0, 1.0, True) ], "hsv", (0, 0, 0), False, 0 ),
+        # From blue to pinkish
+        ( [ (0, 2/3, 1.0, 1.0, True), (0.5, 1.0, 0.6, 1.0, True), (1, 1.0, 0.4, 1.0, True) ], "hsv", (0, 0, 0), False, 0 ),
+        # From blue to yellow
+        ( [ (0, 0.38, 0.0, 0.88, True), (1, 0.94, 1.0, 0.13, True) ], "rgb", (0, 0, 0), False, 0 ),
+        # From green to red
+        ( [ (0, 1/3, 1.0, 1.0, True), (0.15, 1/6, 1.0, 1.0, True), (0.5, 1/12, 1.0, 1.0, True), (1, 0, 0.9, 1.0, True) ], "hsv", (0, 0, 0), False, 0 ),
+        # Pure white (will become greyscale)
+        ( [ (0, 0.0, 0.0, 1.0, True), (1, 0.0, 0.0, 1.0, True) ], "hsv", (0, 0, 0), False, 0 ),
+        # Pure black (will become greyscale
+        ( [ (0, 0.0, 0.0, 1.0, True), (1, 0.0, 0.0, 1.0, True) ], "hsv", (1, 1, 1), True, 0 ),
+        # Inverted red
+        ( [ (0, 0.0, 0.9, 1.0, True), (1, 0.0, 1.0, 1.0, True) ], "hsv", (215/255, 220/255, 253/255), True, 0.4 ),
+        # Inverted blue
+        ( [ (0, 2/3, 0.9, 1.0, True), (1, 2/3, 1.0, 1.0, True) ], "hsv", (184/255, 159/255, 91/255), True, 0.4 ),
+        # Full rainbow
+        ( [ (0, 0.5, 1.0, 1.0, True), (1, 1.5, 0.6, 1.0, True) ], "hsv", (184/255, 159/255, 91/255), True, 0.4 ),
+    )
 
     def __init__(self, **kwargs):
         getParam = lambda k: kwargs[k] if kwargs and k in kwargs else defaultParameters[k]
@@ -62,17 +63,22 @@ class Renderer(object):
         l = len(controlColors)
         for i, color in enumerate(controlColors):
             if i == l-1: break
-            nInSlice = int(n/((l-1)*(controlColors[i+1][0]-color[0])))
-            startColor = color[1:]
-            endColor = controlColors[i+1][1:]
+            nInSlice = round(n*(controlColors[i+1][0]-color[0]))
+            startColor = color[1:4]
+            endColor = controlColors[i+1][1:4]
             add = [(x-y)/nInSlice for (x, y) in zip(endColor, startColor)]
+            grad_slice = list()
+            reverse = not controlColors[i+1][3]
             for s in range(0, nInSlice):
                 cur_color = [x+s*y for (x,y) in zip(startColor, add)]
                 if space == "hsv":
                     hsv_color = cur_color
                 else:
                     hsv_color = colorsys.rgb_to_hsv(*cur_color)
-                grad.append(tuple(hsv_color))
+                grad_slice.append(tuple(hsv_color))
+            if reverse:
+                grad_slice.reverse()
+            grad = grad + grad_slice
         return grad
 
     def getPalette(self, frequencies):

@@ -82,13 +82,13 @@ def createAttractor():
 
 def generateAttractor(geometry, nthreads):
     if args.palette == None:
-        palette = random.choice(range(len(render.Renderer.pal_templates)))
+        args.palette = random.choice(range(len(render.Renderer.pal_templates)))
 
     r  = render.Renderer(bpc=args.bpc,
             geometry=geometry,
             downsampleRatio=args.downsample,
             dimension=args.dimension,
-            paletteIndex=palette)
+            paletteIndex=args.palette)
 
     try:
         os.makedirs(args.outdir)
@@ -107,7 +107,10 @@ def generateAttractor(geometry, nthreads):
             break
     t1 = time()
 
-    logging.info("Attractor type: %s" % args.type)
+    logging.info("Attractor type: %s %s" % (args.type,
+        "(order = %d)" % (int(at.code[1])) if args.type == 'polynomial' else
+        "(symmetry = %d)" % (int(at.coef[5])) if args.type == 'icon' else
+        ""))
     if args.type == 'polynomial':
         logging.info("Polynom order: %d" % int(at.code[1]))
     logging.info("Dimension: %.3f" % at.fdim)
