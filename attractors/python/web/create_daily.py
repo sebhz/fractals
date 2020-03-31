@@ -396,7 +396,7 @@ def processAttractor(AttractorNum):
     if MAP['__type'] == 'polynomial':
         MAP['__type'] += " (order " + str(at.order) + ")"
     elif MAP['__type'] == 'icon':
-        MAP['__type'] = "Sprott/Field/Golubitsky symmetrical icon"
+        MAP['__type'] = "Field/Golubitsky symmetrical icon"
 
     if dimension == 3:
         MAP['__x_polynom'], MAP['__y_polynom'], MAP['__z_polynom'] = at.humanReadable(isHTML=True)
@@ -453,7 +453,7 @@ if args.date:
     attractorRange = (daysBetween(REFERENCE_DATE, d) + 1,)
 elif args.num != None:
     if args.num < 1:
-        logging.error("Only positive and non zero numbers are allowed for attractors.")
+        logging.error("Only strictly positive numbers are allowed for attractors.")
         sys.exit()
     attractorRange = (args.num,)
 else:

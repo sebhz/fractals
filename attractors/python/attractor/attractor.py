@@ -456,23 +456,25 @@ class SymIconAttractor(Attractor):
         d = dict([(v, i) for i, v in enumerate(codelist)])
         self.coef = [(d[ord(_)]+coderange[0])*self.codeStep for _ in self.code[1:6]]
         self.coef.append(ord(self.code[6])-codelist[0])
+        self.w_i = self.coef[1] + complex(0,1)*self.coef[4]
 
     def getRandomCoef(self):
         self.coef = [random.randint(*coderange)*self.codeStep for _ in range(5)]
-        self.coef.append(random.choice(list(range(3, 13, 2))))
+        self.coef.append(random.choice(list(range(3, 9))))
+        self.w_i = self.coef[1] + complex(0,1)*self.coef[4]
 
     def getNextPoint(self, p):
         # Formula: znew = (lambda + i.omega + alpha.z.zbar + beta.re(z**m)).z + gamma.z**(m-1)bar
         z         = complex(*p[0:2])
         zmminus   = z**(self.coef[5]-1)
         rezm      = (z*zmminus).real
-        znew      = (self.coef[1] + complex(0, 1)*self.coef[4] + self.coef[0]*z*z.conjugate() + self.coef[2]*rezm)*z + self.coef[3]*zmminus.conjugate()
+        znew      = (self.w_i + self.coef[0]*z*z.conjugate() + self.coef[2]*rezm)*z + self.coef[3]*zmminus.conjugate()
         return ( znew.real, znew.imag, 0,)
 
     def humanReadable(self, isHTML=False):
         equation = list()
         if isHTML:
-            equation.append('z<sub>n+1</sub>=(&lambda; + i&omega; + &alpha;z<sub>n</sub><span style="text-decoration:overline">z<sub>n</sub></span> + &beta;Re(z<sub>n</sub><sup>m</sup>))z<sub>n</sub> + &gamma;<span style="text-decoration:overline">z<sub>n</sub><sup>m-1</sup></span>')
+            equation.append('z<sub>n+1</sub>=(&lambda; + i&omega; + &alpha;z<sub>n</sub>conj(z<sub>n</sub>) + &beta;Re(z<sub>n</sub><sup>m</sup>))z<sub>n</sub> + &gamma;conj(z<sub>n</sub><sup>m-1</sup>)')
             equation.append("&lambda;=%.3f - &alpha;=%.3f - &beta;=%.3f - &gamma;=%.3f - &omega;=%.3f - m=%d" % (self.coef[1], self.coef[0], self.coef[2], self.coef[3], self.coef[4], self.coef[5]))
         else:
             equation.append("zn+1 = (lambda + i.omega + alpha.zn.znbar + beta.re(zn**m)).z + gamma.zn**(m-1)bar")
