@@ -474,7 +474,7 @@ class SymIconAttractor(Attractor):
     def humanReadable(self, isHTML=False):
         equation = list()
         if isHTML:
-            equation.append('z<sub>n+1</sub>=(&lambda; + i&omega; + &alpha;z<sub>n</sub><span style="text-decoration:overline">z<sub>n</sub></span> + &beta;Re(z<sub>n</sub><sup>m</sup>))z<sub>n</sub> + &gamma;<span style="text-decoration:overline">z<sub>n</sub><sup>m-1</sup></span>')
+            equation.append('z<sub>n+1</sub>=(&lambda; + i&omega; + &alpha;z<sub>n</sub>conj(z<sub>n</sub>) + &beta;Re(z<sub>n</sub><sup>m</sup>))z<sub>n</sub> + &gamma;conj(z<sub>n</sub><sup>m-1</sup>)')
             equation.append("&lambda;=%.3f - &alpha;=%.3f - &beta;=%.3f - &gamma;=%.3f - &omega;=%.3f - m=%d" % (self.coef[1], self.coef[0], self.coef[2], self.coef[3], self.coef[4], self.coef[5]))
         else:
             equation.append("zn+1 = (lambda + i.omega + alpha.zn.znbar + beta.re(zn**m)).z + gamma.zn**(m-1)bar")

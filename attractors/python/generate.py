@@ -20,7 +20,7 @@
 # Ian Witham's blog
 # http://ianwitham.wordpress.com/category/graphics/strange-attractors-graphics/
 
-from attractor import attractor, render, util
+from attractor import attractor, render, util, palettes
 from time import time
 
 import random
@@ -82,7 +82,7 @@ def createAttractor():
 
 def generateAttractor(geometry, nthreads):
     if args.palette == None:
-        args.palette = random.choice(range(len(render.Renderer.pal_templates)))
+        args.palette = random.choice(range(len(palettes.pal_templates)))
 
     r  = render.Renderer(bpc=args.bpc,
             geometry=geometry,
@@ -140,7 +140,7 @@ def parseArgs():
     parser.add_argument('-o', '--order',        help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
     parser.add_argument('-O', '--outdir',       help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
     parser.add_argument('-p', '--png',          help='save the attractor in a png file', action='store_true')
-    parser.add_argument('-P', '--palette',      help='color palette number', type=int, choices=range(len(render.Renderer.pal_templates)))
+    parser.add_argument('-P', '--palette',      help='color palette number', type=int, choices=range(len(palettes.pal_templates)))
     parser.add_argument('-s', '--downsample',   help='downsample ratio (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3, 4))
     parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong", "clifford", "icon"))
     args = parser.parse_args()
