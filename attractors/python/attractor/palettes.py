@@ -35,7 +35,6 @@ pal_templates = (
       'invert_value' : False,
       'gradient_map' : [ { 'slice_percent': 12, 'start_color': (1/3, 1.0, 1.0), 'end_color': (1/6, 1.0, 1.0) },
                          { 'slice_percent': 88, 'start_color': (1/6, 1.0, 1.0), 'end_color': (0.0, 0.9, 1.0) }  ]
-
     },
     # Pure white (will become greyscale)
     { 'name'         : 'White on black',
@@ -60,7 +59,22 @@ pal_templates = (
       'value_offset' : 0.4,
       'invert_value' : True,
       'gradient_map' : [ { 'slice_percent': 100, 'start_color': (0.0, 0.9, 1.0), 'end_color': (0.0, 1.0, 1.0) } ]
-    }
+    },
+    { 'name'         : 'Blue sky',
+      'colorspace'   : 'rgb',
+      'background'   : (0, 0, 0), # (B, G, R)
+      'value_offset' : 0.2,
+      'invert_value' : False,
+      'gradient_map' : [ { 'slice_percent': 50, 'start_color': (0x29/0xFF, 0x80/0xFF, 0xB9/0xFF), 'end_color': (0x6D/0xFF, 0xD5/0xFF, 0xFA/0xFF) },
+                         { 'slice_percent': 50, 'start_color': (0x6D/0xFF, 0xD5/0xFF, 0xFA/0xFF), 'end_color': (1.0, 1.0, 1.0) } ]
+    },
+    { 'name'         : 'Opa',
+      'colorspace'   : 'rgb',
+      'background'   : (0.2, 0.2, 0.2), # (B, G, R)
+      'value_offset' : 0.2,
+      'invert_value' : False,
+      'gradient_map' : [ { 'slice_percent': 100, 'start_color': (0x3D/0xFF, 0x7E/0xFF, 0xAA/0xFF), 'end_color': (0xFF/0xFF, 0xE4/0xFF, 0x7A/0xFF) }]
+    },
 )
 
 
