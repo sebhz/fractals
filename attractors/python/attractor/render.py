@@ -73,15 +73,12 @@ class Renderer(object):
             (r, g, b) = colorsys.hsv_to_rgb(gradient[i][0], gradient[i][1], v)
             colormap[freq] = tuple([round(x*((1<<self.bpc)-1)) for x in (b, g, r)])
 
-        palette = dict()
-        palette['background'] = template['background']
-        palette['colormap']   = colormap
-        return palette
+        self.palette = dict()
+        self.palette['background'] = tuple([round(component * ((1 << self.bpc)-1)) for component in template['background']])
+        self.palette['colormap']   = colormap
 
     def colorizeAttractor(self, p):
-        frequencies  = list(set(p.values()))
-        self.palette = self.getPalette(frequencies)
-        self.palette['background'] = tuple([round(component * ((1 << self.bpc)-1)) for component in self.palette['background']])
+        self.getPalette(list(set(p.values())))
 
         for c, v in p.items():
             p[c] = self.palette['colormap'][v]
@@ -92,7 +89,7 @@ class Renderer(object):
     def createImageArray(self, p):
         (w, h) = self.geometry[0:2]
 
-        img = [ [list(self.palette['background']) for col in range(0, w) ] for row in range(0,h) ]
+        img = [ [ list(self.palette['background']) for col in range(0, w) ] for row in range(0,h) ]
         for c, v in p.items():
             (col, row) = c
             try:
