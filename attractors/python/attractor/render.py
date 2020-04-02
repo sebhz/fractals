@@ -74,7 +74,7 @@ class Renderer(object):
             colormap[freq] = tuple([round(x*((1<<self.bpc)-1)) for x in (b, g, r)])
 
         self.palette = dict()
-        self.palette['background'] = tuple([round(component * ((1 << self.bpc)-1)) for component in template['background']])
+        self.palette['background'] = tuple(reversed([round(component * ((1 << self.bpc)-1)) for component in template['background']]))
         self.palette['colormap']   = colormap
 
     def colorizeAttractor(self, p):
