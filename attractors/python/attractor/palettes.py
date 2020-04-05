@@ -31,7 +31,7 @@ pal_templates = (
     { 'name'         : 'Green to red',
       'colorspace'   : 'hsv_cc',
       'background'   : 0x000000,
-      'value_offset' : 0.0,
+      'value_offset' : 0.45,
       'invert_value' : False,
       'gradient_map' : [ { 'slice_percent': 12, 'start_color': 0x00FF00, 'end_color': 0xFFFF00 },
                          { 'slice_percent': 88, 'start_color': 0xFFFF00, 'end_color': 0xFF1919 }  ]
