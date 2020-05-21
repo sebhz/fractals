@@ -19,20 +19,26 @@
 # Some coloring ideas (histogram equalization) taken from
 # Ian Witham's blog
 # http://ianwitham.wordpress.com/category/graphics/strange-attractors-graphics/
-
-from attractor import attractor, render, util, palettes
-from time import time
-
+"""
+Example script using the attractor lib to create and display attractors
+"""
 import random
 import argparse
 import sys
 import os
 import logging
+from time import time
 import cv2
+from attractor import attractor, render, util, palettes
 
-LOGLEVELS = (logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG, logging.NOTSET)
+LOGLEVELS = (logging.CRITICAL,
+             logging.ERROR,
+             logging.WARNING,
+             logging.INFO,
+             logging.DEBUG,
+             logging.NOTSET)
 
-defaultParameters = {
+DFT_OPTS = {
     'bpc': 8,
     'geometry': '1280x1024',
     'iter': 1280*1024*util.OVERITERATE_FACTOR,
@@ -47,129 +53,188 @@ defaultParameters = {
 }
 
 def sec2hms(seconds):
-    m, s = divmod(seconds, 60)
-    h, m = divmod(m, 60)
-    return "%dh%02dm%02ds" % (h, m, s)
+    """
+    Converts a seconds value in an "HMS" string
+    """
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    return "%dh%02dm%02ds" % (hours, minutes, seconds)
 
-def createAttractor():
-    if args.type == 'dejong':
-        at = attractor.DeJongAttractor(iter = int(args.iter/args.threads),
-                    code = args.code)
-    elif args.type == 'clifford':
-        at = attractor.CliffordAttractor(iter = int(args.iter/args.threads),
-                    code = args.code)
-    elif args.type == 'icon':
-        at = attractor.SymIconAttractor(iter = int(args.iter/args.threads),
-                    code = args.code)
+def create_attractor(options):
+    """
+    Find and returns a converging attractor
+    """
+    if options.type == 'dejong':
+        att = attractor.DeJongAttractor(iter=int(options.iter/options.threads),
+                                        code=options.code)
+    elif options.type == 'clifford':
+        att = attractor.CliffordAttractor(iter=int(options.iter/options.threads),
+                                          code=options.code)
+    elif options.type == 'icon':
+        att = attractor.SymIconAttractor(iter=int(options.iter/options.threads),
+                                         code=options.code)
     else:
-        at = attractor.PolynomialAttractor(order = args.order,
-                    iter = int(args.iter/args.threads),
-                    code = args.code, dimension = args.dimension)
+        att = attractor.PolynomialAttractor(order=options.order,
+                                            iter=int(options.iter/options.threads),
+                                            code=options.code,
+                                            dimension=options.dimension)
 
-    if args.code:
-        if not at.checkConvergence():
+    if options.code:
+        if not att.checkConvergence():
             logging.warning("The specified attractor does not seem to converge. Bailing out.")
             sys.exit()
     else:
-        at.explore()
+        att.explore()
 
     logging.debug("Converging attractor found.")
-    if args.dimension == 3:
-        logging.debug("Boundaries: (%.3f, %.3f, %.3f) (%.3f, %.3f, %.3f)" % (tuple(at.bound)))
+    if options.dimension == 3:
+        logging.debug("Boundaries: (%.3f, %.3f, %.3f) (%.3f, %.3f, %.3f)", *att.bound)
     else:
-        logging.debug("Boundaries: (%.3f, %.3f) (%.3f, %.3f)" % (tuple(at.bound[0:2]+at.bound[3:5])))
-    return at
+        logging.debug("Boundaries: (%.3f, %.3f) (%.3f, %.3f)",
+                      *(att.bound[0:2]+att.bound[3:5]))
+    return att
 
-def generateAttractor(geometry, nthreads):
-    if args.palette == None:
-        args.palette = random.choice(range(len(palettes.pal_templates)))
+def generate_attractor(geometry, options):
+    """
+    Generate and display an attractor
+    """
+    if options.palette is None:
+        options.palette = random.choice(range(len(palettes.pal_templates)))
 
-    r  = render.Renderer(bpc=args.bpc,
-            geometry=geometry,
-            downsampleRatio=args.downsample,
-            dimension=args.dimension,
-            paletteIndex=args.palette)
+    renderer = render.Renderer(bpc=options.bpc,
+                               geometry=geometry,
+                               downsampleRatio=options.downsample,
+                               dimension=options.dimension,
+                               paletteIndex=options.palette)
 
     try:
-        os.makedirs(args.outdir)
+        os.makedirs(options.outdir)
     except OSError:
-        if not os.path.isdir(args.outdir):
+        if not os.path.isdir(options.outdir):
             raise
 
-    t0 = time()
+    t_0 = time()
     while True:
-        at = createAttractor()
-        a = at.createFrequencyMap(r.geometry, nthreads)
+        att = create_attractor(options)
+        att_map = att.createFrequencyMap(renderer.geometry, options.threads)
         # Will also test if a is null
-        if r.isNice(a) or args.code:
-            at.computeFractalDimension(a)
-            img = r.renderAttractor(a)
+        if renderer.isNice(att_map) or options.code:
+            att.computeFractalDimension(att_map)
+            img = renderer.renderAttractor(att_map)
             break
-    t1 = time()
+    t_1 = time()
 
-    logging.info("Attractor type: %s %s" % (args.type,
-        "(order = %d)" % (int(at.code[1])) if args.type == 'polynomial' else
-        "(symmetry = %d)" % (int(at.coef[5])) if args.type == 'icon' else
-        ""))
-    if args.type == 'polynomial':
-        logging.info("Polynom order: %d" % int(at.code[1]))
-    logging.info("Dimension: %.3f" % at.fdim)
-    logging.info("Lyapunov exponent: %.3f" % at.lyapunov['ly'])
-    logging.info("Code: %s" % at.code)
-    logging.info("Iterations: %d" % args.iter)
-    logging.info("Attractor generation and rendering took %s." % sec2hms(t1-t0))
+    logging.info("Attractor type: %s %s",
+                 options.type,
+                 "(order = %d)" % (int(att.code[1])) if options.type == 'polynomial' else
+                 "(symmetry = %d)" % (int(att.coef[5])) if options.type == 'icon' else
+                 "")
+    if options.type == 'polynomial':
+        logging.info("Polynom order: %d", int(att.code[1]))
+    logging.info("Dimension: %.3f", att.fdim)
+    logging.info("Lyapunov exponent: %.3f", att.lyapunov['ly'])
+    logging.info("Code: %s", att.code)
+    logging.info("Iterations: %d", options.iter)
+    logging.info("Attractor generation and rendering took %s.", sec2hms(t_1-t_0))
 
-    if args.png:
-        filepath = os.path.join(args.outdir, at.code + ".png")
+    if options.png:
+        filepath = os.path.join(options.outdir, att.code + ".png")
         cv2.imwrite(filepath, img)
     else:
-        cv2.imshow(at.code, img)
+        cv2.imshow(att.code, img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-def parseArgs():
+def parse_args():
+    """
+    Parses our glorious arguments - or assign sensible default values to them
+    """
     parser = argparse.ArgumentParser(description='Playing with strange attractors')
-    parser.add_argument('-b', '--bpc',          help='bits per component (default = %d)' % defaultParameters['bpc'], default=defaultParameters['bpc'], type=int, choices=list(range(1, 17)))
-    parser.add_argument('-c', '--code',         help='attractor code', type=str)
-    parser.add_argument('-d', '--dimension',    help='attractor dimension (2 or 3)', type=int, choices=(2, 3), default=defaultParameters['dimension'])
-    parser.add_argument('-g', '--geometry',     help='image geometry (XxY form - default = %s)' % defaultParameters['geometry'], default=defaultParameters['geometry'])
-    parser.add_argument('-j', '--threads',      help='Number of threads to use (default = %d)' % defaultParameters['threads'], type=int, default=defaultParameters['threads'])
-    parser.add_argument('-l', '--loglevel',     help='Sets log level (the higher the more verbose - default = %d)' % defaultParameters['loglevel'], default=defaultParameters['loglevel'], type=int, choices=list(range(len(LOGLEVELS))))
-    parser.add_argument('-i', '--iter',         help='attractor number of iterations', type=int)
-    parser.add_argument('-n', '--number',       help='number of attractors to generate (default = %d)' % defaultParameters['number'], default=defaultParameters['number'], type=int)
-    parser.add_argument('-o', '--order',        help='attractor order (default = %d)' % defaultParameters['order'], default=defaultParameters['order'], type=int)
-    parser.add_argument('-O', '--outdir',       help='output directory for generated image (default = %s)' % defaultParameters['outdir'], default=defaultParameters['outdir'], type=str)
-    parser.add_argument('-p', '--png',          help='save the attractor in a png file', action='store_true')
-    parser.add_argument('-P', '--palette',      help='color palette number', type=int, choices=range(len(palettes.pal_templates)))
-    parser.add_argument('-s', '--downsample',   help='downsample ratio (default = %d)' % defaultParameters['sub'], default = defaultParameters['sub'], type=int, choices=(2, 3, 4))
-    parser.add_argument('-t', '--type',         help='attractor type (default = %s)' % defaultParameters['type'], default = defaultParameters['type'], type=str, choices=("polynomial", "dejong", "clifford", "icon"))
-    args = parser.parse_args()
-    if args.code:
-        if args.code[0] == 'j':
-            args.type = 'dejong'
-        elif args.code[0] == 'c':
-            args.type = 'clifford'
-        elif args.code[0] == 's':
-            args.type = 'icon'
-    return args
+    parser.add_argument('-b', '--bpc',
+                        help='bits per component (default = %d)' % DFT_OPTS['bpc'],
+                        default=DFT_OPTS['bpc'],
+                        type=int, choices=list(range(1, 17)))
+    parser.add_argument('-c', '--code',
+                        help='attractor code', type=str)
+    parser.add_argument('-d', '--dimension',
+                        help='attractor dimension (2 or 3)',
+                        type=int,
+                        choices=(2, 3), default=DFT_OPTS['dimension'])
+    parser.add_argument('-g', '--geometry',
+                        help='image geometry (XxY form - default = %s)' % DFT_OPTS['geometry'],
+                        default=DFT_OPTS['geometry'])
+    parser.add_argument('-j', '--threads',
+                        help='Number of threads to use (default = %d)' % DFT_OPTS['threads'],
+                        type=int,
+                        default=DFT_OPTS['threads'])
+    parser.add_argument('-l', '--loglevel',
+                        help='log level (high is verbose - default = %d)' % DFT_OPTS['loglevel'],
+                        default=DFT_OPTS['loglevel'],
+                        type=int,
+                        choices=list(range(len(LOGLEVELS))))
+    parser.add_argument('-i', '--iter',
+                        help='attractor number of iterations', type=int)
+    parser.add_argument('-n', '--number',
+                        help='number of attractors to generate (default %d)' % DFT_OPTS['number'],
+                        default=DFT_OPTS['number'],
+                        type=int)
+    parser.add_argument('-o', '--order',
+                        help='attractor order (default = %d)' % DFT_OPTS['order'],
+                        default=DFT_OPTS['order'],
+                        type=int)
+    parser.add_argument('-O', '--outdir',
+                        help='output dir for image (default = %s)' % DFT_OPTS['outdir'],
+                        default=DFT_OPTS['outdir'],
+                        type=str)
+    parser.add_argument('-p', '--png',
+                        help='save the attractor in a png file',
+                        action='store_true')
+    parser.add_argument('-P', '--palette',
+                        help='color palette number',
+                        type=int,
+                        choices=range(len(palettes.pal_templates)))
+    parser.add_argument('-s', '--downsample',
+                        help='downsample ratio (default = %d)' % DFT_OPTS['sub'],
+                        default=DFT_OPTS['sub'],
+                        type=int,
+                        choices=(2, 3, 4))
+    parser.add_argument('-t', '--type',
+                        help='attractor type (default = %s)' % DFT_OPTS['type'],
+                        default=DFT_OPTS['type'],
+                        type=str, choices=("polynomial", "dejong", "clifford", "icon"))
+    _args = parser.parse_args()
+    if _args.code:
+        _args.number = 1
+        if _args.code[0] == 'j':
+            _args.type = 'dejong'
+        elif _args.code[0] == 'c':
+            _args.type = 'clifford'
+        elif _args.code[0] == 's':
+            _args.type = 'icon'
+    return _args
 
 # ----------------------------- Main loop ----------------------------- #
 
-args = parseArgs()
-logging.basicConfig(stream=sys.stderr, level=LOGLEVELS[args.loglevel])
 random.seed()
+ARGS = parse_args()
+logging.basicConfig(stream=sys.stderr, level=LOGLEVELS[ARGS.loglevel])
 
-g = [int(x) for x in args.geometry.split('x')]
-#TODO - check validity of g
+try:
+    WINDOW_GEOMETRY = [int(x) for x in ARGS.geometry.split('x')]
+except ValueError:
+    logging.error("Bad geometry string. Exiting.")
+    sys.exit(1)
 
-idealIter = util.getIdealIterationNumber(args.type, g, args.downsample)
-if args.iter == None:
-    args.iter = idealIter
-    logging.debug("Setting iteration number to %d." % (args.iter))
-elif args.iter < idealIter:
-    logging.warning("For better rendering, you should use at least %d iterations." % idealIter)
+if len(WINDOW_GEOMETRY) != 2 or WINDOW_GEOMETRY[0] <= 0 or WINDOW_GEOMETRY[1] <= 0:
+    logging.error("Bad geometry string. Exiting.")
+    sys.exit(1)
 
-if args.code: args.number = 1
+IDEAL_ITER = util.getIdealIterationNumber(ARGS.type, WINDOW_GEOMETRY, ARGS.downsample)
+if ARGS.iter is None:
+    ARGS.iter = IDEAL_ITER
+    logging.debug("Setting iteration number to %d.", ARGS.iter)
+elif ARGS.iter < IDEAL_ITER:
+    logging.warning("For better rendering, you should use at least %d iterations.", IDEAL_ITER)
 
-for i in range(0, args.number):
-    generateAttractor(g, args.threads)
+for i in range(0, ARGS.number):
+    generate_attractor(WINDOW_GEOMETRY, ARGS)
