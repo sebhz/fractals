@@ -80,7 +80,7 @@ def create_attractor(options):
                                             dimension=options.dimension)
 
     if options.code:
-        if not att.checkConvergence():
+        if not att.check_convergence():
             logging.warning("The specified attractor does not seem to converge. Bailing out.")
             sys.exit()
     else:
@@ -116,10 +116,10 @@ def generate_attractor(geometry, options):
     t_0 = time()
     while True:
         att = create_attractor(options)
-        att_map = att.createFrequencyMap(renderer.geometry, options.threads)
+        att_map = att.create_frequency_map(renderer.geometry, options.threads)
         # Will also test if a is null
         if renderer.isNice(att_map) or options.code:
-            att.computeFractalDimension(att_map)
+            att.compute_fractal_dimension(att_map)
             img = renderer.renderAttractor(att_map)
             break
     t_1 = time()

@@ -374,11 +374,11 @@ def processAttractor(AttractorNum):
                 geometry=parameters['geometry'],
                 downsampleRatio=downsampling,
                 dimension=dimension)
-            a = at.createFrequencyMap(r.geometry, args.nthreads)
+            a = at.create_frequency_map(r.geometry, args.nthreads)
             if not r.isNice(a):
                 logging.debug("Attractor too thin. Trying to find a better one.")
                 break
-            at.computeFractalDimension(a)
+            at.compute_fractal_dimension(a)
             img = r.renderAttractor(a)
 
             if len(at.code) < maxFileNameLength - len(IMAGE_SUFFIX):
@@ -399,9 +399,9 @@ def processAttractor(AttractorNum):
         MAP['__type'] = "Field/Golubitsky symmetrical icon"
 
     if dimension == 3:
-        MAP['__x_polynom'], MAP['__y_polynom'], MAP['__z_polynom'] = at.humanReadable(isHTML=True)
+        MAP['__x_polynom'], MAP['__y_polynom'], MAP['__z_polynom'] = at.human_readable(is_html=True)
     else:
-        MAP['__x_polynom'], MAP['__y_polynom'] = at.humanReadable(isHTML=True)
+        MAP['__x_polynom'], MAP['__y_polynom'] = at.human_readable(is_html=True)
 
     MAP['__iterations'] = str(at.iterations)
     MAP['__dimension'] = 'not computed' if dimension == 3 else "%.3f" % (at.fdim)
