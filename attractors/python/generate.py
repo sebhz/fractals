@@ -229,7 +229,7 @@ if len(WINDOW_GEOMETRY) != 2 or WINDOW_GEOMETRY[0] <= 0 or WINDOW_GEOMETRY[1] <=
     logging.error("Bad geometry string. Exiting.")
     sys.exit(1)
 
-IDEAL_ITER = util.getIdealIterationNumber(ARGS.type, WINDOW_GEOMETRY, ARGS.downsample)
+IDEAL_ITER = util.get_ideal_iteration_number(WINDOW_GEOMETRY, ARGS.downsample)
 if ARGS.iter is None:
     ARGS.iter = IDEAL_ITER
     logging.debug("Setting iteration number to %d.", ARGS.iter)

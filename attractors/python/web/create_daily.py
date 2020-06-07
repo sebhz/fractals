@@ -367,7 +367,7 @@ def processAttractor(AttractorNum):
         at = createAttractor(MAP['__type'], MAP['__order'], dimension)
         for parameters in ( {'geometry': (1000, 1000), 'directory': '/tmp'}, ):
             t0 = time()
-            iterations = util.getIdealIterationNumber(MAP['__type'], parameters['geometry'], downsampling)
+            iterations = util.get_ideal_iteration_number(parameters['geometry'], downsampling)
             logging.debug("Num iterations: %d", iterations)
             at.iterations = iterations
             r = render.Renderer(bpc=8,
