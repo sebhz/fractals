@@ -375,11 +375,11 @@ def processAttractor(AttractorNum):
                 downsampleRatio=downsampling,
                 dimension=dimension)
             a = at.create_frequency_map(r.geometry, args.nthreads)
-            if not r.isNice(a):
+            if not r.is_nice(a):
                 logging.debug("Attractor too thin. Trying to find a better one.")
                 break
             at.compute_fractal_dimension(a)
-            img = r.renderAttractor(a)
+            img = r.render_attractor(a)
 
             if len(at.code) < maxFileNameLength - len(IMAGE_SUFFIX):
                 filePath = at.code + IMAGE_SUFFIX

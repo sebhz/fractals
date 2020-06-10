@@ -118,9 +118,9 @@ def generate_attractor(geometry, options):
         att = create_attractor(options)
         att_map = att.create_frequency_map(renderer.geometry, options.threads)
         # Will also test if a is null
-        if renderer.isNice(att_map) or options.code:
+        if renderer.is_nice(att_map) or options.code:
             att.compute_fractal_dimension(att_map)
-            img = renderer.renderAttractor(att_map)
+            img = renderer.render_attractor(att_map)
             break
     t_1 = time()
 
