@@ -41,7 +41,7 @@ LOGLEVELS = (logging.CRITICAL,
 DFT_OPTS = {
     'bpc': 8,
     'geometry': '1280x1024',
-    'iter': 1280*1024*util.OVERITERATE_FACTOR,
+    'iterations': 1280*1024*util.OVERITERATE_FACTOR,
     'loglevel': 3,
     'number': 1,
     'order': 2,
@@ -65,17 +65,17 @@ def create_attractor(options):
     Find and returns a converging attractor
     """
     if options.type == 'dejong':
-        att = attractor.DeJongAttractor(iter=int(options.iter/options.threads),
+        att = attractor.DeJongAttractor(iterations=int(options.iterations/options.threads),
                                         code=options.code)
     elif options.type == 'clifford':
-        att = attractor.CliffordAttractor(iter=int(options.iter/options.threads),
+        att = attractor.CliffordAttractor(iterations=int(options.iterations/options.threads),
                                           code=options.code)
     elif options.type == 'icon':
-        att = attractor.SymIconAttractor(iter=int(options.iter/options.threads),
+        att = attractor.SymIconAttractor(iterations=int(options.iterations/options.threads),
                                          code=options.code)
     else:
         att = attractor.PolynomialAttractor(order=options.order,
-                                            iter=int(options.iter/options.threads),
+                                            iterations=int(options.iterations/options.threads),
                                             code=options.code,
                                             dimension=options.dimension)
 
@@ -103,9 +103,9 @@ def generate_attractor(geometry, options):
 
     renderer = render.Renderer(bpc=options.bpc,
                                geometry=geometry,
-                               downsampleRatio=options.downsample,
+                               downsample_ratio=options.downsample,
                                dimension=options.dimension,
-                               paletteIndex=options.palette)
+                               palette_index=options.palette)
 
     try:
         os.makedirs(options.outdir)
@@ -134,7 +134,7 @@ def generate_attractor(geometry, options):
     logging.info("Dimension: %.3f", att.fdim)
     logging.info("Lyapunov exponent: %.3f", att.lyapunov['ly'])
     logging.info("Code: %s", att.code)
-    logging.info("Iterations: %d", options.iter)
+    logging.info("Iterations: %d", options.iterations)
     logging.info("Attractor generation and rendering took %s.", sec2hms(t_1-t_0))
 
     if options.png:
@@ -172,7 +172,7 @@ def parse_args():
                         default=DFT_OPTS['loglevel'],
                         type=int,
                         choices=list(range(len(LOGLEVELS))))
-    parser.add_argument('-i', '--iter',
+    parser.add_argument('-i', '--iterations',
                         help='attractor number of iterations', type=int)
     parser.add_argument('-n', '--number',
                         help='number of attractors to generate (default %d)' % DFT_OPTS['number'],
@@ -230,10 +230,10 @@ if len(WINDOW_GEOMETRY) != 2 or WINDOW_GEOMETRY[0] <= 0 or WINDOW_GEOMETRY[1] <=
     sys.exit(1)
 
 IDEAL_ITER = util.get_ideal_iteration_number(WINDOW_GEOMETRY, ARGS.downsample)
-if ARGS.iter is None:
-    ARGS.iter = IDEAL_ITER
-    logging.debug("Setting iteration number to %d.", ARGS.iter)
-elif ARGS.iter < IDEAL_ITER:
+if ARGS.iterations is None:
+    ARGS.iterations = IDEAL_ITER
+    logging.debug("Setting iteration number to %d.", ARGS.iterations)
+elif ARGS.iterations < IDEAL_ITER:
     logging.warning("For better rendering, you should use at least %d iterations.", IDEAL_ITER)
 
 for i in range(0, ARGS.number):

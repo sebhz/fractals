@@ -49,22 +49,22 @@ class Renderer:
     Set of methods to resize, colorize an attractor frequency map
     """
     def __init__(self, **kwargs):
-        get_param = lambda k: kwargs.get(k, DEF_PARAMS[k]) if kwargs else DEF_PARAMS[k]
-
         self.logger = logging.getLogger(__name__)
-        self.downsample_ratio = get_param('downsample_ratio')
-        self.bpc = get_param('bpc')
 
-        self.geometry = get_param('geometry')
+        for kw_name, kw_def_value in DEF_PARAMS.items():
+            setattr(self, kw_name, kw_def_value)
+
+        for kw_name, kw_value in kwargs.items():
+            if not kw_name in DEF_PARAMS:
+                raise KeyError("Invalid parameter %s passed to %s" % (kw_name, __name__))
+            setattr(self, kw_name, kw_value)
+
         self.geometry = [x*self.downsample_ratio for x in self.geometry]
-
-        self.dimension = get_param('dimension')
         if self.dimension < 2 or self.dimension > 3:
             self.logger.warning("Trying to create renderer with invalid dimension (%d). \
                                  Defaulting to 2.", self.dimension)
             self.dimension = 2
 
-        self.palette_index = get_param('palette_index')
         if self.palette_index is None:
             self.palette_index = random.choice(range(len(palettes.pal_templates)))
         self.palette = dict()

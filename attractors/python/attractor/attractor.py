@@ -32,7 +32,7 @@ LYAPUNOV_BOUND = 100000
 DEF_PARAMS = {
     'code' : None,
     'dimension' : 2,
-    'iter' : 1280*1024*util.OVERITERATE_FACTOR,
+    'iterations' : 1280*1024*util.OVERITERATE_FACTOR,
     'order' : 2,
 }
 MODULUS = lambda x, y, z: x*x + y*y + z*z
@@ -53,16 +53,20 @@ class Attractor:
     conv_max_iter = 4*65536
 
     def __init__(self, **kwargs):
-        get_param = lambda k: kwargs[k] if kwargs and k in kwargs else \
-                              DEF_PARAMS[k] if k in DEF_PARAMS else \
-                              None
         self.logger = logging.getLogger(__name__)
         self.lyapunov = {'nl': 0, 'lsum': 0, 'ly': 0}
         self.fdim = 0
         self.bound = None
-        # TODO: type checking on parameters
-        self.iterations = get_param('iter')
-        self.dimension = get_param('dimension')
+
+        for kw_name, kw_def_value in DEF_PARAMS.items():
+            setattr(self, kw_name, kw_def_value)
+
+        for kw_name, kw_value in kwargs.items():
+            if not kw_name in DEF_PARAMS:
+                raise KeyError("Invalid parameter %s passed to %s" % (kw_name, __name__))
+            setattr(self, kw_name, kw_value)
+
+       # TODO: type checking on parameters
         if self.dimension < 2 or self.dimension > 3:
             self.logger.warning("Invalid dimension value %d. Forcing 2D.", self.dimension)
             self.dimension = 2
