@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head dir="ltr" id="head-id" lang="EN" profile="http://gmpg.org/xfn/11">
+    <title>Strange attractor of the day</title>
+    <link rel="stylesheet" href="css/stylesheet.css" type="text/css" media="all"/>
+    <link rel="shortcut icon" href="icons/favicon.ico" type="image/x-icon" id="favicon" />
+    <link rel="icon" type="image/png" href="icons/favicon-16x16.png" sizes="16x16"/>
+    <link rel="icon" type="image/png" href="icons/favicon-32x32.png" sizes="32x32"/>
+    <link rel="icon" type="image/png" href="icons/favicon-48x48.png" sizes="48x48"/>
+    <link rel="icon" type="image/png" href="icons/favicon-96x96.png" sizes="96x96"/>
+    <script src="js/navigation.js" type="text/javascript"></script>
+</head>
+
+<body>
+    <div class="box" id="main_div">
+        <div id="ctitle">Strange attractor of the day</div>
+        {{ date }}
+        <ul class="navbar">
+            <li><a href="1.xhtml">|&lt;</a></li>
+            <li><a href="{{ prev }}">&lt;</a></li>
+            <li><a href="#" onclick="loadRandomPage()">?</a></li>
+            <li><a href="#__next">&gt;</a></li>
+            <li><a href="strange_attractor.xhtml">&gt;|</a></li>
+        </ul>
+        <div id="attractor_div">
+            <a href="png/{{ link }}"><img src="png_thumb/{{ link }}" alt="{{ code }}" title="{{ code }}"></img></a>
+        </div>
+        <div id="info_div">
+            Attractor type: <span class="code">{{ text }}</span>
+            <br></br>
+            Fractal dimension: <span class="code">{{ dimension }}</span>
+            <br></br>
+            Number of iterations: <span class="code">{{ iterations }}</span>
+            <br></br>
+            Sprott's code:<br></br>
+            <div class="polynom_div">
+                <span class="code">{{ code }}</span>
+                <br></br>
+            </div>
+            Equation:
+            <div class="polynom_div">
+                <span class="code"> {{ x_equation }} </span>
+                <p class="code"> {{ y_equation }} </p>
+                {% if dimension is equalto 3 %}
+                <p class="code"> {{ z_equation }} </p>
+                {% endif %}
+            </div>
+            <div>
+            Generation and rendering time: {{ time }}
+            </div>
+            <p>The fractal dimension is an estimate of the <a href="https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension">Minkowski-Bouligand (=box counting) dimension</a>.</p>
+        </div>
+    </div>
+    <div class="box" id="uh_div">
+        <a href="attractors_explanation.xhtml">What is this all about ?</a>
+        </div>
+
+        <div id="footer_div">
+        <p>
+            <a href="http://validator.w3.org/check?uri=referer">
+            <img src="http://www.w3.org/Icons/valid-xhtml11" alt="Valid XHTML 1.1" height="31" width="88" />
+            </a>
+        </p>
+    </div>
+</body>
+
+</html>
+

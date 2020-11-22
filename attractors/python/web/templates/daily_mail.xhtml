@@ -1,0 +1,60 @@
+''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head dir="ltr" id="head-id" lang="EN" profile="http://gmpg.org/xfn/11">
+    <title>Strange attractor of the day</title>
+    <style media="screen" type="text/css">
+        .code {
+            font-family: Courier;
+            font-variant: normal;
+        }
+        body {
+            font-size:11px;
+            font-variant:small-caps;
+            font-family:Lucida,Helvetica,sans-serif;
+            font-weight:500;
+            text-decoration: none;
+            line-height: 1.2em;
+            position: absolute;
+        }
+        .polite {
+            font-variant:normal;
+        }
+        .attractor_image {
+            text-align:center;
+        }
+    </style>
+</head>
+
+<body>
+    <p class="polite">Please find your strange attractor !</p>
+    <div class="attractor_image">
+        <img src="cid:atImg" alt="{{ code }}">
+    </div>
+    <div id="info_div">
+        Attractor type: <span class="code">{{ text }}</span>
+        <br></br>
+        Fractal dimension: <span class="code">{{ dimension }}</span>
+        <br></br>
+        Sprott's code: <span class="code">{{ code }}</span>
+        <br></br>
+        Number of iterations: <span class="code">{{ iterations }}</span>
+        <br></br>
+        Equations:
+        <div>
+            <span class="code">{{ x_equation }}</span>
+            <p class="code">{{ y_equation }}</p>
+            {% if dimension is equalto 3 %}
+            <p class="code"> {{ z_equation }} </p>
+            {% endif %}
+        </div>
+        <div>
+            Generation and rendering time: {{ time }}
+        </div>
+    </div>
+    <p class="polite">Have a good day.</p>
+    <p class="polite">The fractal dimension is an estimate of the <a href="https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension">Minkowski-Bouligand (=box counting) dimension</a>.</p>
+</body>
+</html>
+

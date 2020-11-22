@@ -18,6 +18,7 @@ from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import COMMASPACE, formatdate
+from jinja2 import Environment, FileSystemLoader
 
 from attractor import attractor, render, util
 import cv2
@@ -27,157 +28,14 @@ CURRENT_FILE = "strange_attractor.xhtml"
 NUM_THREADS = 4
 IMAGE_SUFFIX = ".png"
 
-PAGE_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-
-<head dir="ltr" id="head-id" lang="EN" profile="http://gmpg.org/xfn/11">
-    <title>Strange attractor of the day</title>
-    <link rel="stylesheet" href="css/stylesheet.css" type="text/css" media="all"/>
-    <link rel="shortcut icon" href="icons/favicon.ico" type="image/x-icon" id="favicon" />
-    <link rel="icon" type="image/png" href="icons/favicon-16x16.png" sizes="16x16"/>
-    <link rel="icon" type="image/png" href="icons/favicon-32x32.png" sizes="32x32"/>
-    <link rel="icon" type="image/png" href="icons/favicon-48x48.png" sizes="48x48"/>
-    <link rel="icon" type="image/png" href="icons/favicon-96x96.png" sizes="96x96"/>
-    <script src="js/navigation.js" type="text/javascript"></script>
-</head>
-
-<body>
-<div class="box" id="main_div">
-<div id="ctitle">Strange attractor of the day</div>
-__date
-<ul class="navbar">
-<li><a href="1.xhtml">|&lt;</a></li>
-<li><a href="__prev">&lt;</a></li>
-<li><a href="#" onclick="loadRandomPage()">?</a></li>
-<li><a href="#__next">&gt;</a></li>
-<li><a href="strange_attractor.xhtml">&gt;|</a></li>
-</ul>
-<div id="attractor_div">
-<a href="png/__link"><img src="png_thumb/__link" alt="__code" title="__code"></img></a>
-</div>
-<div id="info_div">
-Attractor type: <span class="code">__type</span>
-<br></br>
-Fractal dimension: <span class="code">__dimension</span>
-<br></br>
-Number of iterations: <span class="code">__iterations</span>
-<br></br>
-Sprott's code:<br></br>
-<div class="polynom_div">
-<span class="code">__code</span>
-<br></br>
-</div>
-Equations:
-<div class="polynom_div">
-<span class="code">
-__x_polynom
-</span>
-<p class="code">
-__y_polynom
-</p>
-<p class="code">
-__z_polynom
-</p>
-</div>
-<div>
-Generation and rendering time: __time
-</div>
-<p>The fractal dimension is an estimate of the <a href="https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension">Minkowski-Bouligand (=box counting) dimension</a>.</p>
-</div>
-</div>
-<div class="box" id="uh_div">
-<a href="attractors_explanation.xhtml">What is this all about ?</a>
-</div>
-
-<div id="footer_div">
-<p>
-    <a href="http://validator.w3.org/check?uri=referer">
-    <img src="http://www.w3.org/Icons/valid-xhtml11" alt="Valid XHTML 1.1" height="31" width="88" />
-    </a>
-</p>
-</div>
- </body>
-
-</html>
-'''
-
-MAIL_HTML_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-
-<head dir="ltr" id="head-id" lang="EN" profile="http://gmpg.org/xfn/11">
-    <title>Strange attractor of the day</title>
-    <style media="screen" type="text/css">
-    .code {
-    font-family: Courier;
-    font-variant: normal;
-    }
-    body {
-    font-size:11px;
-    font-variant:small-caps;
-    font-family:Lucida,Helvetica,sans-serif;
-    font-weight:500;
-    text-decoration: none;
-    line-height: 1.2em;
-    position: absolute;
-    }
-    .polite {
-    font-variant:normal;
-    }
-    .attractor_image {
-    text-align:center;
-    }
-</style>
-</head>
-
-<body>
-<p class="polite">Please find your strange attractor !</p>
-<div class="attractor_image">
-<img src="cid:atImg" alt="__code">
-</div>
-<div id="info_div">
-Attractor type: <span class="code">__type</span>
-<br></br>
-Fractal dimension: <span class="code">__dimension</span>
-<br></br>
-Sprott's code: <span class="code">__code</span>
-<br></br>
-Number of iterations: <span class="code">__iterations</span>
-<br></br>
-Equations:
-<div>
-<span class="code">
-__x_polynom
-</span>
-<p class="code">
-__y_polynom
-</p>
-<p class="code">
-__z_polynom
-</p>
-</div>
-<div>
-Generation and rendering time: __time
-</div>
-</div>
-<p class="polite">Have a good day.</p>
-<p class="polite">The fractal dimension is an estimate of the <a href="https://en.wikipedia.org/wiki/Minkowski%E2%80%93Bouligand_dimension">Minkowski-Bouligand (=box counting) dimension</a>.</p>
-</body>
-</html>
-'''
-
-MAIL_TXT_TEMPLATE = '''Please find your strange attractor.
-
-    - Type: __type
-    - # Iterations: _iterations
-    - Fractal dimension: __dimension [1]
-    - Generation and rendering time: __time
-
-Have a good day.
-
-[1] The fractal dimension is an estimate of the Minkowski-Bouligand (=box counting) dimension.
-'''
+def setup_jinja_env():
+    """
+    Sets up Jinja2 environment for templating
+    """
+    env = Environment(
+        loader=FileSystemLoader('./templates')
+        )
+    return env
 
 def append_numeral(num):
     """
@@ -255,32 +113,26 @@ def parse_args():
     _args = parser.parse_args()
     return _args
 
-def fill_template(template, keywords_map):
+def fill_template(template_name, keywords_map):
     """
     Fill variable fields in a template string
     """
-    out_page = ""
-    for line in template.split('\n'):
-        for key, value in keywords_map.items():
-            if key in line:
-                line = line.replace(key, str(value))
-        out_page += line + '\n'
-
-    return out_page
+    template = JENV.get_template(template_name)
+    return template.render(keywords_map)
 
 def generate_mail_text(keywords_map):
     """
     Generate attractor of the day mail
     in plain text format
     """
-    return fill_template(MAIL_TXT_TEMPLATE, keywords_map)
+    return fill_template('daily_mail.txt', keywords_map)
 
 def generate_mail_html(keywords_map):
     """
     Generate attractor of the day mail
     in plain html format
     """
-    return fill_template(MAIL_HTML_TEMPLATE, keywords_map)
+    return fill_template('daily_mail.xhtml', keywords_map)
 
 def send_mail(keywords_map, server, send_from, send_to, subject, files=None, multiple=False):
     """
@@ -351,7 +203,7 @@ def process_html(att_num, keywords_map):
     modify previous page to point to the newly
     generated page.
     """
-    out_page = fill_template(PAGE_TEMPLATE, keywords_map)
+    out_page = fill_template('daily_web.xhtml', keywords_map)
 
     cur_name = str(att_num)+".xhtml"
     with open(cur_name, "w") as _file:
@@ -375,9 +227,9 @@ def process_mail(keywords_map, args):
     if args.mail and args.recipients and args.server:
         logging.info("Sending emails to %s, using SMTP server %s.", args.recipients, args.server)
         toaddr = args.recipients.split(',') # Hopefully there won't be any comma in the addresses
-        subject = "%s : Strange attractor of the day" % (keywords_map['__date'])
+        subject = "%s : Strange attractor of the day" % (keywords_map['date'])
         send_mail(keywords_map, args.server, args.fromaddr,
-                  toaddr, subject, ("png/"+keywords_map['__link'],), True)
+                  toaddr, subject, ("png/"+keywords_map['link'],), True)
 
 def sec2hms(seconds):
     """
@@ -408,50 +260,51 @@ def process_attractor(att_num, args):
     Creates, renders and saves an attractor image
     """
     keywords_map = {
-        '__date' : datetime.today().strftime("%Y, %b %d"),
-        '__order': 2,
-        '__code' : "",
-        '__iterations' : 0,
-        '__dimension' : 2,
-        '__lyapunov' : 0.0,
-        '__link' : "",
-        '__x_polynom' : "",
-        '__y_polynom' : "",
-        '__z_polynom' : "",
-        '__time' : "",
-        '__type' : "polynomial",
+        'date' : datetime.today().strftime("%Y, %b %d"),
+        'order': 2,
+        'code' : "",
+        'iterations' : 0,
+        'dimension' : 2,
+        'lyapunov' : 0.0,
+        'link' : "",
+        'text' : "",
+        'x_equation' : "",
+        'y_equation' : "",
+        'z_equation' : "",
+        'time' : "",
+        'type' : "polynomial",
     }
     max_fname_length = os.statvfs('/').f_namemax
     cur_date = REFERENCE_DATE + timedelta(days=att_num-1)
-    keywords_map['__date'] = cur_date.strftime("%Y, %b %d")
+    keywords_map['date'] = cur_date.strftime("%Y, %b %d")
     type_index = att_num % 7
     if type_index == 0:
-        keywords_map['__type'] = "dejong"
+        keywords_map['type'] = "dejong"
     elif type_index == 6:
-        keywords_map['__type'] = "clifford"
+        keywords_map['type'] = "clifford"
     elif type_index == 5:
-        keywords_map['__type'] = "icon"
+        keywords_map['type'] = "icon"
     else:
-        keywords_map['__type'] = "polynomial"
-    keywords_map['__order'] = type_index + 1
+        keywords_map['type'] = "polynomial"
+    keywords_map['order'] = type_index + 1
 
     downsampling = 2 # odd numbers seem to create strange artifacts.
-    #dimension = 2 if keywords_map['__type'] == "dejong" or \
-    #                 keywords_map['__type'] == "clifford" or \
-    #                 keywords_map['__order'] > 4 \
+    #dimension = 2 if keywords_map['type'] == "dejong" or \
+    #                 keywords_map['type'] == "clifford" or \
+    #                 keywords_map['order'] > 4 \
     #              else random.choice((2,3))
     dimension = 2
     logging.info("Today is %s. %s attractor generation starts.",
-                 keywords_map['__date'], append_numeral(att_num))
+                 keywords_map['date'], append_numeral(att_num))
     logging.info("We have a %s attractor%s (dimension %d).",
-                 keywords_map['__type'],
-                 " of order %d" % (keywords_map['__order']) \
-                     if keywords_map['__type'] == "polynomial" else "",
+                 keywords_map['type'],
+                 " of order %d" % (keywords_map['order']) \
+                     if keywords_map['type'] == "polynomial" else "",
                  dimension)
 
     while True:
         done = False
-        att = create_attractor(keywords_map['__type'], keywords_map['__order'], dimension)
+        att = create_attractor(keywords_map['type'], keywords_map['order'], dimension)
         for parameters in ({'geometry': (1000, 1000), 'directory': '/tmp'},):
             t_0 = time()
             iterations = util.get_ideal_iteration_number(parameters['geometry'], downsampling)
@@ -480,33 +333,32 @@ def process_attractor(att_num, args):
         if done:
             break
 
-    keywords_map['__code'] = att.code
-    if keywords_map['__type'] == 'polynomial':
-        keywords_map['__type'] += " (order " + str(att.order) + ")"
-    elif keywords_map['__type'] == 'icon':
-        keywords_map['__type'] = "Field/Golubitsky symmetrical icon"
-
-    if dimension == 3:
-        keywords_map['__x_polynom'], \
-        keywords_map['__y_polynom'], \
-        keywords_map['__z_polynom'] = att.human_readable(is_html=True)
+    keywords_map['code'] = att.code
+    if keywords_map['type'] == 'polynomial':
+        keywords_map['text'] = "Polynomial (order " + str(att.order) + ")"
+    elif keywords_map['type'] == 'icon':
+        keywords_map['text'] = "Field/Golubitsky symmetrical icon"
     else:
-        keywords_map['__x_polynom'], \
-        keywords_map['__y_polynom'] = att.human_readable(is_html=True)
+        keywords_map['text'] = keywords_map['type']
 
-    keywords_map['__iterations'] = str(att.iterations)
-    keywords_map['__dimension'] = 'not computed' if dimension == 3 else "%.3f" % (att.fdim)
-    keywords_map['__lyapunov'] = "%.3f" % (att.lyapunov['ly'])
-    keywords_map['__link'] = file_path
-    keywords_map['__prev'] = "#" if att_num == 1 else "%d.xhtml" % (att_num-1)
-    keywords_map['__time'] = sec2hms(t_1 - t_0)
+    _v = att.human_readable(is_html=True) + [""]
+    keywords_map['x_equation'] = _v[0]
+    keywords_map['y_equation'] = _v[1]
+    keywords_map['z_equation'] = _v[2]
+
+    keywords_map['iterations'] = str(att.iterations)
+    keywords_map['fractal_dimension'] = 'not computed' if dimension == 3 else "%.3f" % (att.fdim)
+    keywords_map['lyapunov'] = "%.3f" % (att.lyapunov['ly'])
+    keywords_map['link'] = file_path
+    keywords_map['prev'] = "#" if att_num == 1 else "%d.xhtml" % (att_num-1)
+    keywords_map['time'] = sec2hms(t_1 - t_0)
     return keywords_map
 
 def process_thumbnails(keywords_map):
     """
     Creates a thumbnail of our newly generated attractor image
     """
-    filename = keywords_map['__code'] + IMAGE_SUFFIX
+    filename = keywords_map['code'] + IMAGE_SUFFIX
     radius = 15
     for thumb_def in (("960x960", "png"), ("600x600", "png_thumb"), ("128x128", "png_tile")):
         if not os.path.exists(thumb_def[1]):
@@ -540,7 +392,7 @@ def remove_thumbnails(keywords_map):
     """
     Removes our newly generated attractor thumbnail image
     """
-    filename = keywords_map['__code'] + IMAGE_SUFFIX
+    filename = keywords_map['code'] + IMAGE_SUFFIX
     for thumb_dir in ("png", "png_thumb", "png_tile"):
         if not os.path.exists(thumb_dir) or not os.path.isdir(thumb_dir):
             continue
@@ -549,6 +401,7 @@ def remove_thumbnails(keywords_map):
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 random.seed()
 ARGS = parse_args()
+JENV = setup_jinja_env()
 
 if ARGS.date and ARGS.num is not None:
     logging.error("Only one of --num and --date switch is allowed.")
@@ -581,5 +434,5 @@ for attractor_num in ATTRACTOR_RANGE:
     if ARGS.ephemerous:
         logging.info("Ephemerous mode chosen. \
                       Cleaning up attractors. Root attractor can still be found in %s",
-                     os.path.join("/tmp", kw_map['__code'] + IMAGE_SUFFIX))
+                     os.path.join("/tmp", kw_map['code'] + IMAGE_SUFFIX))
         remove_thumbnails(kw_map)

@@ -1,0 +1,11 @@
+Please find your strange attractor.
+
+    - Type: {{ type }}
+    - # Iterations: {{ iterations }}
+    - Fractal dimension: {{ dimension }} [1]
+    - Generation and rendering time: {{ time }}
+
+Have a good day.
+
+[1] The fractal dimension is an estimate of the Minkowski-Bouligand (=box counting) dimension.
+
