@@ -41,11 +41,9 @@
             </div>
             Equation:
             <div class="polynom_div">
-                <span class="code"> {{ x_equation }} </span>
-                <p class="code"> {{ y_equation }} </p>
-                {% if dimension is equalto 3 %}
-                <p class="code"> {{ z_equation }} </p>
-                {% endif %}
+                {% for eq_dim in equation -%}
+                <p class="code"> {{ eq_dim }} </p>
+                {% endfor -%}
             </div>
             <div>
             Generation and rendering time: {{ time }}

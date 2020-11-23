@@ -125,14 +125,14 @@ def generate_mail_text(keywords_map):
     Generate attractor of the day mail
     in plain text format
     """
-    return fill_template('daily_mail.txt', keywords_map)
+    return fill_template('daily_mail.txt.j2', keywords_map)
 
 def generate_mail_html(keywords_map):
     """
     Generate attractor of the day mail
     in plain html format
     """
-    return fill_template('daily_mail.xhtml', keywords_map)
+    return fill_template('daily_mail.xhtml.j2', keywords_map)
 
 def send_mail(keywords_map, server, send_from, send_to, subject, files=None, multiple=False):
     """
@@ -203,7 +203,7 @@ def process_html(att_num, keywords_map):
     modify previous page to point to the newly
     generated page.
     """
-    out_page = fill_template('daily_web.xhtml', keywords_map)
+    out_page = fill_template('daily_web.xhtml.j2', keywords_map)
 
     cur_name = str(att_num)+".xhtml"
     with open(cur_name, "w") as _file:
@@ -259,6 +259,8 @@ def process_attractor(att_num, args):
     """
     Creates, renders and saves an attractor image
     """
+    week_map = ["dejong", "polynomial", "polynomial", "polynomial",
+                "polynomial", "clifford", "icon"]
     keywords_map = {
         'date' : datetime.today().strftime("%Y, %b %d"),
         'order': 2,
@@ -268,9 +270,7 @@ def process_attractor(att_num, args):
         'lyapunov' : 0.0,
         'link' : "",
         'text' : "",
-        'x_equation' : "",
-        'y_equation' : "",
-        'z_equation' : "",
+        'equation' : [],
         'time' : "",
         'type' : "polynomial",
     }
@@ -278,21 +278,10 @@ def process_attractor(att_num, args):
     cur_date = REFERENCE_DATE + timedelta(days=att_num-1)
     keywords_map['date'] = cur_date.strftime("%Y, %b %d")
     type_index = att_num % 7
-    if type_index == 0:
-        keywords_map['type'] = "dejong"
-    elif type_index == 6:
-        keywords_map['type'] = "clifford"
-    elif type_index == 5:
-        keywords_map['type'] = "icon"
-    else:
-        keywords_map['type'] = "polynomial"
+    keywords_map['type'] = week_map[type_index]
     keywords_map['order'] = type_index + 1
 
     downsampling = 2 # odd numbers seem to create strange artifacts.
-    #dimension = 2 if keywords_map['type'] == "dejong" or \
-    #                 keywords_map['type'] == "clifford" or \
-    #                 keywords_map['order'] > 4 \
-    #              else random.choice((2,3))
     dimension = 2
     logging.info("Today is %s. %s attractor generation starts.",
                  keywords_map['date'], append_numeral(att_num))
@@ -341,11 +330,7 @@ def process_attractor(att_num, args):
     else:
         keywords_map['text'] = keywords_map['type']
 
-    _v = att.human_readable(is_html=True) + [""]
-    keywords_map['x_equation'] = _v[0]
-    keywords_map['y_equation'] = _v[1]
-    keywords_map['z_equation'] = _v[2]
-
+    keywords_map['equation'] = att.human_readable(is_html=True)
     keywords_map['iterations'] = str(att.iterations)
     keywords_map['fractal_dimension'] = 'not computed' if dimension == 3 else "%.3f" % (att.fdim)
     keywords_map['lyapunov'] = "%.3f" % (att.lyapunov['ly'])

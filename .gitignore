@@ -2,4 +2,5 @@
 *.exe
 *.pyc
 *~
+attractors/python/web/*.xhtml
 attractors/python/png
