@@ -23,7 +23,18 @@ There are many other softwares out there dealing with strange attractors generat
 
 # Dependencies
 
-Those scripts depend on python-opencv for image display, image saving (PNG format) and image resizing.
+Those scripts depend on python3-opencv for image display, image saving (PNG format) and image resizing.
+The web page generation script depends on python3-jinja2 and imagemagick.
+
+# Containers
+
+To run the daily generation script in a docker container (experimental - made mostly for toying around with containers):
+
+```
+% cd docker
+% ./docker_build.sh
+% docker run -v local_dir:/opt/attractors/daily -d attractors:latest
+```
 
 # Pictures
 
