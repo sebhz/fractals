@@ -109,6 +109,11 @@ def parse_args():
                         '--recipients',
                         help='Recipient list for mails (comma separated)',
                         type=str)
+    parser.add_argument('-R',
+                        '--root',
+                        help='root directory where images and pages will be stored (defaults to .)',
+                        type=str,
+                        default='.')
     parser.add_argument('-s', '--server', help='SMTP server to use', type=str)
     _args = parser.parse_args()
     return _args
@@ -197,7 +202,7 @@ def send_mail(keywords_map, server, send_from, send_to, subject, files=None, mul
 
     smtp.quit()
 
-def process_html(att_num, keywords_map):
+def process_html(att_num, keywords_map, args):
     """
     Writes attractor of the day web page, and
     modify previous page to point to the newly
@@ -206,18 +211,20 @@ def process_html(att_num, keywords_map):
     out_page = fill_template('daily_web.xhtml.j2', keywords_map)
 
     cur_name = str(att_num)+".xhtml"
-    with open(cur_name, "w") as _file:
+    cur_path = os.path.join(args.root, cur_name)
+    with open(cur_path, "w") as _file:
         _file.writelines(out_page)
 
-    if os.path.islink(CURRENT_FILE):
-        os.remove(CURRENT_FILE)
-    os.symlink(cur_name, CURRENT_FILE)
+    current_file = os.path.join(args.root, CURRENT_FILE)
+    if os.path.islink(current_file):
+        os.remove(current_file)
+    os.symlink(cur_name, current_file)
 
     # Modify previous filename to point on the current one.
     for i in range(att_num-1, 0, -1):
-        prev_name = "%d.xhtml" % (i)
-        if os.path.isfile(prev_name):
-            modify_previous_html(prev_name, cur_name)
+        prev_path = os.path.join(args.root, "%d.xhtml" % (i))
+        if os.path.isfile(prev_path):
+            modify_previous_html(prev_path, cur_name)
             break
 
 def process_mail(keywords_map, args):
@@ -339,18 +346,19 @@ def process_attractor(att_num, args):
     keywords_map['time'] = sec2hms(t_1 - t_0)
     return keywords_map
 
-def process_thumbnails(keywords_map):
+def process_thumbnails(keywords_map, args):
     """
     Creates a thumbnail of our newly generated attractor image
     """
     filename = keywords_map['code'] + IMAGE_SUFFIX
     radius = 15
     for thumb_def in (("960x960", "png"), ("600x600", "png_thumb"), ("128x128", "png_tile")):
-        if not os.path.exists(thumb_def[1]):
-            os.mkdir(thumb_def[1])
-        elif not os.path.isdir(thumb_def[1]):
+        rooted_thumb_def = os.path.join(args.root, thumb_def[1])
+        if not os.path.exists(rooted_thumb_def):
+            os.mkdir(rooted_thumb_def)
+        elif not os.path.isdir(rooted_thumb_def):
             logging.error("Output directory %s exists, but is a plain file. Ignoring it.",
-                          thumb_def[1])
+                          rooted_thumb_def)
             continue
 
         (width, height) = thumb_def[0].split('x')
@@ -368,20 +376,21 @@ def process_thumbnails(keywords_map):
                              '-compose',
                              'SrcIn',
                              '-composite',
-                             os.path.join(thumb_def[1], filename)])
+                             os.path.join(rooted_thumb_def, filename)])
         except OSError:
             logging.error("Cannot invoke convert or mogrify utility. Is ImageMagick installed ?")
             break
 
-def remove_thumbnails(keywords_map):
+def remove_thumbnails(keywords_map, args):
     """
     Removes our newly generated attractor thumbnail image
     """
     filename = keywords_map['code'] + IMAGE_SUFFIX
     for thumb_dir in ("png", "png_thumb", "png_tile"):
-        if not os.path.exists(thumb_dir) or not os.path.isdir(thumb_dir):
+        rooted_thumb_dir = os.path.join(args.root, thumb_dir)
+        if not os.path.exists(rooted_thumb_dir) or not os.path.isdir(rooted_thumb_dir):
             continue
-        os.remove(os.path.join(thumb_dir, filename))
+        os.remove(os.path.join(rooted_thumb_dir, filename))
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 random.seed()
@@ -410,9 +419,9 @@ else:
 for attractor_num in ATTRACTOR_RANGE:
     kw_map = process_attractor(attractor_num, ARGS)
 
-    process_thumbnails(kw_map)
+    process_thumbnails(kw_map, ARGS)
     if not ARGS.ephemerous:
-        process_html(attractor_num, kw_map)
+        process_html(attractor_num, kw_map, ARGS)
 
     process_mail(kw_map, ARGS)
 
@@ -420,4 +429,4 @@ for attractor_num in ATTRACTOR_RANGE:
         logging.info("Ephemerous mode chosen. \
                       Cleaning up attractors. Root attractor can still be found in %s",
                      os.path.join("/tmp", kw_map['code'] + IMAGE_SUFFIX))
-        remove_thumbnails(kw_map)
+        remove_thumbnails(kw_map, ARGS)
