@@ -28,7 +28,7 @@ The web page generation script depends on python3-jinja2 and imagemagick.
 
 # Containers
 
-To run the daily generation script in a docker container, see the [README.md](https://github.com/sebhz/fractals/edit/master/attractors/python/docker/README.md) file under this repo docker directory.
+To run the daily generation script in a docker container, see the [README.md](https://github.com/sebhz/fractals/blob/master/attractors/python/docker/README.md) file under this repo docker directory.
 
 # Pictures
 
