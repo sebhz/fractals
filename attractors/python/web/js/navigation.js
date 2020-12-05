@@ -1,4 +1,4 @@
-var addressRoot = location.protocol+'//'+location.hostname+'/attractors/'
+var addressRoot = location.protocol+'//'+location.hostname+':'+location.port+'/attractors/'
 
 function getLastAttractorNum() {
 	var startDate = new Date(2016, 06, 27) // July ! January is 0
