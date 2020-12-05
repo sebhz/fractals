@@ -2,7 +2,7 @@
 Containers are in fashion these days, so let's follow the hype !
 
 ## Build the generator container to generate one attractor each day
-This will create the docker image, installing a crontab image to
+This will create the attractor generator docker image, installing a crontab to
 generate one attractor each day.
 
 ```
@@ -12,9 +12,9 @@ generate one attractor each day.
 
 ## [OPTIONAL] Create an empty docker volume
 We'll be using it to store all the web pages that our attractor generator
-will create. Since it is empty, it will be populated by the original content
+will create. Since it is empty, it will be populated by the default content
 of the generator html directory (css, js, icons...) when first mounted.
-You can also skip this step as a new volume will be created during the next
+You can also skip this step as a new volume will be created during the next step
 if it does not exist.
 ```
 % docker volume create attractors-data
@@ -22,7 +22,7 @@ if it does not exist.
 
 ## Launch the attractor generator container
 It is important to do this first, so that our empty container is populated by the
-original content of the attractor generator container.
+eefault content of the attractor generator html directory.
 ```
 % docker run --rm \
              --detach  \
