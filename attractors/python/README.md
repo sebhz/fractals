@@ -24,7 +24,7 @@ There are many other softwares out there dealing with strange attractors generat
 # Dependencies
 
 Those scripts depend on python3-opencv for image display, image saving (PNG format) and image resizing.
-The web page generation script depends on python3-jinja2 and imagemagick.
+The web page generation script depends on python3-jinja2 for templating.
 
 # Containers
 

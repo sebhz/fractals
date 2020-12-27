@@ -7,7 +7,7 @@ generate one attractor each day.
 
 ```
 % cd docker
-% ./build_docker.sh
+% ./docker_build.sh
 ```
 
 ## [OPTIONAL] Create an empty docker volume
@@ -22,7 +22,7 @@ if it does not exist.
 
 ## Launch the attractor generator container
 It is important to do this first, so that our empty container is populated by the
-eefault content of the attractor generator html directory.
+default content of the attractor generator html directory.
 ```
 % docker run --rm \
              --detach  \
