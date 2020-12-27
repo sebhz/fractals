@@ -1,7 +1,7 @@
 FROM debian:10
 
 RUN apt update
-RUN apt install -y python3 python3-opencv python3-jinja2 imagemagick cron
+RUN apt install -y python3 python3-opencv python3-jinja2 cron
 
 RUN mkdir -p /opt/attractors
 RUN mkdir -p /opt/attractors/html

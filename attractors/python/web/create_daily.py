@@ -10,7 +10,6 @@ import argparse
 import logging
 import smtplib
 import random
-import subprocess
 
 from time import time
 from datetime import datetime, timedelta
@@ -27,6 +26,8 @@ REFERENCE_DATE = datetime(2016, 7, 27)
 CURRENT_FILE = "strange_attractor.xhtml"
 NUM_THREADS = 4
 IMAGE_SUFFIX = ".png"
+PATH_GUARDBAND = 16
+ATT_GEOMETRY = (1024, 1024)
 
 def setup_jinja_env():
     """
@@ -236,7 +237,7 @@ def process_mail(keywords_map, args):
         toaddr = args.recipients.split(',') # Hopefully there won't be any comma in the addresses
         subject = "%s : Strange attractor of the day" % (keywords_map['date'])
         send_mail(keywords_map, args.server, args.fromaddr,
-                  toaddr, subject, ("png/"+keywords_map['link'],), True)
+                  toaddr, subject, ("png/" + keywords_map['link'],), True)
 
 def sec2hms(seconds):
     """
@@ -246,7 +247,7 @@ def sec2hms(seconds):
     hours, minutes = divmod(minutes, 60)
     return "%dh%02dm%02ds" % (hours, minutes, seconds)
 
-def create_attractor(attractor_type, attractor_order, attractor_dimension):
+def get_attractor(attractor_type, attractor_order, attractor_dimension):
     """
     Gets a converging attractor
     """
@@ -262,9 +263,9 @@ def create_attractor(attractor_type, attractor_order, attractor_dimension):
     att.explore()
     return att
 
-def process_attractor(att_num, args):
+def create_attractor(att_num, args):
     """
-    Creates, renders and saves an attractor image
+    Creates and renders an attractor image
     """
     week_map = ["dejong", "polynomial", "polynomial", "polynomial",
                 "polynomial", "clifford", "icon"]
@@ -281,53 +282,40 @@ def process_attractor(att_num, args):
         'time' : "",
         'type' : "polynomial",
     }
-    max_fname_length = os.statvfs('/').f_namemax
     cur_date = REFERENCE_DATE + timedelta(days=att_num-1)
     keywords_map['date'] = cur_date.strftime("%Y, %b %d")
     type_index = att_num % 7
     keywords_map['type'] = week_map[type_index]
     keywords_map['order'] = type_index + 1
 
-    downsampling = 2 # odd numbers seem to create strange artifacts.
-    dimension = 2
+    att_downsampling = 2 # odd numbers seem to create strange artifacts.
+    att_dimension = 2
     logging.info("Today is %s. %s attractor generation starts.",
                  keywords_map['date'], append_numeral(att_num))
     logging.info("We have a %s attractor%s (dimension %d).",
                  keywords_map['type'],
                  " of order %d" % (keywords_map['order']) \
                      if keywords_map['type'] == "polynomial" else "",
-                 dimension)
+                 att_dimension)
 
     while True:
-        done = False
-        att = create_attractor(keywords_map['type'], keywords_map['order'], dimension)
-        for parameters in ({'geometry': (1000, 1000), 'directory': '/tmp'},):
-            t_0 = time()
-            iterations = util.get_ideal_iteration_number(parameters['geometry'], downsampling)
-            logging.debug("Num iterations: %d", iterations)
-            att.iterations = iterations
-            renderer = render.Renderer(bpc=8,
-                                       geometry=parameters['geometry'],
-                                       downsample_ratio=downsampling,
-                                       dimension=dimension)
-            att_map = att.create_frequency_map(renderer.geometry, args.nthreads)
-            if not renderer.is_nice(att_map):
-                logging.debug("Attractor too thin. Trying to find a better one.")
-                break
-            att.compute_fractal_dimension(att_map)
-            img = renderer.render_attractor(att_map)
-
-            if len(att.code) < max_fname_length - len(IMAGE_SUFFIX):
-                file_path = att.code + IMAGE_SUFFIX
-            else:
-                file_path = att.code[:max_fname_length-len(IMAGE_SUFFIX)-1] + '#' + IMAGE_SUFFIX
-            # TODO: we should check that full path is not too long
-            fname = os.path.join(parameters['directory'], file_path)
-            cv2.imwrite(fname, img)
-            done = True
-            t_1 = time()
-        if done:
-            break
+        att = get_attractor(keywords_map['type'], keywords_map['order'], att_dimension)
+        t_0 = time()
+        iterations = util.get_ideal_iteration_number(ATT_GEOMETRY, att_downsampling)
+        logging.debug("Num iterations: %d", iterations)
+        att.iterations = iterations
+        renderer = render.Renderer(bpc=8,
+                                   geometry=ATT_GEOMETRY,
+                                   downsample_ratio=att_downsampling,
+                                   dimension=att_dimension)
+        att_map = att.create_frequency_map(renderer.geometry, args.nthreads)
+        if not renderer.is_nice(att_map):
+            logging.debug("Attractor too thin. Trying to find a better one.")
+            continue
+        att.compute_fractal_dimension(att_map)
+        img = renderer.render_attractor(att_map)
+        t_1 = time()
+        break
 
     keywords_map['code'] = att.code
     if keywords_map['type'] == 'polynomial':
@@ -339,58 +327,57 @@ def process_attractor(att_num, args):
 
     keywords_map['equation'] = att.human_readable(is_html=True)
     keywords_map['iterations'] = str(att.iterations)
-    keywords_map['fractal_dimension'] = 'not computed' if dimension == 3 else "%.3f" % (att.fdim)
+    keywords_map['fractal_dimension'] = 'not computed' if att_dimension == 3 \
+                                                       else "%.3f" % (att.fdim)
     keywords_map['lyapunov'] = "%.3f" % (att.lyapunov['ly'])
-    keywords_map['link'] = file_path
+    keywords_map['link'] = limit_filename(".", att.code)
     keywords_map['prev'] = "#" if att_num == 1 else "%d.xhtml" % (att_num-1)
     keywords_map['time'] = sec2hms(t_1 - t_0)
-    return keywords_map
+    return (keywords_map, img,)
 
-def process_thumbnails(keywords_map, args):
+def limit_filename(directory, code):
     """
-    Creates a thumbnail of our newly generated attractor image
+    Limit our filenames to the maximum allowed by the OS
+    Some attractor might have very long codes
     """
-    filename = keywords_map['code'] + IMAGE_SUFFIX
-    radius = 15
-    for thumb_def in (("960x960", "png"), ("600x600", "png_thumb"), ("128x128", "png_tile")):
-        rooted_thumb_def = os.path.join(args.root, thumb_def[1])
-        if not os.path.exists(rooted_thumb_def):
-            os.mkdir(rooted_thumb_def)
-        elif not os.path.isdir(rooted_thumb_def):
+    max_fname_length = os.statvfs('/').f_namemax
+    full_path = os.path.join(directory, code)
+    if len(full_path) < max_fname_length - len(IMAGE_SUFFIX) - PATH_GUARDBAND:
+        fname = full_path + IMAGE_SUFFIX
+    else:
+        fname = full_path[:max_fname_length-len(IMAGE_SUFFIX)-PATH_GUARDBAND-1] + \
+                '#' + IMAGE_SUFFIX
+    return fname
+
+def write_attractors(keywords_map, img, args):
+    """
+    Write images of our attractor
+    """
+    for img_def in (((960, 960,), "png"),
+                    ((600, 600,), "png_thumb"),
+                    ((128, 128,), "png_tile")):
+
+        rooted_target_dir = os.path.join(args.root, img_def[1])
+        if not os.path.exists(rooted_target_dir):
+            os.mkdir(rooted_target_dir)
+        elif not os.path.isdir(rooted_target_dir):
             logging.error("Output directory %s exists, but is a plain file. Ignoring it.",
-                          rooted_thumb_def)
+                          rooted_target_dir)
             continue
 
-        (width, height) = thumb_def[0].split('x')
-        round_corner_command = 'roundRectangle 0,0 %s,%s %d,%d' % (width, height, radius, radius)
-        try:
-            subprocess.call(["mogrify", "-resize", thumb_def[0], os.path.join("/tmp", filename)])
-            subprocess.call(['convert',
-                             '-size',
-                             thumb_def[0],
-                             'xc:none',
-                             '-fill',
-                             'white',
-                             '-draw',
-                             round_corner_command, os.path.join("/tmp", filename),
-                             '-compose',
-                             'SrcIn',
-                             '-composite',
-                             os.path.join(rooted_thumb_def, filename)])
-        except OSError:
-            logging.error("Cannot invoke convert or mogrify utility. Is ImageMagick installed ?")
-            break
+        fname = limit_filename(rooted_target_dir, keywords_map['code'])
+        resized = cv2.resize(img, img_def[0], interpolation=cv2.INTER_CUBIC)
+        cv2.imwrite(fname, resized)
 
-def remove_thumbnails(keywords_map, args):
+def remove_images(keywords_map, args):
     """
     Removes our newly generated attractor thumbnail image
     """
-    filename = keywords_map['code'] + IMAGE_SUFFIX
-    for thumb_dir in ("png", "png_thumb", "png_tile"):
-        rooted_thumb_dir = os.path.join(args.root, thumb_dir)
-        if not os.path.exists(rooted_thumb_dir) or not os.path.isdir(rooted_thumb_dir):
+    for directory in ("png", "png_thumb", "png_tile"):
+        rooted_target_dir = os.path.join(args.root, directory)
+        if not os.path.exists(rooted_target_dir) or not os.path.isdir(rooted_target_dir):
             continue
-        os.remove(os.path.join(rooted_thumb_dir, filename))
+        os.remove(limit_filename(rooted_target_dir, keywords_map['code']))
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 random.seed()
@@ -417,16 +404,14 @@ else:
         ATTRACTOR_RANGE = list(range(1, DAY_NUM + 1))
 
 for attractor_num in ATTRACTOR_RANGE:
-    kw_map = process_attractor(attractor_num, ARGS)
+    (kw_map, image) = create_attractor(attractor_num, ARGS)
+    write_attractors(kw_map, image, ARGS)
 
-    process_thumbnails(kw_map, ARGS)
     if not ARGS.ephemerous:
         process_html(attractor_num, kw_map, ARGS)
 
     process_mail(kw_map, ARGS)
 
     if ARGS.ephemerous:
-        logging.info("Ephemerous mode chosen. \
-                      Cleaning up attractors. Root attractor can still be found in %s",
-                     os.path.join("/tmp", kw_map['code'] + IMAGE_SUFFIX))
-        remove_thumbnails(kw_map, ARGS)
+        logging.info("Ephemerous mode chosen. Cleaning up attractors.")
+        remove_images(kw_map, ARGS)
