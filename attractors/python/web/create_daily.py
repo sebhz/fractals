@@ -26,7 +26,7 @@ REFERENCE_DATE = datetime(2016, 7, 27)
 CURRENT_FILE = "strange_attractor.xhtml"
 NUM_THREADS = 4
 IMAGE_SUFFIX = ".png"
-PATH_GUARDBAND = 16
+PATH_GUARDBAND = 32
 ATT_GEOMETRY = (1024, 1024)
 
 def setup_jinja_env():
@@ -318,6 +318,7 @@ def create_attractor(att_num, args):
         break
 
     keywords_map['code'] = att.code
+    keywords_map['filename'] = get_filename(att.code)
     if keywords_map['type'] == 'polynomial':
         keywords_map['text'] = "Polynomial (order " + str(att.order) + ")"
     elif keywords_map['type'] == 'icon':
@@ -330,22 +331,22 @@ def create_attractor(att_num, args):
     keywords_map['fractal_dimension'] = 'not computed' if att_dimension == 3 \
                                                        else "%.3f" % (att.fdim)
     keywords_map['lyapunov'] = "%.3f" % (att.lyapunov['ly'])
-    keywords_map['link'] = limit_filename(".", att.code)
+    keywords_map['link'] = keywords_map['filename']
     keywords_map['prev'] = "#" if att_num == 1 else "%d.xhtml" % (att_num-1)
     keywords_map['time'] = sec2hms(t_1 - t_0)
     return (keywords_map, img,)
 
-def limit_filename(directory, code):
+def get_filename(code):
     """
-    Limit our filenames to the maximum allowed by the OS
-    Some attractor might have very long codes
+    Add image suffix to code string. If the resulting string is
+    longer than the maximum filename allowed by the OS, minus
+    a guardband for possibly prepending directories, shorten it.
     """
     max_fname_length = os.statvfs('/').f_namemax
-    full_path = os.path.join(directory, code)
-    if len(full_path) < max_fname_length - len(IMAGE_SUFFIX) - PATH_GUARDBAND:
-        fname = full_path + IMAGE_SUFFIX
+    if len(code) < max_fname_length - len(IMAGE_SUFFIX) - PATH_GUARDBAND:
+        fname = code + IMAGE_SUFFIX
     else:
-        fname = full_path[:max_fname_length-len(IMAGE_SUFFIX)-PATH_GUARDBAND-1] + \
+        fname = code[:max_fname_length-len(IMAGE_SUFFIX)-PATH_GUARDBAND-1] + \
                 '#' + IMAGE_SUFFIX
     return fname
 
@@ -365,7 +366,7 @@ def write_attractors(keywords_map, img, args):
                           rooted_target_dir)
             continue
 
-        fname = limit_filename(rooted_target_dir, keywords_map['code'])
+        fname = os.path.join(rooted_target_dir, keywords_map['filename'])
         resized = cv2.resize(img, img_def[0], interpolation=cv2.INTER_CUBIC)
         cv2.imwrite(fname, resized)
 
@@ -377,7 +378,7 @@ def remove_images(keywords_map, args):
         rooted_target_dir = os.path.join(args.root, directory)
         if not os.path.exists(rooted_target_dir) or not os.path.isdir(rooted_target_dir):
             continue
-        os.remove(limit_filename(rooted_target_dir, keywords_map['code']))
+        os.remove(os.path.join(rooted_target_dir, keywords_map['filename']))
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 random.seed()
