@@ -23,8 +23,7 @@ generate one attractor each day.
 ## Prepare the static web page site
 We'll use [Hugo](https://gohugo.io/), with the [Autophugo](https://github.com/kc0bfv/autophugo) theme, and run Hugo inside a container
 also.
-To simplify things, we'll host the site on the disk directly rather than using a
-Docker volume to share data between our attractor generator and Hugo.
+
 ```
 % docker run --rm \
              --interactive \
@@ -48,10 +47,12 @@ and there is no point installing it there)
 % git submodule add https://github.com/kc0bfv/autophugo.git themes/autophugo
 ```
 
-Change the configuration, by editing config.toml or copying ours.
+Change the configuration, by editing config.toml or copying ours, then add
+a couple of static assets
 
 ```
 % cp <attractors_root>/web/hugo/config.toml .
+% cp <attractors_root>/web/basic/icons/favicon-16x16.png static
 ```
 
 ## Launch the attractor web page server

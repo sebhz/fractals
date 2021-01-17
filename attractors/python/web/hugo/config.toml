@@ -1,7 +1,7 @@
 # Settings
 baseurl = "http://example.org/"
 languageCode = "en-us"
-title = "AutoPhugo"
+title = "Strange Attractors"
 theme = "autophugo"
 #googleAnalytics = ""
 disableKinds = ["taxonomy", "taxonomyTerm"]
@@ -16,11 +16,12 @@ disableKinds = ["taxonomy", "taxonomyTerm"]
     keywords = "phugo, hugo, photogallery, photoblog, hugo theme"
     #msvalidate = ""
     #googlesiteverification = ""
-    thumb_width = 128
-    #thumb_quality = 50
+    favicon = favicon-16x16.png
+    thumb_width = 256
+    thumb_quality = 90
     #full_width = 960
     #full_quality = 90
-    column_count = 5
+    column_count = 6
 
     # Headerbar links
     # Do not put too many links here,
