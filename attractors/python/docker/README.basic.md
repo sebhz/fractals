@@ -1,13 +1,13 @@
 # Having fun with containers
 Containers are in fashion these days, so let's follow the hype !
 
-## Build the generator container to generate one attractor each day
+## Build the basic container to generate one attractor each day
 This will create the attractor generator docker image, installing a crontab to
 generate one attractor each day.
 
 ```
 % cd docker
-% ./docker_build.sh
+% ./docker_build.sh basic
 ```
 
 ## [OPTIONAL] Create an empty docker volume
