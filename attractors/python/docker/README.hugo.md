@@ -21,7 +21,7 @@ generate one attractor each day.
 ```
 
 ## Prepare the static web page site
-We'll use [Hugo][1], with the [Autophugo][2] theme, and run Hugo inside a container
+We'll use [Hugo](https://gohugo.io/), with the [Autophugo](https://github.com/kc0bfv/autophugo) theme, and run Hugo inside a container
 also.
 To simplify things, we'll host the site on the disk directly rather than using a
 Docker volume to share data between our attractor generator and Hugo.
@@ -71,5 +71,3 @@ hugo server... still in a container.
 
 The web pages will be accessible from the host on port 8080 (--publish option).
 
-[1]https://gohugo.io/
-[2]https://github.com/kc0bfv/autophugo
