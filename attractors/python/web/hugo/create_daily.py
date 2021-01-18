@@ -18,7 +18,7 @@ REFERENCE_DATE = datetime(2016, 7, 27)
 NUM_THREADS = 4
 IMAGE_SUFFIX = ".png"
 PATH_GUARDBAND = 32
-ATT_GEOMETRY = (256, 256)
+ATT_GEOMETRY = (1024, 1024)
 
 def append_numeral(num):
     """
@@ -54,11 +54,11 @@ def parse_args():
                         '--num',
                         help='Number of the attractor (in the series). Incompatible with --date.',
                         type=int)
-    parser.add_argument('-p',
-                        '--phugo-dir',
-                        help='root directory of autophugo dir (defaults to "hugo")',
+    parser.add_argument('-R',
+                        '--root',
+                        help='root directory where images and pages will be stored (defaults to .)',
                         type=str,
-                        default='hugo')
+                        default='.')
     _args = parser.parse_args()
     return _args
 

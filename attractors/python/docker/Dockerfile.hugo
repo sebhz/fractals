@@ -1,20 +1,17 @@
 FROM debian:buster-slim
 
 RUN apt update
-RUN apt install -y python3 python3-pip python3-jinja2 cron
+RUN apt install -y python3 python3-pip python3-jinja2
 RUN pip3 install opencv-python-headless
 
 RUN mkdir -p /opt/attractors
+
+# Files necessary to attractor generation
 RUN mkdir -p /opt/attractors/web
-COPY attractor /opt/attractors/attractor
-COPY web/hugo /opt/attractors/web/hugo
+COPY attractor /opt/attractors/web/attractor
+COPY web/hugo/create_daily.py /opt/attractors/web
 
-COPY docker/run.hugo.sh /opt/attractors/web/run.sh
-COPY docker/attractors.cron /etc/cron.d/attractors.cron
-RUN chmod 0744 /opt/attractors/web/run.sh
-RUN chmod 0644 /etc/cron.d/attractors.cron
-RUN crontab /etc/cron.d/attractors.cron
-RUN touch /var/log/attractors.log
-
-CMD cron && tail -f /var/log/attractors.log
-
+# Our script
+COPY docker/run.sh /opt/attractors/run.sh
+RUN chmod 0744 /opt/attractors/run.sh
+ENTRYPOINT ["/opt/attractors/run.sh", "00:00:00"]

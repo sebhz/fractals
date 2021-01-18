@@ -2,8 +2,8 @@
 Containers are in fashion these days, so let's follow the hype !
 
 ## Build the basic container to generate one attractor each day
-This will create the attractor generator docker image, installing a crontab to
-generate one attractor each day.
+This will create the attractor generator docker image.
+By default one attractor will be generated each day at midnight (`run.sh 00:00:00`).
 
 ```
 % cd docker
