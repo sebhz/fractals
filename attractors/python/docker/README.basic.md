@@ -23,12 +23,19 @@ if it does not exist.
 ## Launch the attractor generator container
 It is important to do this first, so that our empty volume is populated by the
 default content of the attractor generator html directory.
+
+The machine can either run in oneshot mode (the default), for use with cron, or
+run in continuous mode, where it will generate one attractor per day at the specified
+time.
+
+To run in continuous mode, generating one attractor each day at 6:00AM:
+
 ```
 % docker run --rm \
              --detach \
              --mount source=attractors-data,target=/opt/attractors/html \
              --name attractors-machine \
-             attractors:latest
+             attractors:latest continuous 06:00:00
 ```
 
 ## Launch the attractor web page generator

@@ -11,13 +11,18 @@ By default one attractor will be generated each day at midnight (`run.sh 00:00:0
 ```
 
 ## Launch our attractor machine
+The machine can either run in oneshot mode (the default), for use with cron, or
+run in continuous mode, where it will generate one attractor per day at the specified
+time.
+
+To run in continuous mode, generating one attractor each day at 6:00AM:
 
 ```
 % docker run --rm \
              --detach  \
              --volume /opt/attractors/html:/opt/attractors/html \
              --name attractors-machine \
-             attractors:latest
+             attractors:latest continuous 06:00:00
 ```
 
 ## Prepare the static web page site

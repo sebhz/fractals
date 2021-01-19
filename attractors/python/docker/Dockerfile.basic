@@ -21,4 +21,5 @@ COPY web/basic/js /opt/attractors/html/js
 # Our script
 COPY docker/run.sh /opt/attractors/run.sh
 RUN chmod 0744 /opt/attractors/run.sh
-ENTRYPOINT ["/opt/attractors/run.sh", "00:00:00"]
+ENTRYPOINT ["/opt/attractors/run.sh"]
+CMD ["oneshot"]
