@@ -28,7 +28,7 @@ import sys
 import os
 import logging
 from time import time
-import cv2
+
 from attractor import attractor, render, util, palettes
 
 LOGLEVELS = (logging.CRITICAL,
@@ -139,11 +139,9 @@ def generate_attractor(geometry, options):
 
     if options.png:
         filepath = os.path.join(options.outdir, att.code + ".png")
-        cv2.imwrite(filepath, img)
+        img.save(filepath)
     else:
-        cv2.imshow(att.code, img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        img.show(att.code)
 
 def parse_args():
     """

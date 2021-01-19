@@ -9,10 +9,10 @@ import logging
 import random
 import fileinput
 
+from PIL import Image
 from time import time
 from datetime import datetime, timedelta
 from attractor import attractor, render, util
-import cv2
 
 REFERENCE_DATE = datetime(2016, 7, 27)
 NUM_THREADS = 4
@@ -179,7 +179,7 @@ def write_attractor(img, keywords_map, args):
     assets_dir = os.path.join(args.root, 'assets')
     os.makedirs(assets_dir, exist_ok=True)
     fname = os.path.join(assets_dir, keywords_map['filename'])
-    cv2.imwrite(fname, img)
+    img.save(fname)
 
 def append_attractor_metadata(keywords_map, args):
     """
@@ -203,7 +203,7 @@ resources:
         with open(index_file, "w") as f:
             f.write(index_header)
 
-    with fileinput.FileInput(os.path.join(content_dir, '_index.md'), inplace=True) as f:
+    with fileinput.input(os.path.join(content_dir, '_index.md'), inplace=True) as f:
         for line in f:
             print(line, end='')
             if "resources:" in line:

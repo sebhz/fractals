@@ -18,9 +18,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import COMMASPACE, formatdate
 from jinja2 import Environment, FileSystemLoader
+from PIL import Image
 
 from attractor import attractor, render, util
-import cv2
 
 REFERENCE_DATE = datetime(2016, 7, 27)
 CURRENT_FILE = "strange_attractor.xhtml"
@@ -367,8 +367,8 @@ def write_attractors(keywords_map, img, args):
             continue
 
         fname = os.path.join(rooted_target_dir, keywords_map['filename'])
-        resized = cv2.resize(img, img_def[0], interpolation=cv2.INTER_CUBIC)
-        cv2.imwrite(fname, resized)
+        resized = img.resize(img_def[0], Image.BICUBIC)
+        resized.save(fname)
 
 def remove_images(keywords_map, args):
     """
