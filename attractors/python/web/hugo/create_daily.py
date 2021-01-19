@@ -176,7 +176,7 @@ def write_attractor(img, keywords_map, args):
     """
     Write our attractor image in the assets directory
     """
-    assets_dir = os.path.join(args.phugo_dir, 'assets')
+    assets_dir = os.path.join(args.root, 'assets')
     os.makedirs(assets_dir, exist_ok=True)
     fname = os.path.join(assets_dir, keywords_map['filename'])
     cv2.imwrite(fname, img)
@@ -196,7 +196,7 @@ type: "noalbum"
 resources:
 ---
 '''
-    content_dir = os.path.join(args.phugo_dir, 'content')
+    content_dir = os.path.join(args.root, 'content')
     os.makedirs(content_dir, exist_ok=True)
     index_file = os.path.join(content_dir, '_index.md')
     if not os.path.exists(index_file):
