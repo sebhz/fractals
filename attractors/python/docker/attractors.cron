@@ -1,2 +1,0 @@
-@daily /opt/attractors/web/run.sh
-# Intentionally empty line to make this a valid cron file

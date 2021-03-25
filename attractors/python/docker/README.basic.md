@@ -1,13 +1,13 @@
 # Having fun with containers
 Containers are in fashion these days, so let's follow the hype !
 
-## Build the generator container to generate one attractor each day
-This will create the attractor generator docker image, installing a crontab to
-generate one attractor each day.
+## Build the basic container to generate one attractor each day
+This will create the attractor generator docker image.
+By default one attractor will be generated each day at midnight (`run.sh 00:00:00`).
 
 ```
 % cd docker
-% ./docker_build.sh
+% ./docker_build.sh basic
 ```
 
 ## [OPTIONAL] Create an empty docker volume
@@ -21,14 +21,21 @@ if it does not exist.
 ```
 
 ## Launch the attractor generator container
-It is important to do this first, so that our empty container is populated by the
+It is important to do this first, so that our empty volume is populated by the
 default content of the attractor generator html directory.
+
+The machine can either run in oneshot mode (the default), for use with cron, or
+run in continuous mode, where it will generate one attractor per day at the specified
+time.
+
+To run in continuous mode, generating one attractor each day at 6:00AM:
+
 ```
 % docker run --rm \
-             --detach  \
+             --detach \
              --mount source=attractors-data,target=/opt/attractors/html \
              --name attractors-machine \
-             attractors:latest
+             attractors:latest continuous 06:00:00
 ```
 
 ## Launch the attractor web page generator
@@ -36,7 +43,7 @@ We use a plain nginx image to expose our beautiful attractors to the world.
 Since our volume is not empty anymore, it will obscure the standard nginx content.
 ```
 % docker run --rm \
-             --detach  \
+             --detach \
              --mount source=attractors-data,target=/usr/share/nginx/html,readonly \
              --publish 8080:80 \
              --name attractors-web \

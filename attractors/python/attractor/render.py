@@ -7,7 +7,7 @@ import logging
 import random
 import colorsys
 import numpy
-import cv2
+from PIL import Image
 from . import palettes
 
 DEF_PARAMS = {
@@ -91,11 +91,10 @@ class Renderer:
                 norm_freq = 1.0 - norm_freq
             norm_freq = template['value_offset'] + norm_freq * (1-template['value_offset'])
             (r, g, b) = colorsys.hsv_to_rgb(gradient[i][0], gradient[i][1], norm_freq)
-            colormap[freq] = tuple([round(component*((1<<self.bpc)-1)) for component in (b, g, r)])
+            colormap[freq] = tuple([round(component*((1<<self.bpc)-1)) for component in (r, g, b)])
 
-        self.palette['background'] = tuple(reversed(\
-                                     [round(component * ((1 << self.bpc)-1)) \
-                                      for component in palettes.rgb_norm(template['background'])]))
+        self.palette['background'] = tuple([round(component * ((1 << self.bpc)-1)) \
+                                     for component in palettes.rgb_norm(template['background'])])
         self.palette['colormap'] = colormap
 
     def colorize_attractor(self, att):
@@ -158,14 +157,18 @@ class Renderer:
 
         equalize_attractor(att)
         self.colorize_attractor(att)
-        img = numpy.asarray(self.create_image_array(att)).astype(numpy.uint8)
-        img = cv2.resize(img,
-                         tuple([int(dimension/self.downsample_ratio) \
-                                for dimension in self.geometry[0:2]]),
-                         interpolation=cv2.INTER_CUBIC)
-        self.logger.debug("Number of colors in attractor after downsampling: %d.",
-                          len({tuple(color) for row in img for color in row}))
-
+        _img = numpy.asarray(self.create_image_array(att)).astype(numpy.uint8)
+        im = Image.fromarray(_img, 'RGB')
+        img = im.resize(tuple([int(dimension/self.downsample_ratio) \
+                               for dimension in self.geometry[0:2]]),
+                        Image.BICUBIC)
+        MAX_NCOLORS=65536
+        try: # getcolor() method will return None if there are more than MAX_NCOLORS
+            self.logger.debug("Number of colors in attractor after downsampling: %d.",
+                              len(img.getcolors(MAX_NCOLORS)))
+        except TypeError:
+            self.logger.debug("More than % colors in attractor after downsampling.",
+                               MAX_NCOLORS)
         return img
 
     def is_nice(self, att, cover_limit=0.01):

@@ -23,12 +23,12 @@ There are many other softwares out there dealing with strange attractors generat
 
 # Dependencies
 
-Those scripts depend on python3-opencv for image display, image saving (PNG format) and image resizing.
-The web page generation script depends on python3-jinja2 for templating.
+The renderer depends on python3-numpy and python3-pil.
+The basic web page generation script depends on python3-jinja2 for templating.
 
 # Containers
 
-To run the daily generation script in a docker container, see the [README.md](https://github.com/sebhz/fractals/blob/master/attractors/python/docker/README.md) file under this repo docker directory.
+To run the daily generation script in a docker container, see the [README](https://github.com/sebhz/fractals/blob/master/attractors/python/docker) files under this repo docker directory.
 
 # Pictures
 
