@@ -4,11 +4,11 @@ import os
 import re
 from datetime import datetime, timedelta
 
-CURRENT_FILE="strange_month.xhtml"
+CURRENT_FILE = "strange_month.xhtml"
 REFERENCE_DATE = datetime(2016, 7, 27)
 ROW_WIDTH = 6
 
-PAGE_TEMPLATE='''<?xml version="1.0" encoding="UTF-8"?>
+PAGE_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 
@@ -49,87 +49,125 @@ __tiles
  </body>
 
 </html>
-'''
+"""
+
 
 def fillTemplate(template, MAP):
-	out_page=""
-	for line in template.split('\n'):
-		for k, v in MAP.items():
-			if k in line:
-				line = line.replace(k, str(v))
-		out_page += line + '\n'
+    out_page = ""
+    for line in template.split("\n"):
+        for k, v in MAP.items():
+            if k in line:
+                line = line.replace(k, str(v))
+        out_page += line + "\n"
 
-	return out_page
+    return out_page
+
 
 def getImage(num):
-	filename = str(num) + ".xhtml"
-	try:
-		with open(filename, 'r') as f:
-			for line in f:
-				if 'png' in line:
-					m = re.search('alt="(([\dA-Za-z_])+)"', line)
-					if m:
-						return m.group(1)
-	except Exception as e:
-		print(e, "\nIgnoring it and trying to go on.")
-		return None
+    filename = str(num) + ".xhtml"
+    try:
+        with open(filename, "r") as f:
+            for line in f:
+                if "png" in line:
+                    m = re.search('alt="(([\dA-Za-z_])+)"', line)
+                    if m:
+                        return m.group(1)
+    except Exception as e:
+        print(e, "\nIgnoring it and trying to go on.")
+        return None
+
 
 def daysBetween(d1, d2):
-	return abs((d2 - d1).days)
+    return abs((d2 - d1).days)
+
 
 def createImageMap():
-	h=dict()
-	d = daysBetween(REFERENCE_DATE, datetime.today()) + 1
-	for day in range(1,d+1):
-		dt = REFERENCE_DATE + timedelta(days=day-1)
-		if not (dt.year, dt.month) in h: h[(dt.year, dt.month)] = list()
-		h[(dt.year, dt.month)].append(day)
+    h = dict()
+    d = daysBetween(REFERENCE_DATE, datetime.today()) + 1
+    for day in range(1, d + 1):
+        dt = REFERENCE_DATE + timedelta(days=day - 1)
+        if not (dt.year, dt.month) in h:
+            h[(dt.year, dt.month)] = list()
+        h[(dt.year, dt.month)].append(day)
 
-	for (k, v) in sorted(h.items()):
-		fl = [ getImage(x) for x in v ]
-		h[k] = fl
+    for (k, v) in sorted(h.items()):
+        fl = [getImage(x) for x in v]
+        h[k] = fl
 
-	return h
+    return h
+
 
 def getPrev(date):
-	if date == (2016,7): return "#"
-	return "%d%02d.xhtml" % (date[0]-1 if date[1] == 1 else date[0], 12 if date[1] == 1 else date[1]-1)
+    if date == (2016, 7):
+        return "#"
+    return "%d%02d.xhtml" % (
+        date[0] - 1 if date[1] == 1 else date[0],
+        12 if date[1] == 1 else date[1] - 1,
+    )
+
 
 def getNext(date, maxDate):
-	if date == maxDate: return "#"
-	return "%d%02d.xhtml" % (date[0]+1 if date[1] == 12 else date[0], 1 if date[1] == 12 else date[1]+1)
+    if date == maxDate:
+        return "#"
+    return "%d%02d.xhtml" % (
+        date[0] + 1 if date[1] == 12 else date[0],
+        1 if date[1] == 12 else date[1] + 1,
+    )
+
 
 def formatDate(date):
-	month_map = ('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December')
-	return "%s %d" % (month_map[date[1]-1], date[0])
+    month_map = (
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    )
+    return "%s %d" % (month_map[date[1] - 1], date[0])
+
 
 def createTiles(tileList):
-	v = ""
-	for i, n in enumerate(tileList):
-		if i % ROW_WIDTH == 0: v = v + '<div class="title_row">\n'
-		v = v + '<a href="png/%s_8.png"><img src="png_tile/%s_8.png" alt="%s" title="%s"></img></a>\n' % (n, n, n, n)
-		if i%ROW_WIDTH == ROW_WIDTH-1: v = v + '</div>\n'
+    v = ""
+    for i, n in enumerate(tileList):
+        if i % ROW_WIDTH == 0:
+            v = v + '<div class="title_row">\n'
+        v = (
+            v
+            + '<a href="png/%s_8.png"><img src="png_tile/%s_8.png" alt="%s" title="%s"></img></a>\n'
+            % (n, n, n, n)
+        )
+        if i % ROW_WIDTH == ROW_WIDTH - 1:
+            v = v + "</div>\n"
 
-	if len(tileList)%ROW_WIDTH != 0: v = v + '</div>\n'
-	return v
+    if len(tileList) % ROW_WIDTH != 0:
+        v = v + "</div>\n"
+    return v
+
 
 imageMap = createImageMap()
 lastDate = sorted(imageMap.keys())[-1]
 for (k, v) in sorted(imageMap.items()):
-	if v == None: continue
-	MAP   = {
-		'__date'  : formatDate(k),
-		'__tiles' : createTiles(v),
-		'__prev'  : getPrev(k),
-		'__next'  : getNext(k,lastDate),
-	}
-	pages = fillTemplate(PAGE_TEMPLATE, MAP)
-	fname = "%4d%02d.xhtml" % (k[0], k[1])
+    if v == None:
+        continue
+    MAP = {
+        "__date": formatDate(k),
+        "__tiles": createTiles(v),
+        "__prev": getPrev(k),
+        "__next": getNext(k, lastDate),
+    }
+    pages = fillTemplate(PAGE_TEMPLATE, MAP)
+    fname = "%4d%02d.xhtml" % (k[0], k[1])
 
-	with open(fname, "w") as f:
-		f.writelines(pages)
+    with open(fname, "w") as f:
+        f.writelines(pages)
 
-	if os.path.islink(CURRENT_FILE):
-		os.remove(CURRENT_FILE)
-	os.symlink("%d%02d.xhtml" % (lastDate[0], lastDate[1]), CURRENT_FILE)
-
+    if os.path.islink(CURRENT_FILE):
+        os.remove(CURRENT_FILE)
+    os.symlink("%d%02d.xhtml" % (lastDate[0], lastDate[1]), CURRENT_FILE)

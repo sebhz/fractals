@@ -30,31 +30,35 @@ from . import util
 LYAPUNOV_BOUND = 100000
 
 DEF_PARAMS = {
-    'code' : None,
-    'dimension' : 2,
-    'iterations' : 1280*1024*util.OVERITERATE_FACTOR,
-    'order' : 2,
+    "code": None,
+    "dimension": 2,
+    "iterations": 1280 * 1024 * util.OVERITERATE_FACTOR,
+    "order": 2,
 }
-MODULUS = lambda x, y, z: x*x + y*y + z*z
+MODULUS = lambda x, y, z: x * x + y * y + z * z
 
-CODELIST = [ord(c) for c in "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"]
+CODELIST = [
+    ord(c) for c in "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+]
 CODEDICT = {ascii_code: index for index, ascii_code in enumerate(CODELIST)}
-CODERANGE = (-int(len(CODELIST)/2)+1, int(len(CODELIST)/2))
+CODERANGE = (-int(len(CODELIST) / 2) + 1, int(len(CODELIST) / 2))
 EPSILON = 1e-6
+
 
 class Attractor:
     """
     Base class representing an attractor. Should generally not be instanciated directly. Use one
     of its subclasses: PolyomialAttractor, DeJongAttractor, CliffordAttractor or SymIconAttractor
     """
-    conv_delay = 128     # Number of points to ignore before checking convergence
+
+    conv_delay = 128  # Number of points to ignore before checking convergence
     # Check convergence on conv_max_iter points only...
     # ...but we need quite a lot of points to get bounds right.
-    conv_max_iter = 4*65536
+    conv_max_iter = 4 * 65536
 
     def __init__(self, **kwargs):
         self.logger = logging.getLogger(__name__)
-        self.lyapunov = {'nl': 0, 'lsum': 0, 'ly': 0}
+        self.lyapunov = {"nl": 0, "lsum": 0, "ly": 0}
         self.fdim = 0
         self.bound = None
 
@@ -63,12 +67,16 @@ class Attractor:
 
         for kw_name, kw_value in kwargs.items():
             if not kw_name in DEF_PARAMS:
-                raise KeyError("Invalid parameter %s passed to %s" % (kw_name, __name__))
+                raise KeyError(
+                    "Invalid parameter %s passed to %s" % (kw_name, __name__)
+                )
             setattr(self, kw_name, kw_value)
 
-       # TODO: type checking on parameters
+        # TODO: type checking on parameters
         if self.dimension < 2 or self.dimension > 3:
-            self.logger.warning("Invalid dimension value %d. Forcing 2D.", self.dimension)
+            self.logger.warning(
+                "Invalid dimension value %d. Forcing 2D.", self.dimension
+            )
             self.dimension = 2
         # If self.iterations is lower than conv_max_iter...
         self.conv_max_iter = min(self.conv_max_iter, self.iterations)
@@ -76,7 +84,7 @@ class Attractor:
     def __str__(self):
         try:
             return self.code
-        except AttributeError: # No code attribute - fallback on basic __str__()
+        except AttributeError:  # No code attribute - fallback on basic __str__()
             return super(Attractor, self).__str__()
 
     def compute_lyapunov(self, cur_p, eps_p):
@@ -87,27 +95,31 @@ class Attractor:
         new_eps_p = self.get_next_point(eps_p)
         if not new_eps_p:
             return eps_p
-        displacement = [new_eps_coord - cur_coord \
-                        for new_eps_coord, cur_coord in zip(new_eps_p, cur_p)]
+        displacement = [
+            new_eps_coord - cur_coord
+            for new_eps_coord, cur_coord in zip(new_eps_p, cur_p)
+        ]
         displacement_sq = MODULUS(*displacement)
         if displacement_sq == 0:
-            self.logger.warning("Unable to compute Lyapunov exponent, but trying to go on...")
+            self.logger.warning(
+                "Unable to compute Lyapunov exponent, but trying to go on..."
+            )
             return eps_p
-        displacement_sq_deriv = displacement_sq/EPSILON/EPSILON
-        relative_disp = 1/math.sqrt(displacement_sq_deriv)
+        displacement_sq_deriv = displacement_sq / EPSILON / EPSILON
+        relative_disp = 1 / math.sqrt(displacement_sq_deriv)
 
-        self.lyapunov['lsum'] += math.log(displacement_sq_deriv, 2)
-        self.lyapunov['nl'] += 1
-        self.lyapunov['ly'] = self.lyapunov['lsum'] / self.lyapunov['nl']
-        return [cur_p[i]+relative_disp*x for i, x in enumerate(displacement)]
+        self.lyapunov["lsum"] += math.log(displacement_sq_deriv, 2)
+        self.lyapunov["nl"] += 1
+        self.lyapunov["ly"] = self.lyapunov["lsum"] / self.lyapunov["nl"]
+        return [cur_p[i] + relative_disp * x for i, x in enumerate(displacement)]
 
     def check_convergence(self, init_point=(0.1, 0.1, 0.0)):
         """
         Check if an attractor converges by estimating
         its Lyapunov exponent
         """
-        self.lyapunov['lsum'], self.lyapunov['nl'] = (0, 0)
-        min_p, max_p = ([LYAPUNOV_BOUND]*3, [-LYAPUNOV_BOUND]*3)
+        self.lyapunov["lsum"], self.lyapunov["nl"] = (0, 0)
+        min_p, max_p = ([LYAPUNOV_BOUND] * 3, [-LYAPUNOV_BOUND] * 3)
         cur_p = init_point
         eps_p = [x + EPSILON if i == 0 else x for i, x in enumerate(cur_p)]
 
@@ -115,22 +127,37 @@ class Attractor:
             new_p = self.get_next_point(cur_p)
             if not new_p:
                 return False
-            if MODULUS(*new_p) > 1000000: # Unbounded - not an SA
+            if MODULUS(*new_p) > 1000000:  # Unbounded - not an SA
                 return False
-            if MODULUS(*[new_coord-cur_coord for new_coord, cur_coord in zip(new_p, cur_p)]) \
-               < EPSILON:
+            if (
+                MODULUS(
+                    *[
+                        new_coord - cur_coord
+                        for new_coord, cur_coord in zip(new_p, cur_p)
+                    ]
+                )
+                < EPSILON
+            ):
                 return False
             # Compute Lyapunov exponent... sort of
             eps_p = self.compute_lyapunov(new_p, eps_p)
-            if self.lyapunov['ly'] < 0.005 and i > self.conv_delay: # Limit cycle
+            if self.lyapunov["ly"] < 0.005 and i > self.conv_delay:  # Limit cycle
                 return False
             if i > self.conv_delay:
-                min_p = [min(new_coord, min_coord) for new_coord, min_coord in zip(new_p, min_p)]
-                max_p = [max(new_coord, max_coord) for new_coord, max_coord in zip(new_p, max_p)]
+                min_p = [
+                    min(new_coord, min_coord)
+                    for new_coord, min_coord in zip(new_p, min_p)
+                ]
+                max_p = [
+                    max(new_coord, max_coord)
+                    for new_coord, max_coord in zip(new_p, max_p)
+                ]
             cur_p = new_p
 
         if not self.bound:
-            self.bound = [coord for limit_point in (min_p, max_p) for coord in limit_point]
+            self.bound = [
+                coord for limit_point in (min_p, max_p) for coord in limit_point
+            ]
         return True
 
     def explore(self):
@@ -159,22 +186,24 @@ class Attractor:
             if not self.bound:
                 cur_p = (random.random(), random.random(), 0)
             else:
-                x = self.bound[0] + random.random()*(self.bound[3]-self.bound[0])
-                y = self.bound[1] + random.random()*(self.bound[4]-self.bound[1])
-                z = self.bound[2] + random.random()*(self.bound[5]-self.bound[2])
+                x = self.bound[0] + random.random() * (self.bound[3] - self.bound[0])
+                y = self.bound[1] + random.random() * (self.bound[4] - self.bound[1])
+                z = self.bound[2] + random.random() * (self.bound[5] - self.bound[2])
                 cur_p = (x, y, z)
             if self.check_convergence(cur_p):
                 init_points.append(cur_p)
 
         return init_points
 
-    def iterate_map(self,
-                    window_geometry,
-                    attractor_scaled_bb,
-                    attractor_pieces,
-                    index,
-                    lock,
-                    init_point=(0.1, 0.1, 0.0)):
+    def iterate_map(
+        self,
+        window_geometry,
+        attractor_scaled_bb,
+        attractor_pieces,
+        index,
+        lock,
+        init_point=(0.1, 0.1, 0.0),
+    ):
         """
         Creates a frequency map of the attractor by iterating on its equation
         The map is a dictionary, indexed by pixel coordinate tuple (x, y).
@@ -187,12 +216,17 @@ class Attractor:
         attractor_map = dict()
         cur_p = init_point
 
-        ratio_x = (window_geometry[0]-1)/(attractor_scaled_bb[2]-attractor_scaled_bb[0])
-        ratio_y = (window_geometry[1]-1)/(attractor_scaled_bb[3]-attractor_scaled_bb[1])
+        ratio_x = (window_geometry[0] - 1) / (
+            attractor_scaled_bb[2] - attractor_scaled_bb[0]
+        )
+        ratio_y = (window_geometry[1] - 1) / (
+            attractor_scaled_bb[3] - attractor_scaled_bb[1]
+        )
         # Scale real attractor point coordinates to pixel coordinates
         w_to_s = lambda p: (
-            int((p[0] - attractor_scaled_bb[0])*ratio_x),
-            int(window_geometry[1]-1 - (p[1]-attractor_scaled_bb[1])*ratio_y))
+            int((p[0] - attractor_scaled_bb[0]) * ratio_x),
+            int(window_geometry[1] - 1 - (p[1] - attractor_scaled_bb[1]) * ratio_y),
+        )
 
         for i in range(self.iterations):
             new_p = self.get_next_point(cur_p)
@@ -236,7 +270,7 @@ class Attractor:
             self.logger.debug("Empty attractor. Trying to go on anyway.")
             return merged_attractor
 
-        for attractor_piece in attractor_pieces[i+1:]:
+        for attractor_piece in attractor_pieces[i + 1 :]:
             if attractor_piece is None:
                 continue
             for pixel, value in attractor_piece.items():
@@ -254,8 +288,10 @@ class Attractor:
             for pixel in merged_attractor.keys():
                 merged_attractor[pixel] -= min_z
 
-        self.logger.debug("%d points in the attractor before any postprocessing.",
-                          len(merged_attractor))
+        self.logger.debug(
+            "%d points in the attractor before any postprocessing.",
+            len(merged_attractor),
+        )
         return merged_attractor
 
     def create_frequency_map(self, window_geometry, nthreads):
@@ -272,18 +308,22 @@ class Attractor:
         # Scaled bounding box of the attractor
         attractor_scaled_bb = util.scale_bounds(self.bound, window_geometry)
         with Manager() as manager:
-            attractor_pieces = manager.list([None]*nthreads)
+            attractor_pieces = manager.list([None] * nthreads)
             lock = manager.RLock()
             for i in range(nthreads):
-                job = Process(group=None,
-                              name='t'+str(i),
-                              target=self.iterate_map,
-                              args=(window_geometry,
-                                    attractor_scaled_bb,
-                                    attractor_pieces,
-                                    i,
-                                    lock,
-                                    init_p[i]))
+                job = Process(
+                    group=None,
+                    name="t" + str(i),
+                    target=self.iterate_map,
+                    args=(
+                        window_geometry,
+                        attractor_scaled_bb,
+                        attractor_pieces,
+                        i,
+                        lock,
+                        init_p[i],
+                    ),
+                )
                 jobs.append(job)
                 job.start()
 
@@ -294,7 +334,7 @@ class Attractor:
 
         if not merged_attractor:
             return merged_attractor
-        #self.compute_fractal_dimension(merged_attractor)
+        # self.compute_fractal_dimension(merged_attractor)
 
         self.logger.debug("Time to render the attractor.")
         return merged_attractor
@@ -317,23 +357,29 @@ class Attractor:
         """
         raise NotImplementedError()
 
+
 class PolynomialAttractor(Attractor):
     """
     Polynomial attractor. See get_next_point method for the
     equations
     """
-    code_step = .125 # Step to use to map ASCII character to coef
+
+    code_step = 0.125  # Step to use to map ASCII character to coef
 
     def __init__(self, **kwargs):
-        get_param = lambda k: kwargs[k] if kwargs and k in kwargs else \
-                              DEF_PARAMS[k] if k in DEF_PARAMS else \
-                              None
+        get_param = (
+            lambda k: kwargs[k]
+            if kwargs and k in kwargs
+            else DEF_PARAMS[k]
+            if k in DEF_PARAMS
+            else None
+        )
         super(PolynomialAttractor, self).__init__(**kwargs)
-        self.code = get_param('code')
+        self.code = get_param("code")
         if self.code:
-            self.code_to_coef() # Will populate order, length and coef
+            self.code_to_coef()  # Will populate order, length and coef
         else:
-            self.order = get_param('order')
+            self.order = get_param("order")
             self.coef = None
             self.set_polynom_length()
         if self.dimension == 3:
@@ -348,19 +394,29 @@ class PolynomialAttractor(Attractor):
         self.order = int(self.code[1])
         self.set_polynom_length()
 
-        self.coef = [[(CODEDICT[ord(_)]+CODERANGE[0])*self.code_step for _ in \
-                      self.code[3+__*self.poly_length:3+(__+1)*self.poly_length]] \
-                     for __ in range(self.dimension)]
+        self.coef = [
+            [
+                (CODEDICT[ord(_)] + CODERANGE[0]) * self.code_step
+                for _ in self.code[
+                    3 + __ * self.poly_length : 3 + (__ + 1) * self.poly_length
+                ]
+            ]
+            for __ in range(self.dimension)
+        ]
 
     def coef_to_code(self):
         """
         Convert a set of real coefficients to
         a Sprott (=ASCII) code.
         """
-        self.code = str(self.dimension)+str(self.order)
+        self.code = str(self.dimension) + str(self.order)
         self.code += "_"
         # ASCII codes of digits and letters
-        ascii_codes = [CODELIST[int(x/self.code_step)-CODERANGE[0]] for c in self.coef for x in c]
+        ascii_codes = [
+            CODELIST[int(x / self.code_step) - CODERANGE[0]]
+            for c in self.coef
+            for x in c
+        ]
         self.code += "".join(map(chr, ascii_codes))
 
     def human_readable(self, is_html=False):
@@ -368,44 +424,57 @@ class PolynomialAttractor(Attractor):
         Return human readable (=string form) equations of
         the attractor, either in plain text or in html.
         """
-        variables = ('xn', 'yn', 'zn')
-        equation = [""]*self.dimension
-        for coord, coef_list in enumerate(self.coef): # Iterate on each dimension
+        variables = ("xn", "yn", "zn")
+        equation = [""] * self.dimension
+        for coord, coef_list in enumerate(self.coef):  # Iterate on each dimension
             cur_coef = 0
             equation[coord] = variables[coord] + "+1="
-            for i in range(self.order+1):
-                for j in range(self.order-i+1):
+            for i in range(self.order + 1):
+                for j in range(self.order - i + 1):
                     if coef_list[cur_coef] == 0:
                         cur_coef += 1
                         continue
                     if self.dimension == 2:
-                        equation[coord] += "%.3f*%s^%d*%s^%d+" % \
-                                           (coef_list[cur_coef], variables[0], j, variables[1], i)
+                        equation[coord] += "%.3f*%s^%d*%s^%d+" % (
+                            coef_list[cur_coef],
+                            variables[0],
+                            j,
+                            variables[1],
+                            i,
+                        )
                         cur_coef += 1
                         continue
                     # if dimension == 3 we should end up here
-                    for k in range(self.order-i-j+1):
+                    for k in range(self.order - i - j + 1):
                         if coef_list[cur_coef] == 0:
                             cur_coef += 1
                             continue
-                        equation[coord] += "%.3f*%s^%d*%s^%d*%s^%d+" % \
-                                           (coef_list[cur_coef], \
-                                            variables[0], k, \
-                                            variables[1], j, \
-                                            variables[2], i)
+                        equation[coord] += "%.3f*%s^%d*%s^%d*%s^%d+" % (
+                            coef_list[cur_coef],
+                            variables[0],
+                            k,
+                            variables[1],
+                            j,
+                            variables[2],
+                            i,
+                        )
                         cur_coef += 1
 
             # Some cleanup
             for variable in variables:
                 equation[coord] = equation[coord].replace("*%s^0" % (variable), "")
-                equation[coord] = equation[coord].replace("*%s^1" % (variable), "*%s" % (variable))
+                equation[coord] = equation[coord].replace(
+                    "*%s^1" % (variable), "*%s" % (variable)
+                )
             equation[coord] = equation[coord].replace("+-", "-")
             equation[coord] = equation[coord][:-1]
 
-            if is_html: # Convert this in a nice HTML equation
-                equation[coord] = re.sub(r'\^(\d+)', r'<sup>\1</sup>', equation[coord])
-                equation[coord] = re.sub(r'n\+1=', r'<sub>n+1</sub>=', equation[coord])
-                equation[coord] = re.sub(r'(x|y|z)n', r'\1<sub>n</sub>', equation[coord])
+            if is_html:  # Convert this in a nice HTML equation
+                equation[coord] = re.sub(r"\^(\d+)", r"<sup>\1</sup>", equation[coord])
+                equation[coord] = re.sub(r"n\+1=", r"<sub>n+1</sub>=", equation[coord])
+                equation[coord] = re.sub(
+                    r"(x|y|z)n", r"\1<sub>n</sub>", equation[coord]
+                )
 
         return equation
 
@@ -414,16 +483,24 @@ class PolynomialAttractor(Attractor):
         Return the number of coefficient of a polynom
         depending on its order and dimension (C(n, p))
         """
-        self.poly_length = int(math.factorial(self.order+self.dimension) /\
-                               math.factorial(self.order)/math.factorial(self.dimension))
+        self.poly_length = int(
+            math.factorial(self.order + self.dimension)
+            / math.factorial(self.order)
+            / math.factorial(self.dimension)
+        )
 
     def set_random_coef(self):
         """
         Generate a set of random coefficients
         for the attractor
         """
-        self.coef = [[random.randint(*CODERANGE)*self.code_step for _ in range(self.poly_length)] \
-                     for __ in range(self.dimension)]
+        self.coef = [
+            [
+                random.randint(*CODERANGE) * self.code_step
+                for _ in range(self.poly_length)
+            ]
+            for __ in range(self.dimension)
+        ]
 
     def get_next_point(self, cur_p):
         """
@@ -441,20 +518,30 @@ class PolynomialAttractor(Attractor):
             for cur_coef_list in self.coef:
                 result = 0
                 cur_coef = 0
-                for i in range(self.order+1):
-                    for j in range(self.order-i+1):
+                for i in range(self.order + 1):
+                    for j in range(self.order - i + 1):
                         if self.dimension == 2:
-                            result += cur_coef_list[cur_coef]*(cur_p[0]**j)*(cur_p[1]**i)
+                            result += (
+                                cur_coef_list[cur_coef]
+                                * (cur_p[0] ** j)
+                                * (cur_p[1] ** i)
+                            )
                             cur_coef += 1
                             continue
-                        for k in range(self.order-i-j+1):
-                            result += cur_coef_list[cur_coef]*(cur_p[0]**k)*\
-                                      (cur_p[1]**j)*(cur_p[2]**i)
+                        for k in range(self.order - i - j + 1):
+                            result += (
+                                cur_coef_list[cur_coef]
+                                * (cur_p[0] ** k)
+                                * (cur_p[1] ** j)
+                                * (cur_p[2] ** i)
+                            )
                             cur_coef += 1
                 next_p.append(result)
         except OverflowError:
             self.logger.error("Overflow during attractor computation.")
-            self.logger.error("This is a slowly diverging attractor, or you used a wrong code.")
+            self.logger.error(
+                "This is a slowly diverging attractor, or you used a wrong code."
+            )
             return None
 
         return next_p if self.dimension == 3 else next_p + [0]
@@ -467,22 +554,26 @@ class PolynomialAttractor(Attractor):
         """
         # We lost the 3rd dimension when computing a 3D attractor (directly computing a z-map)
         # So fractal dimension has no meaning for 3D attractors
-        self.fdim = 0.0 if self.dimension == 3 else util.compute_box_counting_dimension(a_map)
+        self.fdim = (
+            0.0 if self.dimension == 3 else util.compute_box_counting_dimension(a_map)
+        )
+
 
 class DeJongAttractor(Attractor):
     """
     Peter De Jong Attractor. See get_next_point method for the
     equations
     """
-    code_step = .125 # Step to use to map ASCII character to coef
+
+    code_step = 0.125  # Step to use to map ASCII character to coef
 
     def __init__(self, **kwargs):
         super(DeJongAttractor, self).__init__(**kwargs)
         self.coef = None
         if kwargs:
-            if 'code' in kwargs and kwargs['code'] is not None:
-                self.code = kwargs['code']
-                self.code_to_coef() # Will populate coef
+            if "code" in kwargs and kwargs["code"] is not None:
+                self.code = kwargs["code"]
+                self.code_to_coef()  # Will populate coef
         self.dimension = 2
 
     def coef_to_code(self):
@@ -492,7 +583,9 @@ class DeJongAttractor(Attractor):
         """
         self.code = "j"
         # ASCII codes of digits and letters
-        ascii_codes = [CODELIST[int(_/self.code_step)-CODERANGE[0]] for _ in self.coef]
+        ascii_codes = [
+            CODELIST[int(_ / self.code_step) - CODERANGE[0]] for _ in self.coef
+        ]
         self.code += "".join(map(chr, ascii_codes))
 
     def code_to_coef(self):
@@ -500,14 +593,16 @@ class DeJongAttractor(Attractor):
         Convert a Sprott (=ASCII) code to a set
         of real coefficients for the attractor
         """
-        self.coef = [(CODEDICT[ord(_)]+CODERANGE[0])*self.code_step for _ in self.code[1:]]
+        self.coef = [
+            (CODEDICT[ord(_)] + CODERANGE[0]) * self.code_step for _ in self.code[1:]
+        ]
 
     def set_random_coef(self):
         """
         Generate a set of random coefficients
         for the attractor
         """
-        self.coef = [random.randint(*CODERANGE)*self.code_step for _ in range(4)]
+        self.coef = [random.randint(*CODERANGE) * self.code_step for _ in range(4)]
 
     def get_next_point(self, cur_p):
         """
@@ -518,9 +613,11 @@ class DeJongAttractor(Attractor):
             x(n+1) = sin(a*y(n)) - cos(b*x(n))
             y(n+1) = sin(c*x(n)) - cos(d*y(n))
         """
-        return (math.sin(self.coef[0]*cur_p[1]) - math.cos(self.coef[1]*cur_p[0]),
-                math.sin(self.coef[2]*cur_p[0]) - math.cos(self.coef[3]*cur_p[1]),
-                0,)
+        return (
+            math.sin(self.coef[0] * cur_p[1]) - math.cos(self.coef[1] * cur_p[0]),
+            math.sin(self.coef[2] * cur_p[0]) - math.cos(self.coef[3] * cur_p[1]),
+            0,
+        )
 
     def human_readable(self, is_html=False):
         """
@@ -528,14 +625,14 @@ class DeJongAttractor(Attractor):
         the attractor, either in plain text or in html.
         """
         equation = list()
-        equation.append('xn+1=sin(%.3f*yn)-cos(%.3f*xn)' % (self.coef[0], self.coef[1]))
-        equation.append('yn+1=sin(%.3f*xn)-cos(%.3f*yn)' % (self.coef[2], self.coef[3]))
+        equation.append("xn+1=sin(%.3f*yn)-cos(%.3f*xn)" % (self.coef[0], self.coef[1]))
+        equation.append("yn+1=sin(%.3f*xn)-cos(%.3f*yn)" % (self.coef[2], self.coef[3]))
 
-        if is_html: # Convert this in a nice HTML equation
+        if is_html:  # Convert this in a nice HTML equation
             for coord in range(2):
-                equation[coord] = re.sub(r'\^(\d+)', r'<sup>\1</sup>', equation[coord])
-                equation[coord] = re.sub(r'n\+1=', r'<sub>n+1</sub>=', equation[coord])
-                equation[coord] = re.sub(r'(x|y)n', r'\1<sub>n</sub>', equation[coord])
+                equation[coord] = re.sub(r"\^(\d+)", r"<sup>\1</sup>", equation[coord])
+                equation[coord] = re.sub(r"n\+1=", r"<sub>n+1</sub>=", equation[coord])
+                equation[coord] = re.sub(r"(x|y)n", r"\1<sub>n</sub>", equation[coord])
 
         return equation
 
@@ -547,21 +644,23 @@ class DeJongAttractor(Attractor):
         """
         self.fdim = min(2.0, util.compute_box_counting_dimension(a_map))
 
+
 class CliffordAttractor(Attractor):
     """
     CliffordAttractor. Very similar to De Jong, so could have been
     a subclass of DeJongAttractor, but probably clearer to subclass
     Attractor altogether
     """
-    code_step = .0625 # Step to use to map ASCII character to coef
+
+    code_step = 0.0625  # Step to use to map ASCII character to coef
 
     def __init__(self, **kwargs):
         super(CliffordAttractor, self).__init__(**kwargs)
         self.coef = None
         if kwargs:
-            if 'code' in kwargs and kwargs['code'] is not None:
-                self.code = kwargs['code']
-                self.code_to_coef() # Will populate coef
+            if "code" in kwargs and kwargs["code"] is not None:
+                self.code = kwargs["code"]
+                self.code_to_coef()  # Will populate coef
         self.dimension = 2
 
     def coef_to_code(self):
@@ -571,7 +670,9 @@ class CliffordAttractor(Attractor):
         """
         self.code = "c"
         # ASCII codes of digits and letters
-        ascii_codes = [CODELIST[int(_/self.code_step)-CODERANGE[0]] for _ in self.coef]
+        ascii_codes = [
+            CODELIST[int(_ / self.code_step) - CODERANGE[0]] for _ in self.coef
+        ]
         self.code += "".join(map(chr, ascii_codes))
 
     def code_to_coef(self):
@@ -579,7 +680,9 @@ class CliffordAttractor(Attractor):
         Convert a Sprott (=ASCII) code to a set
         of real coefficients for the attractor
         """
-        self.coef = [(CODEDICT[ord(_)] + CODERANGE[0]) * self.code_step for _ in self.code[1:]]
+        self.coef = [
+            (CODEDICT[ord(_)] + CODERANGE[0]) * self.code_step for _ in self.code[1:]
+        ]
 
     def set_random_coef(self):
         """
@@ -597,9 +700,13 @@ class CliffordAttractor(Attractor):
             x(n+1) = sin(a*y(n)) + b*cos(a*x(n))
             y(n+1) = sin(c*x(n)) + d*cos(c*y(n))
         """
-        return (math.sin(self.coef[0]*cur_p[1]) + self.coef[1]*math.cos(self.coef[0]*cur_p[0]),
-                math.sin(self.coef[2]*cur_p[0]) + self.coef[3]*math.cos(self.coef[2]*cur_p[1]),
-                0, )
+        return (
+            math.sin(self.coef[0] * cur_p[1])
+            + self.coef[1] * math.cos(self.coef[0] * cur_p[0]),
+            math.sin(self.coef[2] * cur_p[0])
+            + self.coef[3] * math.cos(self.coef[2] * cur_p[1]),
+            0,
+        )
 
     def human_readable(self, is_html=False):
         """
@@ -607,18 +714,22 @@ class CliffordAttractor(Attractor):
         the attractor, either in plain text or in html.
         """
         equation = list()
-        equation.append('xn+1=sin(%.4f*yn)+%.4f*cos(%.4f*xn)' % \
-                        (self.coef[0], self.coef[1], self.coef[0]))
-        equation.append('yn+1=sin(%.4f*xn)+%.4f*cos(%.4f*yn)' % \
-                        (self.coef[2], self.coef[3], self.coef[2]))
+        equation.append(
+            "xn+1=sin(%.4f*yn)+%.4f*cos(%.4f*xn)"
+            % (self.coef[0], self.coef[1], self.coef[0])
+        )
+        equation.append(
+            "yn+1=sin(%.4f*xn)+%.4f*cos(%.4f*yn)"
+            % (self.coef[2], self.coef[3], self.coef[2])
+        )
         equation[0] = equation[0].replace("+-", "-")
         equation[1] = equation[1].replace("+-", "-")
 
-        if is_html: # Convert this in a nice HTML equation
+        if is_html:  # Convert this in a nice HTML equation
             for coord in range(2):
-                equation[coord] = re.sub(r'\^(\d+)', r'<sup>\1</sup>', equation[coord])
-                equation[coord] = re.sub(r'n\+1=', r'<sub>n+1</sub>=', equation[coord])
-                equation[coord] = re.sub(r'(x|y)n', r'\1<sub>n</sub>', equation[coord])
+                equation[coord] = re.sub(r"\^(\d+)", r"<sup>\1</sup>", equation[coord])
+                equation[coord] = re.sub(r"n\+1=", r"<sub>n+1</sub>=", equation[coord])
+                equation[coord] = re.sub(r"(x|y)n", r"\1<sub>n</sub>", equation[coord])
 
         return equation
 
@@ -630,19 +741,21 @@ class CliffordAttractor(Attractor):
         """
         self.fdim = min(2.0, util.compute_box_counting_dimension(a_map))
 
+
 class SymIconAttractor(Attractor):
     """ Symmetric icon attractors
     """
-    code_step = .125 # Step to use to map ASCII character to coef
+
+    code_step = 0.125  # Step to use to map ASCII character to coef
 
     def __init__(self, **kwargs):
         super(SymIconAttractor, self).__init__(**kwargs)
         self.w_i = 0
         self.coef = None
         if kwargs:
-            if 'code' in kwargs and kwargs['code'] is not None:
-                self.code = kwargs['code']
-                self.code_to_coef() # Will populate coef
+            if "code" in kwargs and kwargs["code"] is not None:
+                self.code = kwargs["code"]
+                self.code_to_coef()  # Will populate coef
         self.dimension = 2
 
     def coef_to_code(self):
@@ -652,7 +765,9 @@ class SymIconAttractor(Attractor):
         """
         self.code = "s"
         # ASCII codes of digits and letters
-        ascii_codes = [CODELIST[int(_/self.code_step)-CODERANGE[0]] for _ in self.coef[0:5]]
+        ascii_codes = [
+            CODELIST[int(_ / self.code_step) - CODERANGE[0]] for _ in self.coef[0:5]
+        ]
         ascii_codes.append(CODELIST[0] + self.coef[5])
         self.code += "".join(map(chr, ascii_codes))
 
@@ -661,18 +776,20 @@ class SymIconAttractor(Attractor):
         Convert a Sprott (=ASCII) code to a set
         of real coefficients for the attractor
         """
-        self.coef = [(CODEDICT[ord(_)]+CODERANGE[0])*self.code_step for _ in self.code[1:6]]
-        self.coef.append(ord(self.code[6])-CODELIST[0])
-        self.w_i = self.coef[1] + complex(0, 1)*self.coef[4]
+        self.coef = [
+            (CODEDICT[ord(_)] + CODERANGE[0]) * self.code_step for _ in self.code[1:6]
+        ]
+        self.coef.append(ord(self.code[6]) - CODELIST[0])
+        self.w_i = self.coef[1] + complex(0, 1) * self.coef[4]
 
     def set_random_coef(self):
         """
         Generate a set of random coefficients
         for the attractor
         """
-        self.coef = [random.randint(*CODERANGE)*self.code_step for _ in range(5)]
+        self.coef = [random.randint(*CODERANGE) * self.code_step for _ in range(5)]
         self.coef.append(random.choice(list(range(3, 9))))
-        self.w_i = self.coef[1] + complex(0, 1)*self.coef[4]
+        self.w_i = self.coef[1] + complex(0, 1) * self.coef[4]
 
     def get_next_point(self, cur_p):
         """
@@ -684,11 +801,12 @@ class SymIconAttractor(Attractor):
                      beta.re(z(n)**m)).z(n) + gamma.z(n)**(m-1)bar
         """
         z = complex(*cur_p[0:2])
-        zmminus = z**(self.coef[5]-1)
-        rezm = (z*zmminus).real
-        znew = (self.w_i + self.coef[0]*z*z.conjugate() + self.coef[2]*rezm)*z + \
-               self.coef[3]*zmminus.conjugate()
-        return (znew.real, znew.imag, 0,)
+        zmminus = z ** (self.coef[5] - 1)
+        rezm = (z * zmminus).real
+        znew = (
+            self.w_i + self.coef[0] * z * z.conjugate() + self.coef[2] * rezm
+        ) * z + self.coef[3] * zmminus.conjugate()
+        return (znew.real, znew.imag, 0)
 
     def human_readable(self, is_html=False):
         """
@@ -697,21 +815,41 @@ class SymIconAttractor(Attractor):
         """
         equation = list()
         if is_html:
-            equation.append('z<sub>n+1</sub>=(&lambda; + i&omega; + \
+            equation.append(
+                "z<sub>n+1</sub>=(&lambda; + i&omega; + \
                              &alpha;z<sub>n</sub>conj(z<sub>n</sub>) + \
                              &beta;Re(z<sub>n</sub><sup>m</sup>))z<sub>n</sub> + \
-                             &gamma;conj(z<sub>n</sub><sup>m-1</sup>)')
-            equation.append('&lambda;=%.3f - &alpha;=%.3f - &beta;=%.3f - \
-                             &gamma;=%.3f - &omega;=%.3f - m=%d' % \
-                            (self.coef[1], self.coef[0], self.coef[2], \
-                             self.coef[3], self.coef[4], self.coef[5]))
+                             &gamma;conj(z<sub>n</sub><sup>m-1</sup>)"
+            )
+            equation.append(
+                "&lambda;=%.3f - &alpha;=%.3f - &beta;=%.3f - \
+                             &gamma;=%.3f - &omega;=%.3f - m=%d"
+                % (
+                    self.coef[1],
+                    self.coef[0],
+                    self.coef[2],
+                    self.coef[3],
+                    self.coef[4],
+                    self.coef[5],
+                )
+            )
         else:
-            equation.append('zn+1 = (lambda + i.omega + alpha.zn.znbar + \
-                             beta.re(zn**m)).z + gamma.zn**(m-1)bar')
-            equation.append('Lambda=%.3f - Alpha=%.3f - Beta=%.3f - Gamma=%.3f - \
-                             Omega=%.3f - m=%d' % \
-                            (self.coef[1], self.coef[0], self.coef[2], \
-                             self.coef[3], self.coef[4], self.coef[5]))
+            equation.append(
+                "zn+1 = (lambda + i.omega + alpha.zn.znbar + \
+                             beta.re(zn**m)).z + gamma.zn**(m-1)bar"
+            )
+            equation.append(
+                "Lambda=%.3f - Alpha=%.3f - Beta=%.3f - Gamma=%.3f - \
+                             Omega=%.3f - m=%d"
+                % (
+                    self.coef[1],
+                    self.coef[0],
+                    self.coef[2],
+                    self.coef[3],
+                    self.coef[4],
+                    self.coef[5],
+                )
+            )
         return equation
 
     def compute_fractal_dimension(self, a_map):
