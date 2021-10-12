@@ -20,15 +20,19 @@ secs_to_next_attractor()
 
 create_attractor()
 {
+    local date_now=$1
+
     cd /opt/attractors/web
-    ./create_daily.py -j$(nproc) -R/opt/attractors/html 2>&1
+    ./create_daily.py -j$(nproc) -R/opt/attractors/html -d$date_now 2>&1
 }
 
 usage()
 {
-    echo "$0 mode [generation_time]"
+    echo "$0 mode [generation_time|generation_date]"
     echo "  mode can be either 'oneshot' or 'continuous'"
     echo "  generation_time applies only in continuous mode. Format HH:MM:SS with 00<=HH<=23"
+    echo "  generation_date applies only in oneshot mode. Format YYYY-MM-DD"
+    echo "  if no mode is supplied, run in oneshot mode for current day"
 }
 
 mode=$1; shift
@@ -51,12 +55,18 @@ then
     then
         ttna="00:00:00"
     fi
+else
+    date_now=$1
+    if [ "$date_now" == "" ]
+    then
+        date_now=$(date +%Y-%m-%d)
+    fi
 fi
 
 echo "Attractor machine started."
 if [ "$mode" == "oneshot" ]
 then
-    create_attractor
+    create_attractor $date_now
 elif [ "$mode" == "continuous" ]
 then
     while true
@@ -64,7 +74,6 @@ then
         next_sec="$(secs_to_next_attractor $ttna)"
         echo "Next attractor generation will occur in $next_sec seconds."
         sleep "$next_sec"
-        create_attractor
+        create_attractor $(date +%Y-%m-%d)
     done
 fi
-
