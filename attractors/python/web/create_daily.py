@@ -8,17 +8,139 @@ import argparse
 import logging
 import random
 import fileinput
+import smtplib
 
 from PIL import Image
 from time import time
 from datetime import datetime, timedelta
+from jinja2 import Environment, FileSystemLoader
+from email.mime.image import MIMEImage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.utils import COMMASPACE, formatdate
+from jinja2 import Environment, FileSystemLoader
+
 from attractor import attractor, render, util
 
 REFERENCE_DATE = datetime(2016, 7, 27)
 NUM_THREADS = 4
 IMAGE_SUFFIX = ".png"
 PATH_GUARDBAND = 32
-ATT_GEOMETRY = (1024, 1024)
+# ATT_GEOMETRY = (1024, 1024)
+ATT_GEOMETRY = (128, 128)
+
+
+def generate_mail_text(keywords_map):
+    """
+    Generate attractor of the day mail
+    in plain text format
+    """
+    return fill_template("daily_mail.txt.j2", keywords_map)
+
+
+def generate_mail_html(keywords_map):
+    """
+    Generate attractor of the day mail
+    in plain html format
+    """
+    return fill_template("daily_mail.xhtml.j2", keywords_map)
+
+
+def send_mail(
+    keywords_map, server, send_from, send_to, subject, files=None, multiple=False
+):
+    """
+    Send the attractor of the day mail
+    """
+    if not isinstance(send_to, list):
+        logging.warning("Badly formed recipient list. Not sending any mail.")
+        return
+
+    # Root message
+    msg = MIMEMultipart("related")
+    msg["From"] = send_from
+    msg["Date"] = formatdate(localtime=True)
+    msg["Subject"] = subject
+
+    # Now create a multipart message below the root message
+    # and attach both plain text and HTML version of the message to it.
+    msg_alternative = MIMEMultipart("alternative")
+    msg.attach(msg_alternative)
+    text = generate_mail_text(keywords_map)
+    html = generate_mail_html(keywords_map)
+    msg_alternative.attach(MIMEText(text, "plain"))
+    msg_alternative.attach(MIMEText(html, "html"))
+
+    # Finally attach the image to the root message... this loop is overkill
+    # and unnecessary, but will do for our case !
+    for file_name in files or []:
+        with open(file_name, "rb") as fil:
+            part = MIMEImage(fil.read(), "png")
+            # part['Content-Disposition'] = 'attachment; filename=%s' % os.path.basename(f)
+            part.add_header("Content-ID", "<atImg>")
+            msg.attach(part)
+
+    try:
+        smtp = smtplib.SMTP(server)
+    except smtplib.SMTPConnectError:
+        logging.warning("Unable to connect to SMTP server. Not sending any mail.")
+        return
+
+    send_to = list(set(send_to))  # Removes possible duplicates in to list
+    try:
+        refused = dict()
+        if multiple:  # send one message per recipient
+            for dest in send_to:
+                if "To" in msg:
+                    msg.replace_header("To", dest)
+                else:
+                    msg["To"] = dest
+                refused_recipient = smtp.sendmail(send_from, dest, msg.as_string())
+                refused.update(refused_recipient)
+        else:  # send only one message with everyone in To-List
+            msg["To"] = COMMASPACE.join(send_to)
+            refused = smtp.sendmail(send_from, send_to, msg.as_string())
+    except smtplib.SMTPException as exception:
+        logging.warning(sys.stderr, "Error sending mail: %s.", repr(exception))
+    else:
+        if refused:
+            logging.warning(
+                sys.stderr, "Some mails could not be delivered: %s.", str(refused)
+            )
+
+    smtp.quit()
+
+
+def process_mail(keywords_map, args):
+    """
+    Sends attractor of the day mail
+    """
+    assets_dir = os.path.join(args.root, "assets")
+    if args.mail and args.recipients and args.server:
+        logging.info(
+            "Sending emails to %s, using SMTP server %s.", args.recipients, args.server
+        )
+        toaddr = args.recipients.split(
+            ","
+        )  # Hopefully there won't be any comma in the addresses
+        subject = "%s : Strange attractor of the day" % (keywords_map["date"])
+        send_mail(
+            keywords_map,
+            args.server,
+            args.fromaddr,
+            toaddr,
+            subject,
+            (os.path.join(assets_dir, keywords_map["link"]),),
+            True,
+        )
+
+
+def setup_jinja_env():
+    """
+    Sets up Jinja2 environment for templating
+    """
+    env = Environment(loader=FileSystemLoader("./templates"))
+    return env
 
 
 def append_numeral(num):
@@ -54,6 +176,7 @@ def parse_args():
     parser.add_argument(
         "-d", "--date", help="Forces date. Format of input: YYYY-MM-DD", type=str
     )
+
     parser.add_argument(
         "-j",
         "--nthreads",
@@ -74,8 +197,33 @@ def parse_args():
         type=str,
         default=".",
     )
+    parser.add_argument(
+        "-m", "--mail", help="Mail the attractor(s)", action="store_true", default=False
+    )
+    parser.add_argument(
+        "-f",
+        "--fromaddr",
+        help="From address",
+        type=str,
+        default="attractors@attractor.org",
+    )
+    parser.add_argument(
+        "-r",
+        "--recipients",
+        help="Recipient list for mails (comma separated)",
+        type=str,
+    )
+    parser.add_argument("-s", "--server", help="SMTP server to use", type=str)
     _args = parser.parse_args()
     return _args
+
+
+def fill_template(template_name, keywords_map):
+    """
+    Fill variable fields in a template string
+    """
+    template = JENV.get_template(template_name)
+    return template.render(keywords_map)
 
 
 def sec2hms(seconds):
@@ -189,6 +337,7 @@ def create_attractor(att_num, args):
         "not computed" if att_dimension == 3 else "%.3f" % (att.fdim)
     )
     keywords_map["lyapunov"] = "%.3f" % (att.lyapunov["ly"])
+    keywords_map["link"] = keywords_map["filename"]
     keywords_map["time"] = sec2hms(t_1 - t_0)
     return (keywords_map, img)
 
@@ -266,6 +415,7 @@ resources:
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 random.seed()
 ARGS = parse_args()
+JENV = setup_jinja_env()
 
 if ARGS.date and ARGS.num is not None:
     logging.error("Only one of --num and --date switch is allowed.")
@@ -288,6 +438,6 @@ else:
 
 for attractor_num in ATTRACTOR_RANGE:
     (kw_map, image) = create_attractor(attractor_num, ARGS)
-
     write_attractor(image, kw_map, ARGS)
+    process_mail(kw_map, ARGS)
     append_attractor_metadata(kw_map, ARGS)

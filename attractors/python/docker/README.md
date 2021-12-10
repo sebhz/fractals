@@ -7,7 +7,7 @@ By default if the container is launched without command it will generate an attr
 
 ```
 % cd docker
-% ./docker_build.sh hugo
+% docker build -t attractors:latest -f docker/Dockerfile .
 ```
 
 ## Launch our attractor machine
@@ -68,8 +68,8 @@ Change the configuration, by editing config.toml or copying ours, then add
 a couple of static assets
 
 ```
-% cp <attractors_root>/web/hugo/config.toml .
-% cp <attractors_root>/web/basic/icons/favicon-16x16.png static
+% cp <attractors_root>/web/config.toml .
+% cp <attractors_root>/web/icons/favicon-16x16.png static
 ```
 
 ## Launch the attractor web page server
