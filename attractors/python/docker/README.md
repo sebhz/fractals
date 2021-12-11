@@ -6,7 +6,6 @@ This will create the attractor generator docker image.
 By default if the container is launched without command it will generate an attractor for the current day, then exit (`run.sh oneshot`).
 
 ```
-% cd docker
 % docker build -t attractors:latest -f docker/Dockerfile .
 ```
 

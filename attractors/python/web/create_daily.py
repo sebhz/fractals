@@ -26,8 +26,7 @@ REFERENCE_DATE = datetime(2016, 7, 27)
 NUM_THREADS = 4
 IMAGE_SUFFIX = ".png"
 PATH_GUARDBAND = 32
-# ATT_GEOMETRY = (1024, 1024)
-ATT_GEOMETRY = (128, 128)
+ATT_GEOMETRY = (1024, 1024)
 
 
 def generate_mail_text(keywords_map):
