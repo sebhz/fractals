@@ -21,9 +21,14 @@ secs_to_next_attractor()
 create_attractor()
 {
     local date_now=$1
+    local mail_cmd=""
 
+    if [ $ATT_MAIL == 1 ]
+    then
+        mail_cmd="-m -s $ATT_MAIL_SERVER -f $ATT_MAIL_FROM -r $ATT_MAIL_TO"
+    fi
     cd /opt/attractors/web
-    ./create_daily.py -j$(nproc) -R/opt/attractors/html -d$date_now 2>&1
+    ./create_daily.py -j$(nproc) -R/opt/attractors/html -d$date_now $mail_cmd 2>&1
 }
 
 usage()
