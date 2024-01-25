@@ -10,7 +10,6 @@ import random
 import fileinput
 import smtplib
 
-from PIL import Image
 from time import time
 from datetime import datetime, timedelta
 from jinja2 import Environment, FileSystemLoader

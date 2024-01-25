@@ -466,6 +466,7 @@ class PolynomialAttractor(Attractor):
                 equation[coord] = equation[coord].replace(
                     "*%s^1" % (variable), "*%s" % (variable)
                 )
+            equation[coord] = equation[coord].replace("1.000*", "")
             equation[coord] = equation[coord].replace("+-", "-")
             equation[coord] = equation[coord][:-1]
 
