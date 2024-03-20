@@ -437,5 +437,5 @@ else:
 for attractor_num in ATTRACTOR_RANGE:
     (kw_map, image) = create_attractor(attractor_num, ARGS)
     write_attractor(image, kw_map, ARGS)
-    process_mail(kw_map, ARGS)
     append_attractor_metadata(kw_map, ARGS)
+    process_mail(kw_map, ARGS)
