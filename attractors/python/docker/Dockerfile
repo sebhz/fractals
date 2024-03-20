@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 
 ENV ATT_MAIL=0
 ENV ATT_MAIL_SERVER=""
