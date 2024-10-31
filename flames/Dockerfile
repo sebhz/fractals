@@ -14,8 +14,8 @@ RUN ./configure \
 
 RUN mkdir -p /opt/flames
 
-COPY build_sequence.sh replicate_first_flame.py vidres.flam3 /opt/flames/
-RUN chmod 0744 /opt/flames/build_sequence.sh /opt/flames/replicate_first_flame.py
+COPY build_sequence.sh process_flame.py vidres.flam3 /opt/flames/
+RUN chmod 0744 /opt/flames/build_sequence.sh /opt/flames/process_flame.py
 
 WORKDIR /opt/flames
 ENTRYPOINT ["/opt/flames/build_sequence.sh"]
