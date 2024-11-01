@@ -68,10 +68,11 @@ fi
 # flam3-animate will eat the XML and generate the pictures from the flame description.
 # So the formula relating number of frames between control points, sequence time and fps is:
 # NFRAMES = (SEQUENCE_TIME_SEC*FPS+1)/(2*N_CTRL_PTS - 1)
-NFRAMES=$(bc -l <<< "scale=0; (${SEQUENCE_TIME_SEC}*${FPS}+1)/(2*${N_CTRL_PTS}-1)")
+# Add 0.5 and truncate to round to the nearest integer (no issue as everyone is positive)
+NFRAMES=$(bc -l <<< "a=(${SEQUENCE_TIME_SEC}*${FPS}+1)/(2*${N_CTRL_PTS}-1)+0.5; scale=0; a/1")
 TOTAL_FRAMES="$(( (2*${N_CTRL_PTS}-1)*${NFRAMES} - 1 ))"
 ACTUAL_SEC=$(bc -l <<< "scale=2; ${TOTAL_FRAMES}/${FPS}")
-echo "Will compute ${NFRAMES} frames per control points (${N_CTRL_PTS} control points: ${TOTAL_FRAMES} frames in total)."
+echo "nframes parameter to flame3-genome: ${NFRAMES}. ${N_CTRL_PTS} control point(s). ${TOTAL_FRAMES} frames will be generated."
 echo "Actual sequence duration, with ${FPS} fps: ${ACTUAL_SEC} seconds."
 env sequence="${POINT_XML}" nframes="${NFRAMES}" flam3-genome | tee "${SEQ_XML}" | env nthreads="${N_THREADS}" prefix="${PREFIX}" verbose=1 flam3-animate
 
